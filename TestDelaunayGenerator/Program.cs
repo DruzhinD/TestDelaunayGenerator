@@ -23,7 +23,7 @@ namespace TestDelaunayGenerator
             int countTests = 1; //количество тестов
             Test test = new Test();
             M:
-            Console.WriteLine("Выор тестовой области:");
+            Console.WriteLine("Выбор тестовой области:");
             Console.WriteLine("1. Прямоугольник простой");
             Console.WriteLine("2. Прямоугольник большой");
             Console.WriteLine("3. Трапеция");
@@ -100,9 +100,6 @@ namespace TestDelaunayGenerator
                 Console.WriteLine(ee.Message);
                 goto M;
             }
-            
-            
         }
-
     }
 }

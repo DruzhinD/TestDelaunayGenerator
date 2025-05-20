@@ -104,6 +104,20 @@ namespace TestDelaunayGenerator.Boundary
             }
             _allBounaryKnots = boundaryPoints.ToArray();
         }
+
+        // Новый статический метод для создания BoundaryContainer с границей
+        public static BoundaryContainer CreateWithBoundary(IHPoint[] boundary, IGeneratorBase generator = null)
+        {
+            if (boundary == null || boundary.Length == 0)
+                return null;
+
+            // Используем generator, если передан, иначе GeneratorFixed(0) по умолчанию
+            var effectiveGenerator = generator ?? new GeneratorFixed(0);
+            var container = new BoundaryContainer(effectiveGenerator);
+            container.Add(boundary);
+            return container;
+        }
+
     }
 
 }

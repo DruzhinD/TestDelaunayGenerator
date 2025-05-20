@@ -8,6 +8,7 @@ using RenderLib;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Windows.Forms;
 using TestDelaunayGenerator.Areas;
 using TestDelaunayGenerator.Boundary;
@@ -18,11 +19,12 @@ namespace TestDelaunayGenerator
     {
         IHPoint[] points = null;
         IHPoint[] Boundary = null;
+        IHPoint[] Boundary2 = null;
         public Test() { }
         public void CreateRestArea(int idx)
         {
             const int N = 100;
-            double h = 1.0 / (N - 1);
+            double h = 3.0 / (N - 1);
             switch (idx)
             {
                 case 0:
@@ -56,6 +58,20 @@ namespace TestDelaunayGenerator
                             idd++;
                             idd = idd % dxx.Length;
                         }
+                    Boundary = new IHPoint[4]
+                        {
+                            new HPoint(1,1),
+                            new HPoint(1, 2),
+                            new HPoint(2, 2),
+                            new HPoint(2 ,1)
+                        };
+                    Boundary2 = new IHPoint[4]
+                        {
+                            new HPoint(1.5,1.5),
+                            new HPoint(1.5, 1.7),
+                            new HPoint(1.7, 1.7),
+                            new HPoint(1.7 ,1.5)
+                        };
 
                     break;
                 case 2:
@@ -128,20 +144,60 @@ namespace TestDelaunayGenerator
         public void Run()
         {
             //старая триангуляция
-            DMeshGenerator delaunator = new DMeshGenerator();
-            delaunator.Generator(points, Boundary);
+            //DMeshGenerator delaunator = new DMeshGenerator();
+            //delaunator.Generator(points, Boundary);
 
+
+            IHPoint[] workingPoints = (IHPoint[])points.Clone();
             //новая триангуляция
+            BoundaryContainer boundaryContainer = null;
+            if (Boundary != null)
+            {
+                boundaryContainer = new BoundaryContainer(new GeneratorFixed());
+                boundaryContainer.Add(Boundary);
+                IHPoint[] boundaryPoints = boundaryContainer.AllBoundaryKnots;
+
+                // Объединяем points и boundaryPoints
+                int exPointsLength = workingPoints.Length;
+                Array.Resize(ref workingPoints, workingPoints.Length + boundaryPoints.Length);
+                boundaryPoints.CopyTo(workingPoints, exPointsLength);
+            }
+
+            DelaunayMeshGenerator delaunator = new DelaunayMeshGenerator(workingPoints, boundaryContainer);
+            delaunator.PreFilterPoints(true);
+            delaunator.Generator();
+
+
+
+
+
+            //IHPoint[] workingPoints = (IHPoint[])points.Clone();
+
+            //// Создаем BoundaryContainer, если граница задана
             //BoundaryContainer boundaryContainer = null;
-            //if (Boundary != null)
+            //if (Boundary != null && Boundary.Length > 0)
             //{
-            //    boundaryContainer = new BoundaryContainer(new GeneratorFixed());
-            //    boundaryContainer.Add(Boundary);
+
+            //    boundaryContainer = BoundaryContainer.CreateWithBoundary(Boundary, new GeneratorFixed(20)); // Используем новый статический метод
+            //    boundaryContainer.Add(Boundary2);
+            //    IHPoint[] boundaryPoints = boundaryContainer.AllBoundaryKnots;
+
+            //    // Объединяем points и boundaryPoints
+            //    int exPointsLength = workingPoints.Length;
+            //    Array.Resize(ref workingPoints, workingPoints.Length + boundaryPoints.Length);
+            //    boundaryPoints.CopyTo(workingPoints, exPointsLength);
             //}
 
-            //DelaunayMeshGenerator delaunator = new DelaunayMeshGenerator(points, boundaryContainer);
+            //// Создаем генератор триангуляции
+            //DelaunayMeshGenerator delaunator = new DelaunayMeshGenerator(workingPoints, boundaryContainer);
+
+
             //delaunator.PreFilterPoints(true);
             //delaunator.Generator();
+
+
+
+
 
             IMesh mesh = delaunator.CreateMesh();
 
