@@ -35,6 +35,12 @@ namespace TestDelaunayGenerator.Boundary
         public int[] VertexesIds;
 
         /// <summary>
+        /// массив граничных ребер(пары индексов точек)
+        /// </summary>
+        private (int, int)[] _boundaryEdges;
+        public (int, int)[] BoundaryEdges { get => _boundaryEdges; private set => _boundaryEdges = value; }
+
+        /// <summary>
         /// Инициализация оболочки
         /// </summary>
         /// <param name="baseVertexes">опорные вершины, образующие форму оболочки</param>
@@ -68,7 +74,26 @@ namespace TestDelaunayGenerator.Boundary
                         break;
                 }
             }
+            // Инициализация граничных ребер
+            InitializeBoundaryEdges();
         }
+
+        private void InitializeBoundaryEdges()
+        {
+            _boundaryEdges = new (int, int)[Points.Length]; // Размер равен количеству точек для замкнутой области
+            for (int i = 0; i < Points.Length; i++)
+            {
+                int start = i;
+                int end = (i + 1) % Points.Length; // Замыкаем на первую точку для последнего ребра
+                _boundaryEdges[i] = (start, end);
+                //Console.WriteLine($"Edge {i}: ({start}, {end})");
+                // Выводим индексы и координаты вершин ребра
+                //Console.WriteLine($"Edge {i}: ({start}, {end}) -> " +
+                //                  $"(({Points[start].X}, {Points[start].Y}), " +
+                //                  $"({Points[end].X}, {Points[end].Y}))");
+            }
+        }
+
 
         /// <summary>
         /// Прямоугольник, описанный около текущей ограниченной области

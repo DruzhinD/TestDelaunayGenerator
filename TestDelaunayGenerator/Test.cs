@@ -84,14 +84,14 @@ namespace TestDelaunayGenerator
                             points[i * N + j] = new HPoint(h * i, hx * j);
                     }
                     Boundary = null;
-                    Boundary = new IHPoint[6]
+                    Boundary = new IHPoint[5]
                     {
                             new HPoint(-0.1,-0.1),
                             new HPoint(0.5,0.25),
                             new HPoint(1.1,-0.1),
                             new HPoint(1.1,0.7),
                             new HPoint(-0.1,0.7),
-                            new HPoint(-0.1,-0.1)
+                            //new HPoint(-0.1,-0.1)
                      };
                     break;
                 case 3:
@@ -155,7 +155,7 @@ namespace TestDelaunayGenerator
             {
                 boundaryContainer = new BoundaryContainer();
                 boundaryContainer.ReplaceOuterBoundary(Boundary, new GeneratorFixed());
-                //boundaryContainer.Add(Boundary);
+                //boundaryContainer.AddInnerBoundary(Boundary2, new GeneratorFixed());
                 IHPoint[] boundaryPoints = boundaryContainer.AllBoundaryPoints;
 
                 // Объединяем points и boundaryPoints

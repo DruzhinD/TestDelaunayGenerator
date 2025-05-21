@@ -157,6 +157,13 @@ namespace TestDelaunayGenerator
         /// </summary>
         public BoundaryContainer boundaryContainer;
         int ii0, ii1, ii2;
+
+        /// <summary>
+        /// Массив, указывающий, является ли ребро граничным (true - граничное, false - нет)
+        /// </summary>
+        private bool[] isBoundaryEdge;
+
+
         /// <summary>
         /// ОО: Делоне генератор выпуклой триангуляции
         /// </summary>
@@ -363,7 +370,7 @@ namespace TestDelaunayGenerator
             MEM.Alloc(Points.Length, ref dists);
             hashSize = (int)Math.Ceiling(Math.Sqrt(Points.Length)); //размер хэш-пространства
             MEM.Alloc(hashSize, ref hullHash);
-
+            MEM.Alloc(maxTriangles * 3, ref isBoundaryEdge, false);
             //заполняем массивы хранящие значения X, Y и метку отрисовки точки
             for (var i = 0; i < Points.Length; i++)
             {
@@ -688,12 +695,31 @@ namespace TestDelaunayGenerator
         private int Legalize(int EdgeA_ID)
         {
             var i = 0;
-            int ar;
+            int ar = -1;
 
             // recursion eliminated with EdgeA_ID fixed-size stack
             // рекурсия устранена с помощью стека фиксированного размера
             while (true)
             {
+                // Пропускаем легализацию, если ребро является граничным
+                if (isBoundaryEdge[EdgeA_ID])
+                {
+                    //Console.WriteLine($"Пропуск легализации для граничного ребра {EdgeA_ID}");
+                    // Определяем индексы вершин ребра
+                    int triA_ID2 = EdgeA_ID - EdgeA_ID % 3;
+                    int idxElemA2 = triA_ID2 / 3;
+                    int v1 = STriangles[idxElemA2][(EdgeA_ID + 0) % 3]; // Первая вершина ребра
+                    int v2 = STriangles[idxElemA2][(EdgeA_ID + 1) % 3]; // Вторая вершина ребра
+                    Console.WriteLine($"Пропуск легализации для граничного ребра {EdgeA_ID}: " +
+                                      $"({v1}, {v2}) -> " +
+                                      $"(({Points[v1].X}, {Points[v1].Y}), " +
+                                      $"({Points[v2].X}, {Points[v2].Y}))");
+                    if (i == 0)
+                        break;
+                    EdgeA_ID = EdgeStack[--i];
+                    continue;
+                }
+
                 var EdgeB_ID = HalfEdges[EdgeA_ID];
                 
 
@@ -766,6 +792,17 @@ namespace TestDelaunayGenerator
                     //                                    triB
                     STriangles[idxElemA][(EdgeA_ID + 0) % 3] = p1;
                     STriangles[idxElemB][(EdgeB_ID + 0) % 3] = p0;
+
+                    // Обновляем статус граничных ребер после флипа
+                    int offset = Points.Length - (boundaryContainer?.AllBoundaryPoints.Length ?? 0);
+                    if (boundaryContainer != null)
+                    {
+                        isBoundaryEdge[EdgeA_ID] = boundaryContainer.IsBoundaryEdge(p1, pr, offset);
+                        isBoundaryEdge[EdgeB_ID] = boundaryContainer.IsBoundaryEdge(p0, pl, offset);
+                        isBoundaryEdge[ar] = boundaryContainer.IsBoundaryEdge(p0, p1, offset);
+                        isBoundaryEdge[bl] = boundaryContainer.IsBoundaryEdge(pr, pl, offset);
+                    }
+
                     int hbl = HalfEdges[bl];
                     // ребро поменяно местами на другой стороне оболочки (редко);
                     // исправить ссылку ребра смежного треугольника
@@ -854,10 +891,19 @@ namespace TestDelaunayGenerator
             STriangles[triangleID].k = i2;
 
             triangleID = trianglesLen;
-            
+
             //Triangles[triangleID] = i0;
             //Triangles[triangleID + 1] = i1;
             //Triangles[triangleID + 2] = i2;
+
+            // Проверяем, являются ли ребра треугольника граничными
+            int offset = Points.Length - (boundaryContainer?.AllBoundaryPoints.Length ?? 0);
+            if (boundaryContainer != null)
+            {
+                isBoundaryEdge[triangleID] = boundaryContainer.IsBoundaryEdge(i0, i1, offset);
+                isBoundaryEdge[triangleID + 1] = boundaryContainer.IsBoundaryEdge(i1, i2, offset);
+                isBoundaryEdge[triangleID + 2] = boundaryContainer.IsBoundaryEdge(i2, i0, offset);
+            }
 
             Link(triangleID, a);
             Link(triangleID + 1, b);

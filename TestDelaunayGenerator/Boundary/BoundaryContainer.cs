@@ -200,5 +200,30 @@ namespace TestDelaunayGenerator.Boundary
             }
             return offset;
         }
+
+        /// <summary>
+        /// Проверяет, принадлежит ли ребро (start, end) какой-либо границе
+        /// </summary>
+        /// <param name="start">Индекс начальной точки ребра</param>
+        /// <param name="end">Индекс конечной точки ребра</param>
+        /// <param name="offset">Смещение индексов точек в общем массиве</param>
+        /// <returns>True, если ребро принадлежит границе</returns>
+        public bool IsBoundaryEdge(int start, int end, int offset)
+        {
+            foreach (var boundary in this)
+            {
+                foreach (var edge in boundary.BoundaryEdges)
+                {
+                    // Учитываем смещение индексов в общем массиве точек
+                    int edgeStart = edge.Item1 + offset;
+                    int edgeEnd = edge.Item2 + offset;
+                    if ((start == edgeStart && end == edgeEnd) || (start == edgeEnd && end == edgeStart))
+                        return true;
+                }
+                // Обновляем смещение для следующей границы
+                offset += boundary.Points.Length;
+            }
+            return false;
+        }
     }
 }
