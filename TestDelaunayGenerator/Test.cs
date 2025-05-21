@@ -153,9 +153,10 @@ namespace TestDelaunayGenerator
             BoundaryContainer boundaryContainer = null;
             if (Boundary != null)
             {
-                boundaryContainer = new BoundaryContainer(new GeneratorFixed());
-                boundaryContainer.Add(Boundary);
-                IHPoint[] boundaryPoints = boundaryContainer.AllBoundaryKnots;
+                boundaryContainer = new BoundaryContainer();
+                boundaryContainer.ReplaceOuterBoundary(Boundary, new GeneratorFixed());
+                //boundaryContainer.Add(Boundary);
+                IHPoint[] boundaryPoints = boundaryContainer.AllBoundaryPoints;
 
                 // Объединяем points и boundaryPoints
                 int exPointsLength = workingPoints.Length;
@@ -209,45 +210,45 @@ namespace TestDelaunayGenerator
 
         public void Run(AreaBase area, bool usePointsFilter = true, int count = 1, bool openForm = true)
         {
-            for (int i = 0; i < count; i++)
-            {
-                IHPoint[] points = area.Points;
-                BoundaryContainer boundaryContainer = area.BoundaryContainer;
-                //TODO переместить в AreaBase
-                //если граница задана, то расширяем исходное множество узлов множеством граничных узлов
-                if (boundaryContainer != null)
-                {
-                    IHPoint[] boundary = boundaryContainer.AllBoundaryKnots;
-                    int exPointsLength = points.Length;
-                    Array.Resize(ref points, points.Length + boundary.Length);
-                    boundary.CopyTo(points, exPointsLength);
-                }
+            //for (int i = 0; i < count; i++)
+            //{
+            //    IHPoint[] points = area.Points;
+            //    BoundaryContainer_Old boundaryContainer = area.BoundaryContainer;
+            //    //TODO переместить в AreaBase
+            //    //если граница задана, то расширяем исходное множество узлов множеством граничных узлов
+            //    if (boundaryContainer != null)
+            //    {
+            //        IHPoint[] boundary = boundaryContainer.AllBoundaryKnots;
+            //        int exPointsLength = points.Length;
+            //        Array.Resize(ref points, points.Length + boundary.Length);
+            //        boundary.CopyTo(points, exPointsLength);
+            //    }
 
-                DelaunayMeshGenerator delaunator = new DelaunayMeshGenerator(points, boundaryContainer, usePointsFilter);
-                //измерение времени предварительной фильтрации
-                Stopwatch watch = Stopwatch.StartNew();
-                delaunator.PreFilterPoints();
-                double filterPointsSeconds = watch.Elapsed.TotalSeconds;
+            //    DelaunayMeshGenerator delaunator = new DelaunayMeshGenerator(points, boundaryContainer, usePointsFilter);
+            //    //измерение времени предварительной фильтрации
+            //    Stopwatch watch = Stopwatch.StartNew();
+            //    delaunator.PreFilterPoints();
+            //    double filterPointsSeconds = watch.Elapsed.TotalSeconds;
 
-                //измерение времени генерации сетки
-                watch = Stopwatch.StartNew();
-                delaunator.Generator();
-                double genSeconds = watch.Elapsed.TotalSeconds;
+            //    //измерение времени генерации сетки
+            //    watch = Stopwatch.StartNew();
+            //    delaunator.Generator();
+            //    double genSeconds = watch.Elapsed.TotalSeconds;
 
-                //фильтрация треугольников
-                watch = Stopwatch.StartNew();
-                IMesh mesh = delaunator.CreateMesh();
-                double filterSeconds = watch.Elapsed.TotalSeconds;
+            //    //фильтрация треугольников
+            //    watch = Stopwatch.StartNew();
+            //    IMesh mesh = delaunator.CreateMesh();
+            //    double filterSeconds = watch.Elapsed.TotalSeconds;
 
-                //TriangulationLog log = new TriangulationLog(area, mesh, filterPointsSeconds, genSeconds, filterSeconds, usePointsFilter);
-                //Log.Information(log.ToString());
-                //if (specialLogger != null)
-                //    specialLogger.Information("{@info}", log);
+            //    //TriangulationLog log = new TriangulationLog(area, mesh, filterPointsSeconds, genSeconds, filterSeconds, usePointsFilter);
+            //    //Log.Information(log.ToString());
+            //    //if (specialLogger != null)
+            //    //    specialLogger.Information("{@info}", log);
 
-                //отобразить форму
-                if (openForm)
-                    ShowMesh(mesh);
-            }
+            //    //отобразить форму
+            //    if (openForm)
+            //        ShowMesh(mesh);
+            //}
 
         }
 

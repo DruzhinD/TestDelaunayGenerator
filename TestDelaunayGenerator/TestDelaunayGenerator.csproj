@@ -47,11 +47,14 @@
     <Compile Include="Area\AreaBase.cs" />
     <Compile Include="Area\GridArea.cs" />
     <Compile Include="Area\UniformArea.cs" />
+    <Compile Include="Boundary\BoundaryNew.cs" />
+    <Compile Include="Boundary\BoundaryContainer.cs" />
     <Compile Include="Boundary\BoundaryHill.cs" />
-    <Compile Include="Boundary\DelaunayMeshGenerator.cs" />
+    <Compile Include="DelaunayMeshGenerator.cs" />
     <Compile Include="Boundary\IGeneratorBase.cs" />
     <Compile Include="Boundary\GeneratorFixed.cs" />
-    <Compile Include="Boundary\BoundaryContainer.cs" />
+    <Compile Include="Boundary\BoundaryContainer_Old.cs" />
+    <Compile Include="Troika.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Test.cs" />

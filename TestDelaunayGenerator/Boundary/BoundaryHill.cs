@@ -32,11 +32,11 @@
         /// <summary>
         /// Сгенерировать опорные точки границы и определить их маркер
         /// </summary>
-        public void Init()
+        protected void Init()
         {
             for (int i = 0; i < hEdges.Length; i++)
                 if (MEM.Equals(hEdges[i].B, hEdges[(i + 1) % hEdges.Length].A) == false)
-                    throw new Exception("Контур ободочки не замкнут");
+                    throw new Exception("Контур оболочки не замкнут");
 
             int countPints = hEdges.Sum(x=>x.Count) - hEdges.Length;
             Points = new HNumbKnot[countPints];

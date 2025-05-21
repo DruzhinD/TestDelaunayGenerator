@@ -21,24 +21,6 @@ namespace TestDelaunayGenerator
     using MemLogLib;
     using GeometryLib.Locators;
     using System.Runtime.CompilerServices;
-    using System.Runtime.InteropServices;
-    
-    [StructLayout(LayoutKind.Sequential)]
-    public struct Troika
-    {
-        public int flag;
-        public int i;
-        public int j;
-        public int k;
-        public int this[int index]
-        {
-            get => index == 0 ? i : index == 1 ? j : k;
-            set { if (index == 0) i = value; else if (index == 1) j = value; else k = value; }
-        }
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public (int i, int j, int k) Get() => (i, j, k);
-        public TriElement GetTri => new TriElement((uint)i, (uint)j, (uint)k);
-    }
 
     /// <summary>
     /// ОО: Делоне генератор выпуклой триангуляции
@@ -223,7 +205,7 @@ namespace TestDelaunayGenerator
             //определение количества точек границы
             int boundaryPointsAmount;
             if (boundaryContainer != null)
-                boundaryPointsAmount = this.boundaryContainer.AllBoundaryKnots.Length + CountHullKnots;
+                boundaryPointsAmount = this.boundaryContainer.AllBoundaryPoints.Length + CountHullKnots;
             else
                 boundaryPointsAmount = CountHullKnots;
             //выделение памяти
@@ -236,13 +218,13 @@ namespace TestDelaunayGenerator
             if (boundaryContainer != null)
             {
                 //первый индекс граничной точки в массиве
-                int notBoundaryOffset = this.Points.Length - boundaryContainer.AllBoundaryKnots.Length;
+                int notBoundaryOffset = this.Points.Length - boundaryContainer.AllBoundaryPoints.Length;
                 //текущее смещение в общем массиве точек
                 int currentOffset = notBoundaryOffset;
-                foreach (BoundaryHill boundary in boundaryContainer)
+                foreach (BoundaryNew boundary in boundaryContainer)
                 {
                     //индекс массива точек, обозначающий последнюю вершину текущей границы
-                    int boundaryLastId = currentOffset + boundary.Length;
+                    int boundaryLastId = currentOffset + boundary.Points.Length;
                     for (int i = currentOffset; i < boundaryLastId; i++)
                     {
                         int edgeStartId = i; //индекс точки из массива, являющейся началом ребра
@@ -257,7 +239,7 @@ namespace TestDelaunayGenerator
                         mesh.BoundKnots[meshIndex] = edgeStartId;
                         meshIndex++;
                     }
-                    currentOffset += boundary.Length;
+                    currentOffset += boundary.Points.Length;
                 }
             }
             //TODO убрать вовсе или изменить логику
@@ -302,7 +284,7 @@ namespace TestDelaunayGenerator
             //т.к. массив точек ДОПОЛНЕН массивом граничных точек
             if (parallel == true)
                 Parallel.For(
-                    0, Points.Length - this.boundaryContainer.AllBoundaryKnots.Length, (range, loopState) =>
+                    0, Points.Length - this.boundaryContainer.AllBoundaryPoints.Length, (range, loopState) =>
                     {
                         int i = range;
                         //for (var i = range; i < Points.Length - this.boundaryContainer.AllBoundaryKnots.Length; i++)
@@ -313,7 +295,7 @@ namespace TestDelaunayGenerator
                     }
                 );
             else
-                for (var i = 0; i < Points.Length - this.boundaryContainer.AllBoundaryKnots.Length; i++)
+                for (var i = 0; i < Points.Length - this.boundaryContainer.AllBoundaryPoints.Length; i++)
                 {
                     // Проверяем, входит ли точка в сетку или же её необходимо исключить
                     mark[i] = InArea(i, withHashSquare);
@@ -1052,7 +1034,7 @@ namespace TestDelaunayGenerator
         private bool InArea(int i, bool withSquare = false)
         {
             //граничные точки по умолчанию входят в триангуляцию
-            int offsetPoints = this.Points.Length - this.boundaryContainer.AllBoundaryKnots.Length;
+            int offsetPoints = this.Points.Length - this.boundaryContainer.AllBoundaryPoints.Length;
             if (i >= offsetPoints)
                 return true;
             //передаем конкретную точку
@@ -1064,11 +1046,11 @@ namespace TestDelaunayGenerator
             //проверка на вхождение точки в описанный квадрат около ограниченной области
             if (withSquare == true)
             {
-                foreach (BoundaryHill boundary in boundaryContainer)
+                foreach (BoundaryNew boundary in boundaryContainer)
                 {
                     //если количество вершин меньше 5,
                     //то пропускаем проверку для текущей области
-                    if (boundary.Vertexes.Length < 5)
+                    if (boundary.BaseVertexes.Length < 5)
                     {
                         if (crossCount % 2 == 0)
                             crossCount += 1;
@@ -1099,12 +1081,12 @@ namespace TestDelaunayGenerator
             //количество пересечений с границей
             //метод - хелпер, помогающий отрисовать невыпуклый контур
             //в цикле подсчитывается количество пересечений с границей области
-            foreach (BoundaryHill boundary in boundaryContainer)
-                for (int k = 0; k < boundary.Vertexes.Length; k++)
+            foreach (BoundaryNew boundary in boundaryContainer)
+                for (int k = 0; k < boundary.BaseVertexes.Length; k++)
                 {
                     if (CrossLineUtils.IsCrossing(
-                        (HPoint)boundary.Vertexes[k],
-                        (HPoint)boundary.Vertexes[(k + 1) % boundary.Vertexes.Length],
+                        (HPoint)boundary.BaseVertexes[k],
+                        (HPoint)boundary.BaseVertexes[(k + 1) % boundary.BaseVertexes.Length],
                          (HPoint)externalPoint,
                          point) == true)
                         crossCount += 1;
@@ -1125,7 +1107,7 @@ namespace TestDelaunayGenerator
             int i, j, k;
             (i, j, k) = STriangles[triangleId].Get();
             //смещение по количеству неграничных узлов
-            int offsetKnots = Points.Length - boundaryContainer.AllBoundaryKnots.Length;
+            int offsetKnots = Points.Length - boundaryContainer.AllBoundaryPoints.Length;
             //включена предварительная фильтрация узлов
             //хотя бы 1 вершина не является граничной
             if (this.usePointFilter)
@@ -1197,15 +1179,15 @@ namespace TestDelaunayGenerator
                         //смещение для ТЕКУЩЕЙ ограниченной области в рамках контейнера граничных узлов
                         int offsetBoundary = boundaryContainer.GetBoundaryOffset(boundId);
                         //смещение для СЛЕДУЮЩЕЙ ограниченной области в рамках контейнера граничных узлов
-                        int offsetNextBoundary = boundaryContainer.AllBoundaryKnots.Length;
+                        int offsetNextBoundary = boundaryContainer.AllBoundaryPoints.Length;
                         if (boundId < boundaryContainer.Count - 1)
                             offsetNextBoundary = boundaryContainer.GetBoundaryOffset(boundId + 1);
 
-                        BoundaryHill boundary = boundaryContainer[boundId];
+                        BoundaryNew boundary = boundaryContainer[boundId];
                         //индексы вершин, между которыми расположены узлы, образующие ограниченную область
-                        int[] boundaryKnotsIds = new int[boundary.Vertexes.Length + 1];
+                        int[] boundaryKnotsIds = new int[boundary.BaseVertexes.Length + 1];
                         //заполняем вершинами, которые формируют ограниченную область
-                        for (int innerKnotId = 0; innerKnotId < boundary.Vertexes.Length; innerKnotId++)
+                        for (int innerKnotId = 0; innerKnotId < boundary.BaseVertexes.Length; innerKnotId++)
                         {
                             int globalKnotId = offsetKnots + offsetBoundary + boundary.VertexesIds[innerKnotId];
                             boundaryKnotsIds[innerKnotId] = globalKnotId;

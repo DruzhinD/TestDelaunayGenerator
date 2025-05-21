@@ -60,6 +60,39 @@
 
             return boundaryPoints;
         }
+
+        public IHPoint[] Generate(BoundaryNew boundary)
+        {
+            //количество ребер по сути равно количеству вершин.
+            //Общее количество точек на всех границах,
+            //т.е. сумма точек на всех ребрах + сами вершины
+            int allPointsAmount = boundary.BaseVertexes.Length * (1 + fixedByEdge);
+            IHPoint[] boundaryPoints = new IHPoint[allPointsAmount];
+
+            int boundLength = boundary.BaseVertexes.Length;
+            int curId = 0;
+            for (int i = 0; i < boundLength; i++)
+            {
+                //добавляем начальное ребро
+                boundaryPoints[curId % boundaryPoints.Length] = boundary.BaseVertexes[i % boundLength];
+                curId++;
+
+                //получаем длину ребра, образованного двумя вершинами
+                (IHPoint v1, IHPoint v2) =
+                    (boundary.BaseVertexes[i % boundLength], boundary.BaseVertexes[(i + 1) % boundLength]);
+                int pointsByEdge = (this.fixedByEdge + 1);
+                double intervalX = (v2.X - v1.X) / pointsByEdge;
+                double intervalY = (v2.Y - v1.Y) / pointsByEdge;
+                //добавляем точки в промежутке между вершинами ребер
+                for (int j = 1; j <= fixedByEdge; j++)
+                {
+                    boundaryPoints[curId] = new HPoint(v1.X + intervalX * j, v1.Y + intervalY * j);
+                    curId++;
+                }
+            }
+
+            return boundaryPoints;
+        }
     }
 
 }
