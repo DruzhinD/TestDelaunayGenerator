@@ -155,7 +155,7 @@ namespace TestDelaunayGenerator
             {
                 boundaryContainer = new BoundaryContainer();
                 boundaryContainer.ReplaceOuterBoundary(Boundary, new GeneratorFixed());
-                //boundaryContainer.AddInnerBoundary(Boundary2, new GeneratorFixed());
+                //boundaryContainer.AddInnerBoundary(Boundary2, new GeneratorFixed(10));
                 IHPoint[] boundaryPoints = boundaryContainer.AllBoundaryPoints;
 
                 // Объединяем points и boundaryPoints

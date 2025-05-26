@@ -80,12 +80,29 @@ namespace TestDelaunayGenerator.Boundary
 
         private void InitializeBoundaryEdges()
         {
-            _boundaryEdges = new (int, int)[Points.Length]; // Размер равен количеству точек для замкнутой области
-            for (int i = 0; i < Points.Length; i++)
+
+            // Количество опорных вершин (только они определяют настоящие граничные рёбра)
+            int n = BaseVertexes.Length;
+            _boundaryEdges = new (int, int)[n];
+            for (int i = 0; i < n; i++)
             {
-                int start = i;
-                int end = (i + 1) % Points.Length; // Замыкаем на первую точку для последнего ребра
+                // Индексы в массиве Points, соответствующие опорным вершинам
+                int start = VertexesIds[i];
+                int end = VertexesIds[(i + 1) % n];
                 _boundaryEdges[i] = (start, end);
+
+
+
+            //    _boundaryEdges = new (int, int)[Points.Length]; // Размер равен количеству точек для замкнутой области
+            //for (int i = 0; i < Points.Length; i++)
+            //{
+            //    int start = i;
+            //    int end = (i + 1) % Points.Length; // Замыкаем на первую точку для последнего ребра
+            //    _boundaryEdges[i] = (start, end);
+
+
+
+
                 //Console.WriteLine($"Edge {i}: ({start}, {end})");
                 // Выводим индексы и координаты вершин ребра
                 //Console.WriteLine($"Edge {i}: ({start}, {end}) -> " +
