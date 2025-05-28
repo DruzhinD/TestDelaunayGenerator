@@ -1,5 +1,7 @@
 ﻿using CommonLib;
 using CommonLib.Geometry;
+using GeometryLib;
+using GeometryLib.Locators;
 using MemLogLib;
 using MeshLib;
 using System;
@@ -198,6 +200,9 @@ namespace TestDelaunayGenerator
                 points.Sum(p => p.X) / points.Length,
                 points.Sum(p => p.Y) / points.Length
                 );
+
+            //отсечение точек
+            this.ClippingPoints();
 
             //выделение памяти для массива точек и его заполнение
             MEM.Alloc(points.Length, ref coordsX);
@@ -874,5 +879,133 @@ namespace TestDelaunayGenerator
         #endregion
 
         #endregion
+
+        IHPoint externalPoint;
+
+        /// <summary>
+        /// Отсечение точек <see cref="points"/>
+        /// </summary>
+        void ClippingPoints()
+        {
+            //выход, если граница не задана
+            if (this.boundaryContainer is null)
+                return;
+
+            //гарантированно внешняя точка
+            var maxX = points.Max(x => x.X);
+            externalPoint = new HPoint(maxX * 1.1, pc.Y);
+
+            //true - точка по такому же индексу принадлежит области
+            //иначе - false
+            bool[] mark = null;
+            MEM.Alloc(points.Length, ref mark, true);
+
+            //определение принадлежности точек области
+            Parallel.For(
+                0, points.Length - this.boundaryContainer.AllBoundaryPoints.Length, (i, loopState) =>
+                {
+                    bool isInArea = IsInArea(points[i]);
+                    mark[i] = isInArea;
+                }
+            );
+            
+            //количество точек, входящих в область
+            int markedPointAmount = mark.Count(x => x is true);
+            //текущий индекс для перезаписи в массиве
+            int currentPointIndex = 0;
+            //оставляем в массиве только точки, входящие в область
+            for (int i = 0; i < mark.Length; i++)
+            {
+                if (mark[i])
+                {
+                    points[currentPointIndex] = points[i];
+                    currentPointIndex++;
+                }
+            }
+            Array.Resize(ref points, markedPointAmount);
+            mark = null;
+        }
+
+
+        /// <summary>
+        /// Определение принадлежности точки области
+        /// </summary>
+        /// <param name="point">точка, принадлежность которой требуется определить</param>
+        /// <returns>true - точка входит в область, иначе false</returns>
+        bool IsInArea(IHPoint point)
+        {
+            //количество пересечений с границей/оболочками
+            int crossCount = 0;
+
+            //проверка вхождения в прямоугольник, описанный около
+            //внешней оболочки
+            if (this.boundaryContainer.OuterBoundary.BaseVertexes.Length > 4)
+            {
+                crossCount = CountIntersections(point, this.boundaryContainer.OuterBoundary.OutRect);
+                //четное - не принадлежит, нечетное - находится в области
+                if (crossCount % 2 == 0)
+                    return false;
+            }
+
+            //проверка вхождения во внешнюю оболочку
+            crossCount = CountIntersections(point, this.boundaryContainer.OuterBoundary.BaseVertexes);
+            //требуется принадлежность области
+            if (crossCount % 2 == 0)
+                return false;
+
+            //проверка нахождения ЗА пределами прямоугольников, описанных около
+            // внутренних оболочек
+            foreach (BoundaryNew innerBoundary in boundaryContainer.InnerBoundaries)
+            {
+                //пропускаем, если количество опорных вершин оболочки
+                //не больше, чем у прямоугольника (т.е. 4)
+                if (innerBoundary.OutRect.Length < 5)
+                    continue;
+
+                crossCount = CountIntersections(point, innerBoundary.OutRect);
+                //нужно, чтобы точка не входила в оболочку, т.к. innerBoundary является дыркой
+                if (crossCount % 2 == 1)
+                    return false;
+            }
+
+            //проверка нахождения ЗА пределами внутренних оболочек
+            foreach (BoundaryNew innerBoundary in boundaryContainer.InnerBoundaries)
+            {
+                crossCount = CountIntersections(point, innerBoundary.BaseVertexes);
+                //нужно, чтобы точка не входила в оболочку, т.к. innerBoundary является дыркой
+                if (crossCount % 2 == 1)
+                    return false;
+            }
+
+            return true;
+        }
+
+
+        /// <summary>
+        /// Рассчитать количество пересечений луча с вершиной в <paramref name="point"/>
+        /// с оболочкой, образованной при помощи <paramref name="boundaryVertexes"/>
+        /// </summary>
+        /// <param name="point"></param>
+        /// <param name="boundaryVertexes"></param>
+        /// <returns></returns>
+        int CountIntersections(IHPoint point, IHPoint[] boundaryVertexes)
+        {
+            //количество пересечений
+            int crossCount = 0;
+            for (int i = 0; i < boundaryVertexes.Length; i++)
+            {
+                //поиск пересечения ребра оболочки и
+                //отрезка с точками point и внешней точкой
+                if (CrossLineUtils.IsCrossing(
+                    (HPoint)boundaryVertexes[i],
+                    (HPoint)boundaryVertexes[(i + 1) % boundaryVertexes.Length],
+                    (HPoint)externalPoint,
+                    (HPoint)point
+                    ))
+                    crossCount++;
+            }
+            return crossCount;
+        }
+
     }
 }

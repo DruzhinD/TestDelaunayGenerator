@@ -28,6 +28,11 @@ namespace TestDelaunayGenerator.Boundary
         /// </summary>
         protected List<BoundaryNew> innerBoundaries = new List<BoundaryNew>();
 
+        /// <summary>
+        /// Внутренние оболочки
+        /// </summary>
+        public List<BoundaryNew> InnerBoundaries => innerBoundaries;
+
 
         /// <summary>
         /// Все граничные точки
