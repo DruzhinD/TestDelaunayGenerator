@@ -1,4 +1,5 @@
 ﻿using CommonLib.Geometry;
+using GeometryLib.Geometry;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -219,16 +220,39 @@ namespace TestDelaunayGenerator.Boundary
             {
                 foreach (var edge in boundary.BoundaryEdges)
                 {
-                    // Учитываем смещение индексов в общем массиве точек
-                    int edgeStart = edge.Item1 + offset;
-                    int edgeEnd = edge.Item2 + offset;
+                    int edgeStart = Array.IndexOf(boundary.Points, edge.A) + offset;
+                    int edgeEnd = Array.IndexOf(boundary.Points, edge.B) + offset;
                     if ((start == edgeStart && end == edgeEnd) || (start == edgeEnd && end == edgeStart))
                         return true;
                 }
-                // Обновляем смещение для следующей границы
                 offset += boundary.Points.Length;
             }
             return false;
         }
+        //public IHillEdge[] GetAllBoundaryEdges()
+        //{
+        //    int totalEdges = OuterBoundary?.BoundaryEdges.Length ?? 0;
+        //    totalEdges += InnerBoundaries.Sum(b => b.BoundaryEdges.Length);
+        //    var allEdges = new IHillEdge[totalEdges];
+        //    int index = 0;
+
+        //    if (OuterBoundary != null)
+        //    {
+        //        foreach (var edge in OuterBoundary.BoundaryEdges)
+        //        {
+        //            allEdges[index++] = new HEdge(edge.ID, edge.A, edge.B, edge.mark, edge.Count, isBoundary: true);
+        //        }
+        //    }
+
+        //    foreach (var innerBoundary in InnerBoundaries)
+        //    {
+        //        foreach (var edge in innerBoundary.BoundaryEdges)
+        //        {
+        //            allEdges[index++] = new HEdge(edge.ID, edge.A, edge.B, edge.mark, edge.Count, isBoundary: true);
+        //        }
+        //    }
+
+        //    return allEdges;
+        //}
     }
 }

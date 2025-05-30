@@ -1,4 +1,5 @@
 ﻿using CommonLib.Geometry;
+using GeometryLib.Geometry;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -37,8 +38,8 @@ namespace TestDelaunayGenerator.Boundary
         /// <summary>
         /// массив граничных ребер(пары индексов точек)
         /// </summary>
-        private (int, int)[] _boundaryEdges;
-        public (int, int)[] BoundaryEdges { get => _boundaryEdges; private set => _boundaryEdges = value; }
+        private IHillEdge[] _boundaryEdges;
+        public IHillEdge[] BoundaryEdges { get => _boundaryEdges; private set => _boundaryEdges = value; }
 
         /// <summary>
         /// Инициализация оболочки
@@ -83,31 +84,22 @@ namespace TestDelaunayGenerator.Boundary
 
             // Количество опорных вершин (только они определяют настоящие граничные рёбра)
             int n = BaseVertexes.Length;
-            _boundaryEdges = new (int, int)[n];
+            _boundaryEdges = new IHillEdge[n];
             for (int i = 0; i < n; i++)
             {
-                // Индексы в массиве Points, соответствующие опорным вершинам
                 int start = VertexesIds[i];
                 int end = VertexesIds[(i + 1) % n];
-                _boundaryEdges[i] = (start, end);
-
-
-
-            //    _boundaryEdges = new (int, int)[Points.Length]; // Размер равен количеству точек для замкнутой области
-            //for (int i = 0; i < Points.Length; i++)
-            //{
-            //    int start = i;
-            //    int end = (i + 1) % Points.Length; // Замыкаем на первую точку для последнего ребра
-            //    _boundaryEdges[i] = (start, end);
+                _boundaryEdges[i] = new HEdge(i, Points[start], Points[end], mark: 1, isBoundary: true);
+            
 
 
 
 
-                //Console.WriteLine($"Edge {i}: ({start}, {end})");
-                // Выводим индексы и координаты вершин ребра
-                //Console.WriteLine($"Edge {i}: ({start}, {end}) -> " +
-                //                  $"(({Points[start].X}, {Points[start].Y}), " +
-                //                  $"({Points[end].X}, {Points[end].Y}))");
+            //Console.WriteLine($"Edge {i}: ({start}, {end})");
+            // Выводим индексы и координаты вершин ребра
+            //Console.WriteLine($"Edge {i}: ({start}, {end}) -> " +
+            //                  $"(({Points[start].X}, {Points[start].Y}), " +
+            //                  $"({Points[end].X}, {Points[end].Y}))");
             }
         }
 
@@ -146,6 +138,17 @@ namespace TestDelaunayGenerator.Boundary
             rectangle[2] = new HPoint(maxX, maxY);
             rectangle[3] = new HPoint(maxX, minY);
             this.outRect = rectangle;
+        }
+        public bool IsBoundaryEdge(int start, int end)
+        {
+            foreach (var edge in BoundaryEdges)
+            {
+                int edgeStart = Array.IndexOf(Points, edge.A);
+                int edgeEnd = Array.IndexOf(Points, edge.B);
+                if ((start == edgeStart && end == edgeEnd) || (start == edgeEnd && end == edgeStart))
+                    return true;
+            }
+            return false;
         }
     }
 }

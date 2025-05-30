@@ -164,9 +164,9 @@ namespace TestDelaunayGenerator
                 boundaryPoints.CopyTo(workingPoints, exPointsLength);
             }
 
-            DelaunayMeshGenerator delaunator = new DelaunayMeshGenerator(workingPoints, boundaryContainer);
-            delaunator.PreFilterPoints(true);
-            delaunator.Generator();
+            Delaunator delaunator = new Delaunator(workingPoints, boundaryContainer);
+
+            delaunator.Generate();
 
 
 
@@ -200,7 +200,7 @@ namespace TestDelaunayGenerator
 
 
 
-            IMesh mesh = delaunator.CreateMesh();
+            IMesh mesh = delaunator.ToMesh();
 
             IConvexHull ch = new ConvexHull();
             // ch.FindHull(points, )
