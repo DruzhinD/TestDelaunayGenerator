@@ -41,7 +41,8 @@
             for (int i = 0; i < boundLength; i++)
             {
                 //добавляем начальное ребро
-                boundaryPoints[curId % boundaryPoints.Length] = boundary.Vertexes[i % boundLength];
+                var vertex = boundary.Vertexes[i % boundLength];
+                boundaryPoints[curId] = new HPoint(vertex.X, vertex.Y, isBoundary: true, boundaryEdgeMarker: i);
                 curId++;
 
                 //получаем длину ребра, образованного двумя вершинами
@@ -53,7 +54,12 @@
                 //добавляем точки в промежутке между вершинами ребер
                 for (int j = 1; j <= fixedByEdge; j++)
                 {
-                    boundaryPoints[curId] = new HPoint(v1.X + intervalX * j, v1.Y + intervalY * j);
+                    boundaryPoints[curId] = new HPoint(
+                    v1.X + intervalX * j,
+                    v1.Y + intervalY * j,
+                    isBoundary: true,
+                    boundaryEdgeMarker: i
+                    );
                     curId++;
                 }
             }

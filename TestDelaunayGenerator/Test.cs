@@ -60,10 +60,10 @@ namespace TestDelaunayGenerator
                         }
                     Boundary = new IHPoint[4]
                         {
-                            new HPoint(1,1),
-                            new HPoint(1, 2),
-                            new HPoint(2, 2),
-                            new HPoint(2 ,1)
+                            new HPoint(1,1, isBoundary: true, boundaryEdgeMarker: 0),
+                            new HPoint(1, 2, isBoundary : true, boundaryEdgeMarker : 1),
+                            new HPoint(2, 2, isBoundary: true, boundaryEdgeMarker: 2),
+                            new HPoint(2 ,1, isBoundary: true, boundaryEdgeMarker: 3),
                         };
                     Boundary2 = new IHPoint[4]
                         {
@@ -86,11 +86,11 @@ namespace TestDelaunayGenerator
                     Boundary = null;
                     Boundary = new IHPoint[5]
                     {
-                            new HPoint(-0.1,-0.1),
-                            new HPoint(0.5,0.25),
-                            new HPoint(1.1,-0.1),
-                            new HPoint(1.1,0.7),
-                            new HPoint(-0.1,0.7),
+                            new HPoint(-0.1,-0.1, isBoundary: true, boundaryEdgeMarker: 0),
+                            new HPoint(0.5,0.25, isBoundary: true, boundaryEdgeMarker: 1),
+                            new HPoint(1.1,-0.1, isBoundary: true, boundaryEdgeMarker: 2),
+                            new HPoint(1.1,0.7, isBoundary: true, boundaryEdgeMarker: 3),
+                            new HPoint(-0.1,0.7, isBoundary: true, boundaryEdgeMarker: 4)
                             //new HPoint(-0.1,-0.1)
                      };
                     break;

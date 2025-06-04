@@ -55,7 +55,19 @@ namespace TestDelaunayGenerator.Boundary
             if (generator is null)
                 throw new ArgumentNullException($"{nameof(generator)} не может быть null");
 
-            this.baseVertexes = baseVertexes;
+            // Помечаем опорные вершины как граничные
+            this.baseVertexes = new IHPoint[baseVertexes.Length];
+            for (int i = 0; i < baseVertexes.Length; i++)
+            {
+                if (baseVertexes[i] is HPoint hp)
+                {
+                    this.baseVertexes[i] = new HPoint(hp.X, hp.Y, isBoundary: true, boundaryEdgeMarker: i);
+                }
+                else
+                {
+                    this.baseVertexes[i] = new HPoint(baseVertexes[i].X, baseVertexes[i].Y, isBoundary: true, boundaryEdgeMarker: i);
+                }
+            }
 
             //TODO сменить тип
             this.points = generator.Generate(this);
@@ -76,9 +88,19 @@ namespace TestDelaunayGenerator.Boundary
                 }
             }
             // Инициализация граничных ребер
-            InitializeBoundaryEdges();
+            InitializeBoundaryEdges2();
         }
-
+        private void InitializeBoundaryEdges2()
+        {
+            int n = BaseVertexes.Length;
+            _boundaryEdges = new IHillEdge[n];
+            for (int i = 0; i < n; i++)
+            {
+                int start = VertexesIds[i];
+                int end = VertexesIds[(i + 1) % n];
+                _boundaryEdges[i] = new HEdge(i, Points[start], Points[end], mark: 1, isBoundary: true);
+            }
+        }
         private void InitializeBoundaryEdges()
         {
 
@@ -141,14 +163,27 @@ namespace TestDelaunayGenerator.Boundary
         }
         public bool IsBoundaryEdge(int start, int end)
         {
-            foreach (var edge in BoundaryEdges)
+            if (Points[start] is HPoint p1 && Points[end] is HPoint p2)
             {
-                int edgeStart = Array.IndexOf(Points, edge.A);
-                int edgeEnd = Array.IndexOf(Points, edge.B);
-                if ((start == edgeStart && end == edgeEnd) || (start == edgeEnd && end == edgeStart))
-                    return true;
+                bool isBoundary = p1.IsBoundary && p2.IsBoundary && p1.BoundaryEdgeMarker == p2.BoundaryEdgeMarker;
+                if (isBoundary)
+                {
+                    Console.WriteLine($"Граничное ребро найдено: ");
+                    Console.WriteLine($"Точка 1: ({p1.X:F4}, {p1.Y:F4}), IsBoundary: {p1.IsBoundary}, BoundaryEdgeMarker: {p1.BoundaryEdgeMarker}");
+                    Console.WriteLine($"Точка 2: ({p2.X:F4}, {p2.Y:F4}), IsBoundary: {p2.IsBoundary}, BoundaryEdgeMarker: {p2.BoundaryEdgeMarker}");
+                }
+                return isBoundary;
             }
             return false;
         }
+        public bool IsBoundaryEdge2(int start, int end)
+        {
+            if (Points[start] is HPoint p1 && Points[end] is HPoint p2)
+            {
+                return p1.IsBoundary && p2.IsBoundary && p1.BoundaryEdgeMarker == p2.BoundaryEdgeMarker;
+            }
+            return false;
+        }
+       
     }
 }

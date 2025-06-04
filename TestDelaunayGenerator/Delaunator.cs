@@ -511,17 +511,34 @@ namespace TestDelaunayGenerator
             // рекурсия устранена с помощью стека фиксированного размера
             while (true)
             {
-                if (isBoundaryEdge[EdgeA_ID])
+                //if (isBoundaryEdge[EdgeA_ID])
+                //{
+                //    //int triA_ID = EdgeA_ID - EdgeA_ID % 3;
+                //    //int idxElemA = triA_ID / 3;
+                //    //int v1 = Triangles[idxElemA][(EdgeA_ID + 0) % 3];
+                //    //int v2 = Triangles[idxElemA][(EdgeA_ID + 1) % 3];
+                //    if (i == 0)
+                //        break;
+                //    EdgeA_ID = EdgeStack[--i];
+                //    continue;
+                //}
+                // Проверяем, является ли ребро граничным
+                int triA_ID = EdgeA_ID - EdgeA_ID % 3;
+                int idxElemA = triA_ID / 3;
+                int v1 = Triangles[idxElemA][(EdgeA_ID + 0) % 3];
+                int v2 = Triangles[idxElemA][(EdgeA_ID + 1) % 3];
+                bool isBoundaryEdge = boundaryContainer != null &&
+                                      boundaryContainer.IsBoundaryEdge(v1, v2, points.Length - boundaryContainer.AllBoundaryPoints.Length);
+
+                if (isBoundaryEdge)
                 {
-                    //int triA_ID = EdgeA_ID - EdgeA_ID % 3;
-                    //int idxElemA = triA_ID / 3;
-                    //int v1 = Triangles[idxElemA][(EdgeA_ID + 0) % 3];
-                    //int v2 = Triangles[idxElemA][(EdgeA_ID + 1) % 3];
                     if (i == 0)
                         break;
                     EdgeA_ID = EdgeStack[--i];
                     continue;
                 }
+
+                
                 //TODO Пропускаем легализацию, если ребро является граничным
                 var EdgeB_ID = HalfEdges[EdgeA_ID];
 
@@ -545,7 +562,7 @@ namespace TestDelaunayGenerator
                 //                                    triB
 
                 // адрес - смешение для 1 треугольника (1-ый индекс в треугольнике)
-                int triA_ID = EdgeA_ID - EdgeA_ID % 3;
+                //int triA_ID = EdgeA_ID - EdgeA_ID % 3;
                 ar = triA_ID + (EdgeA_ID + 2) % 3;
 
                 //если смежный треугольник не был найден (т.е. -1), то достаем следующий из стека
@@ -564,7 +581,7 @@ namespace TestDelaunayGenerator
                 int bl = triB_ID + (EdgeB_ID + 2) % 3;
 
                 //индексы вершин двух смежных треугольников 
-                int idxElemA = triA_ID / 3;
+                //int idxElemA = triA_ID / 3;
                 int idxElemB = triB_ID / 3;
                 int p0 = Triangles[idxElemA][(EdgeA_ID + 2) % 3];
                 int pr = Triangles[idxElemA][(EdgeA_ID + 0) % 3];
@@ -592,17 +609,15 @@ namespace TestDelaunayGenerator
 
                     //TODO Обновляем статус граничных ребер после флипа
 
-                    int offset = points.Length - (boundaryContainer?.AllBoundaryPoints.Length ?? 0);
+                    // Проверяем новые рёбра на принадлежность границе
+                    bool[] newBoundaryStatus = new bool[4];
                     if (boundaryContainer != null)
                     {
-                        isBoundaryEdge[EdgeA_ID] = boundaryContainer.IsBoundaryEdge(p1, pr, offset) ||
-                                                   boundaryContainer.IsBoundaryEdge(pr, p1, offset);
-                        isBoundaryEdge[EdgeB_ID] = boundaryContainer.IsBoundaryEdge(p0, pl, offset) ||
-                                                   boundaryContainer.IsBoundaryEdge(pl, p0, offset);
-                        isBoundaryEdge[ar] = boundaryContainer.IsBoundaryEdge(p0, p1, offset) ||
-                                             boundaryContainer.IsBoundaryEdge(p1, p0, offset);
-                        isBoundaryEdge[bl] = boundaryContainer.IsBoundaryEdge(pr, pl, offset) ||
-                                             boundaryContainer.IsBoundaryEdge(pl, pr, offset);
+                        int offset = points.Length - boundaryContainer.AllBoundaryPoints.Length;
+                        newBoundaryStatus[0] = boundaryContainer.IsBoundaryEdge(p1, pr, offset);
+                        newBoundaryStatus[1] = boundaryContainer.IsBoundaryEdge(p0, pl, offset);
+                        newBoundaryStatus[2] = boundaryContainer.IsBoundaryEdge(p0, p1, offset);
+                        newBoundaryStatus[3] = boundaryContainer.IsBoundaryEdge(pr, pl, offset);
                     }
 
                     int hbl = HalfEdges[bl];
@@ -622,9 +637,9 @@ namespace TestDelaunayGenerator
                         }
                         while (e != hullStart);
                     }
-                    Link(EdgeA_ID, hbl, isBoundaryEdge[EdgeA_ID]);
-                    Link(EdgeB_ID, HalfEdges[ar], isBoundaryEdge[EdgeB_ID]);
-                    Link(ar, bl, isBoundaryEdge[ar]);
+                    Link(EdgeA_ID, hbl, newBoundaryStatus[0]);
+                    Link(EdgeB_ID, HalfEdges[ar], newBoundaryStatus[1]);
+                    Link(ar, bl, newBoundaryStatus[2]);
                     // не беспокойтесь о достижении предела: это может
                     // произойти только при крайне вырожденном вводе
                     if (i < EdgeStack.Length)

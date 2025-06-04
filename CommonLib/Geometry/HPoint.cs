@@ -68,6 +68,14 @@ namespace CommonLib.Geometry
         /// Координата по y
         /// </summary>
         public double Y { get => y; set => y = value; }
+        /// <summary>
+        /// Принадлежность точки границе
+        /// </summary>
+        public bool IsBoundary { get; set; } = false;
+        /// <summary>
+        /// К какой границе относится точка (-1 - не граничная)
+        /// </summary>
+        public int BoundaryEdgeMarker { get; set; } = -1;
 
         public HPoint()
         {
@@ -79,21 +87,36 @@ namespace CommonLib.Geometry
             this.x = x;
             this.y = y;
         }
+        public HPoint(double x, double y, bool isBoundary = false, int boundaryEdgeMarker = -1)
+        {
+            this.x = x;
+            this.y = y;
+            this.IsBoundary = isBoundary;
+            this.BoundaryEdgeMarker = boundaryEdgeMarker;
+        }
         public HPoint(IHPoint a)
         {
             x = a.X;
             y = a.Y;
+            if (a is HPoint hp)
+            {
+                this.IsBoundary = hp.IsBoundary;
+                this.BoundaryEdgeMarker = hp.BoundaryEdgeMarker;
+            }
         }
         public HPoint(HPoint a)
         {
             x = a.x;
             y = a.y;
+            this.IsBoundary = a.IsBoundary;
+            this.BoundaryEdgeMarker = a.BoundaryEdgeMarker;
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public virtual HPoint Clone()
         {
             return new HPoint(x, y);
         }
+
         /// <summary>
         /// Итератор
         /// </summary>
