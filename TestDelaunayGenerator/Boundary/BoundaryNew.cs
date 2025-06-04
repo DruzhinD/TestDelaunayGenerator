@@ -1,5 +1,6 @@
 ﻿using CommonLib.Geometry;
 using GeometryLib.Geometry;
+using MemLogLib;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -36,10 +37,36 @@ namespace TestDelaunayGenerator.Boundary
         public int[] VertexesIds;
 
         /// <summary>
-        /// массив граничных ребер(пары индексов точек)
+        /// Граничные ребра, формирующие оболочку
         /// </summary>
-        private IHillEdge[] _boundaryEdges;
-        public IHillEdge[] BoundaryEdges { get => _boundaryEdges; private set => _boundaryEdges = value; }
+        protected IHillEdge[] _baseBoundaryEdges;
+        /// <summary>
+        /// Граничные ребра, формирующие оболочку.
+        /// Построены на опорных вершинах оболочки <see cref="BaseVertexes"/>
+        /// </summary>
+        public IHillEdge[] BaseBoundaryEdges { get => _baseBoundaryEdges; }
+
+        /// <summary>
+        /// Граничные ребра оболочки.
+        /// Построены на всем множестве точек оболочки <see cref="Points"/>.
+        /// Если между опорными вершинами оболочки больше нет точек,
+        /// тогда дублирует <see cref="_baseBoundaryEdges"/>
+        /// </summary>
+        protected IHEdge[] boundaryEdges;
+        /// <summary>
+        /// Граничные ребра оболочки.
+        /// Построены на всем множестве точек оболочки <see cref="Points"/>.
+        /// Если между опорными вершинами оболочки больше нет точек,
+        /// тогда дублирует <see cref="BaseBoundaryEdges"/>
+        /// </summary>
+        public IHEdge[] BoundaryEdges => boundaryEdges;
+
+        /// <summary>
+        /// Прямоугольник, описанный около текущей ограниченной области
+        /// </summary>
+        public IHPoint[] OutRect => outRect;
+        public IHPoint[] outRect;
+
 
         /// <summary>
         /// Инициализация оболочки
@@ -59,56 +86,55 @@ namespace TestDelaunayGenerator.Boundary
 
             //TODO сменить тип
             this.points = generator.Generate(this);
-            this.InitilizeRect();
 
+            //инициализация описанного прямоугольника
+            this.InitilizeRect();
             //сохраняем индексы вершин, образующих область
-            VertexesIds = new int[this.BaseVertexes.Length];
-            int currentVertexId = 0;
-            for (int i = 0; i < Points.Length; i++)
-            {
-                if (BaseVertexes[currentVertexId].X == Points[i].X &&
-                    BaseVertexes[currentVertexId].Y == Points[i].Y)
-                {
-                    VertexesIds[currentVertexId] = i;
-                    currentVertexId++;
-                    if (currentVertexId == VertexesIds.Length)
-                        break;
-                }
-            }
+            InitializeVertexIds();
             // Инициализация граничных ребер
             InitializeBoundaryEdges();
         }
 
-        private void InitializeBoundaryEdges()
+        #region Инициализация свойств оболочки
+        /// <summary>
+        /// Инициализация граничных ребер <see cref="_baseBoundaryEdges"/>, <see cref="boundaryEdges"/>
+        /// </summary>
+        protected void InitializeBoundaryEdges()
         {
+            //выделение памяти для массива опорных ребер
+            MEM.Alloc(BaseVertexes.Length, ref _baseBoundaryEdges);
+            //выделение памяти для массива всех ребер
+            MEM.Alloc(Points.Length, ref boundaryEdges);
 
-            // Количество опорных вершин (только они определяют настоящие граничные рёбра)
-            int n = BaseVertexes.Length;
-            _boundaryEdges = new IHillEdge[n];
-            for (int i = 0; i < n; i++)
+            //индекс текущего опорного ребра
+            int baseEdgeId = -1;
+            //заполняем оба массива ребер
+            for (int i = 0; i < Points.Length; i++)
             {
-                int start = VertexesIds[i];
-                int end = VertexesIds[(i + 1) % n];
-                _boundaryEdges[i] = new HEdge(i, Points[start], Points[end], mark: 1, isBoundary: true);
-            
+                //если достигнута следующая опорная вершина
+                //делаем инкремент для индекса опорных вершин
+                //и создаем новое опорное ребро с началом в baseEdgeId + 1
+                if (Points[i] == BaseVertexes[(baseEdgeId + 1) % BaseVertexes.Length])
+                {
+                    baseEdgeId += 1;
+                    _baseBoundaryEdges[baseEdgeId] =
+                        new HillEdgeDel(
+                            baseEdgeId,
+                            BaseVertexes[baseEdgeId % BaseVertexes.Length],
+                            BaseVertexes[(baseEdgeId + 1) % BaseVertexes.Length]
+                        );
+                }
 
+                //создаем обычное ребро, входящее в состав опорного ребра
+                boundaryEdges[i] =
+                    new HEdge(i, Points[i % Points.Length], Points[(i + 1) % Points.Length]);
 
-
-
-            //Console.WriteLine($"Edge {i}: ({start}, {end})");
-            // Выводим индексы и координаты вершин ребра
-            //Console.WriteLine($"Edge {i}: ({start}, {end}) -> " +
-            //                  $"(({Points[start].X}, {Points[start].Y}), " +
-            //                  $"({Points[end].X}, {Points[end].Y}))");
+                //наращиваем счетчик ребер у текущего опорного ребра
+                //т.к. опорное ребро состоит из множества таких ребер
+                _baseBoundaryEdges[baseEdgeId].Count += 1;
             }
         }
 
-
-        /// <summary>
-        /// Прямоугольник, описанный около текущей ограниченной области
-        /// </summary>
-        public IHPoint[] OutRect => outRect;
-        public IHPoint[] outRect;
 
         /// <summary>
         /// Инициализация прямоугольника, описанного около оболочки
@@ -139,9 +165,39 @@ namespace TestDelaunayGenerator.Boundary
             rectangle[3] = new HPoint(maxX, minY);
             this.outRect = rectangle;
         }
+
+        //TODO убрать бы...
+        /// <summary>
+        /// Инициализация индексов вершин оболочки
+        /// </summary>
+        protected void InitializeVertexIds()
+        {
+            VertexesIds = new int[this.BaseVertexes.Length];
+            int currentVertexId = 0;
+            for (int i = 0; i < Points.Length; i++)
+            {
+                if (BaseVertexes[currentVertexId].X == Points[i].X &&
+                    BaseVertexes[currentVertexId].Y == Points[i].Y)
+                {
+                    VertexesIds[currentVertexId] = i;
+                    currentVertexId++;
+                    if (currentVertexId == VertexesIds.Length)
+                        break;
+                }
+            }
+        }
+        #endregion
+
+        //TODO есть необходимость в этом?
+        /// <summary>
+        /// Определить принадлежит ли ребро оболочке в рамках индексов точек делонатора
+        /// </summary>
+        /// <param name="start">индекс начала ребра</param>
+        /// <param name="end">индекс конца ребра</param>
+        /// <returns></returns>
         public bool IsBoundaryEdge(int start, int end)
         {
-            foreach (var edge in BoundaryEdges)
+            foreach (var edge in BaseBoundaryEdges)
             {
                 int edgeStart = Array.IndexOf(Points, edge.A);
                 int edgeEnd = Array.IndexOf(Points, edge.B);

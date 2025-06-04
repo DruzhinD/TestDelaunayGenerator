@@ -23,9 +23,5 @@
         /// количество узлов на ребре
         /// </summary>
         int Count { get; set; }
-        /// <summary>
-        /// Является ли ребро граничным
-        /// </summary>
-        bool IsBoundary { get; set; }
     }
 }

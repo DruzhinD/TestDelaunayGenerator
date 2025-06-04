@@ -922,11 +922,15 @@ namespace TestDelaunayGenerator
         /// <summary>
         /// Отсечение точек <see cref="points"/>
         /// </summary>
+        /// <exception cref="ArgumentNullException">не задана внешняя оболочка</exception>
         void ClippingPoints()
         {
             //выход, если граница не задана
             if (this.boundaryContainer is null)
                 return;
+            //задана ли внешняя оболочка
+            if (this.boundaryContainer.OuterBoundary is null)
+                throw new ArgumentNullException($"контейнер границ передан, но не задана внешняя оболочка!");
 
             //гарантированно внешняя точка
             var maxX = points.Max(x => x.X);
@@ -964,6 +968,7 @@ namespace TestDelaunayGenerator
         }
 
 
+        #region Логика отсечения точек
         /// <summary>
         /// Определение принадлежности точки области
         /// </summary>
@@ -1043,6 +1048,6 @@ namespace TestDelaunayGenerator
             }
             return crossCount;
         }
-
+        #endregion
     }
 }

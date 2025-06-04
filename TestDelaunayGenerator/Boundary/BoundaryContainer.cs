@@ -218,7 +218,7 @@ namespace TestDelaunayGenerator.Boundary
         {
             foreach (var boundary in this)
             {
-                foreach (var edge in boundary.BoundaryEdges)
+                foreach (var edge in boundary.BaseBoundaryEdges)
                 {
                     int edgeStart = Array.IndexOf(boundary.Points, edge.A) + offset;
                     int edgeEnd = Array.IndexOf(boundary.Points, edge.B) + offset;

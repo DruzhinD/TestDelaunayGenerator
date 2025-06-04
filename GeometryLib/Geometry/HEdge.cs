@@ -39,23 +39,16 @@ namespace GeometryLib.Geometry
     /// Класс ребро
     /// </summary>
     [Serializable]
-    public struct HEdge : IHillEdge
+    public struct HEdge : IHEdge
     {
         public int ID { get; set; }
         public IHPoint A { get; set; }
         public IHPoint B { get; set; }
-        public int mark { get; set; }
-        public int Count { get; set; }
-        public bool IsBoundary { get; set; }
-
-        public HEdge(int id, IHPoint a, IHPoint b, int mark = 0, int count = 0, bool isBoundary = false)
+        public HEdge(int ID, IHPoint a, IHPoint b)
         {
-            this.ID = id;
+            this.ID = ID;
             this.A = a;
             this.B = b;
-            this.mark = mark;
-            this.Count = count;
-            this.IsBoundary = isBoundary;
         }
     }
 }

@@ -55,6 +55,7 @@
     <Compile Include="Boundary\IGeneratorBase.cs" />
     <Compile Include="Boundary\GeneratorFixed.cs" />
     <Compile Include="Boundary\BoundaryContainer_Old.cs" />
+    <Compile Include="HillEdgeDel.cs" />
     <Compile Include="Troika.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
