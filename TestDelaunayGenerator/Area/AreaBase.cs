@@ -18,7 +18,7 @@
         /// <summary>
         /// контейнер, содержащий в себе множество ограниченных областей
         /// </summary>
-        public BoundaryContainer_Old BoundaryContainer = null;
+        public BoundaryContainer BoundaryContainer = null;
 
         /// <summary>
         /// Генератор границы
@@ -45,8 +45,8 @@
         public void AddBoundary(IHPoint[] boundary)
         {
             if (BoundaryContainer == null)
-                BoundaryContainer = new BoundaryContainer_Old(BoundaryGenerator);
-            BoundaryContainer.Add(boundary);
+                BoundaryContainer = new BoundaryContainer();
+            BoundaryContainer.ReplaceOuterBoundary(boundary, BoundaryGenerator);
         }
     }
 }

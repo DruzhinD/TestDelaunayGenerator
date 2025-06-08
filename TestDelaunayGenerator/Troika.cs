@@ -48,5 +48,10 @@ namespace TestDelaunayGenerator
         /// Преобразовать в треугольник
         /// </summary>
         public TriElement GetTri => new TriElement((uint)i, (uint)j, (uint)k);
+
+        public override string ToString()
+        {
+            return $"{i},{j},{k};flag:{flag}";
+        }
     }
 }

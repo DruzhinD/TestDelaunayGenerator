@@ -42,7 +42,7 @@
                 }
             IHPoint[] variable;
             if (BoundaryContainer != null)
-                variable = BoundaryContainer.AllBoundaryKnots;
+                variable = BoundaryContainer.AllBoundaryPoints;
         }
     }
 }

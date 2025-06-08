@@ -49,12 +49,12 @@
     <Compile Include="Area\UniformArea.cs" />
     <Compile Include="Boundary\BoundaryNew.cs" />
     <Compile Include="Boundary\BoundaryContainer.cs" />
-    <Compile Include="Boundary\BoundaryHill.cs" />
+    <Compile Include="Boundary\CounturHill.cs" />
     <Compile Include="Delaunator.cs" />
     <Compile Include="DelaunayMeshGenerator.cs" />
     <Compile Include="Boundary\IGeneratorBase.cs" />
     <Compile Include="Boundary\GeneratorFixed.cs" />
-    <Compile Include="Boundary\BoundaryContainer_Old.cs" />
+    <Compile Include="HBoundaryKnot.cs" />
     <Compile Include="HillEdgeDel.cs" />
     <Compile Include="Troika.cs" />
     <Compile Include="Program.cs" />

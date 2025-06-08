@@ -179,7 +179,7 @@ namespace TestDelaunayGenerator.Boundary
         //TODO удалить/изменить
         public int Count => 1 + this.innerBoundaries.Count;
 
-        
+
         /// <summary>
         /// Смещение по количеству узлов в общем массиве узлов для конкретной границы. <br/>
         /// Для первой границы смещение будет 0, для 2-ой границы смещение будет 0 + количество узлов в первой границе и т.д.
@@ -200,7 +200,7 @@ namespace TestDelaunayGenerator.Boundary
             //смещение по внешней оболочке
             int offset = this.OuterBoundary.Points.Length;
             //отсчитываем по внутренних оболочкам
-            for (int i = 0; i < boundId-1; i++)
+            for (int i = 0; i < boundId - 1; i++)
             {
                 offset += this.innerBoundaries[i].Points.Length;
             }
@@ -254,5 +254,24 @@ namespace TestDelaunayGenerator.Boundary
 
         //    return allEdges;
         //}
+
+        /// <summary>
+        /// Получить оболочку по её идентификатору
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="ArgumentException"></exception>
+        public BoundaryNew GetBoundaryById(int boundaryId)
+        {
+            if (this.outerBoundary.ID == boundaryId)
+                return this.outerBoundary;
+
+            for (int i = 0; i < this.innerBoundaries.Count; i++)
+            {
+                if (this.innerBoundaries[i].ID == boundaryId)
+                    return this.innerBoundaries[i];
+            }
+
+            throw new ArgumentException($"Отсутствует граница с {boundaryId} ID!");
+        }
     }
 }

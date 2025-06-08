@@ -24,10 +24,10 @@ namespace TestDelaunayGenerator
             PointsBoundaryCnt = 0;
             if (HasBoundary)
             {
-                PointsBoundaryCnt = area.BoundaryContainer.AllBoundaryKnots.Length;
+                PointsBoundaryCnt = area.BoundaryContainer.AllBoundaryPoints.Length;
                 this.BoundaryCount = area.BoundaryContainer.Count;
                 foreach (var boundary in area.BoundaryContainer)
-                    BoundaryVertexCnt += boundary.Vertexes.Length;
+                    BoundaryVertexCnt += boundary.BaseVertexes.Length;
             }
             AreaType = area.Name;
 

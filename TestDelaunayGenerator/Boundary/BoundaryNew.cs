@@ -24,25 +24,25 @@ namespace TestDelaunayGenerator.Boundary
         /// <summary>
         /// Вершины, обращующие форму оболочки (опорные вершины)
         /// </summary>
-        public IHPoint[] BaseVertexes { get => baseVertexes; }
+        public HBoundaryKnot[] BaseVertexes { get => baseVertexes; }
 
         /// <summary>
         /// Все множество точек, принадлежащее оболочке, включая опорные вершины
         /// <see cref="BaseVertexes"/>
         /// </summary>
-        public IHPoint[] Points { get => points; }
+        public HBoundaryKnot[] Points { get => points; }
 
 
         /// <summary>
         /// вершины, образующие форму оболочки (опорные вершины)
         /// </summary>
-        protected IHPoint[] baseVertexes;
+        protected HBoundaryKnot[] baseVertexes;
 
         /// <summary>
         /// все множество точек, принадлежащее оболочке, включая опорные вершины
         /// <see cref="baseVertexes"/>
         /// </summary>
-        protected IHPoint[] points;
+        protected HBoundaryKnot[] points;
 
         public int[] VertexesIds;
 
@@ -95,10 +95,38 @@ namespace TestDelaunayGenerator.Boundary
             if (generator is null)
                 throw new ArgumentNullException($"{nameof(generator)} не может быть null");
 
-            this.baseVertexes = baseVertexes;
+            //преобразование в граничные точки
+            this.baseVertexes = new HBoundaryKnot[baseVertexes.Length];
+            for (int i = 0; i < baseVertexes.Length; i++)
+                this.baseVertexes[i] = new HBoundaryKnot(
+                    baseVertexes[i].X, baseVertexes[i].Y,
+                    borderId: this.ID, edgeId: i
+                );
 
-            //TODO сменить тип
-            this.points = generator.Generate(this);
+            //генерация точек
+            IHPoint[] interfacePoints = generator.Generate(this);
+
+            //идентификатор опорной вершины внутри генератора
+            int basePointId = 0;
+            //преобразование сгенерированных точек в граничные точки
+            this.points = new HBoundaryKnot[interfacePoints.Length];
+            for (int i = 0; i < interfacePoints.Length; i++)
+            {
+                //опорная вершина
+                if (generator.BaseVertexIds[basePointId % baseVertexes.Length] == i)
+                {
+                    //перезаписываем значения X и Y для опорных вершин
+                    //из-за особенности типа double
+                    baseVertexes[basePointId].X = interfacePoints[i].X;
+                    baseVertexes[basePointId].Y = interfacePoints[i].Y;
+                    basePointId++;
+                }
+
+                this.points[i] = new HBoundaryKnot(
+                    interfacePoints[i].X, interfacePoints[i].Y,
+                    borderId: this.ID, edgeId: basePointId
+                    );
+            }
 
             //инициализация описанного прямоугольника
             this.InitilizeRect();
@@ -127,7 +155,10 @@ namespace TestDelaunayGenerator.Boundary
                 //если достигнута следующая опорная вершина
                 //делаем инкремент для индекса опорных вершин
                 //и создаем новое опорное ребро с началом в baseEdgeId + 1
-                if (Points[i] == BaseVertexes[(baseEdgeId + 1) % BaseVertexes.Length])
+                HBoundaryKnot v1 = Points[i];
+                HBoundaryKnot v2 = BaseVertexes[(baseEdgeId + 1) % BaseVertexes.Length];
+                if (Math.Abs(v1.X - v2.X) < 1e-15 && Math.Abs(v1.Y - v2.Y) < 1e-15)
+                //if (Points[i] == BaseVertexes[(baseEdgeId + 1) % BaseVertexes.Length])
                 {
                     baseEdgeId += 1;
                     _baseBoundaryEdges[baseEdgeId] =

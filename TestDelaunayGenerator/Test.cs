@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection.Emit;
 using System.Windows.Forms;
 using TestDelaunayGenerator.Areas;
 using TestDelaunayGenerator.Boundary;
@@ -19,8 +20,12 @@ namespace TestDelaunayGenerator
     public class Test
     {
         IHPoint[] points = null;
-        IHPoint[] Boundary = null;
-        IHPoint[] Boundary2 = null;
+        //внешняя оболочка
+        IHPoint[] outerBoundary = null;
+        //внутренняя оболочка
+        IHPoint[] innerBoundary = null;
+        //генератор для граничных точек
+        IGeneratorBase generator = new GeneratorFixed();
         public Test() { }
         public void CreateRestArea(int idx)
         {
@@ -29,7 +34,21 @@ namespace TestDelaunayGenerator
             switch (idx)
             {
                 case 0:
-                    Boundary = null;
+                    outerBoundary = new IHPoint[]
+                    {
+                        new HPoint(0.1, 0.1),
+                        new HPoint(0.1, 0.91),
+                        new HPoint(0.9, 0.91),
+                        new HPoint(0.9, 0.1),
+                    };
+                    innerBoundary = new IHPoint[]
+                    {
+                        new HPoint(0.3, 0.6),
+                        new HPoint(0.31, 0.8),
+                        new HPoint(0.7, 0.8),
+                        new HPoint(0.7, 0.6),
+                    };
+                    generator = new GeneratorFixed(1);
                     points = new IHPoint[]
                     {
                         new HPoint(0, 0),
@@ -45,7 +64,7 @@ namespace TestDelaunayGenerator
                     };
                     break;
                 case 1:
-                    Boundary = null;
+                    outerBoundary = null;
                     // массивы для псевдослучайного микро смещения координат узлов
                     double[] dxx = {0.0000001, 0.0000005, 0.0000002, 0.0000006, 0.0000002,
                             0.0000007, 0.0000003, 0.0000001, 0.0000004, 0.0000009,
@@ -64,14 +83,15 @@ namespace TestDelaunayGenerator
                             idd++;
                             idd = idd % dxx.Length;
                         }
-                    Boundary = new IHPoint[4]
+                    generator = new GeneratorFixed(15);
+                    outerBoundary = new IHPoint[4]
                         {
-                            new HPoint(1,1),
-                            new HPoint(1, 2),
-                            new HPoint(2, 2),
-                            new HPoint(2 ,1)
+                            new HPoint(1.1,1.1),
+                            new HPoint(1.1, 2.1),
+                            new HPoint(2.1, 2.1),
+                            new HPoint(2.1 ,1.1)
                         };
-                    Boundary2 = new IHPoint[4]
+                    innerBoundary = new IHPoint[4]
                         {
                             new HPoint(1.5,1.5),
                             new HPoint(1.5, 1.7),
@@ -89,8 +109,8 @@ namespace TestDelaunayGenerator
                         for (int j = 0; j < N; j++)
                             points[i * N + j] = new HPoint(h * i, hx * j);
                     }
-                    Boundary = null;
-                    Boundary = new IHPoint[5]
+                    outerBoundary = null;
+                    outerBoundary = new IHPoint[5]
                     {
                             new HPoint(-0.1,-0.1),
                             new HPoint(0.5,0.25),
@@ -102,7 +122,7 @@ namespace TestDelaunayGenerator
                     break;
                 case 3:
                     {
-                        Boundary = null;
+                        outerBoundary = null;
                         var width = 100;
                         var height = 100;
                         List<Vector2> samples = CircleDelaunayGenerator.SampleCircle(new Vector2(width / 2, height / 3), 220, 3);
@@ -113,10 +133,10 @@ namespace TestDelaunayGenerator
                     break;
                 case 4:
                     {
-                        Boundary = null;
+                        outerBoundary = null;
                         var width = 100;
                         var height = 100;
-                        Boundary = new IHPoint[3]
+                        outerBoundary = new IHPoint[3]
                         {
                             new HPoint(0,0),
                             new HPoint(0,width),
@@ -132,7 +152,7 @@ namespace TestDelaunayGenerator
                     {
                         var width = 100;
                         var height = 100;
-                        Boundary = new IHPoint[4]
+                        outerBoundary = new IHPoint[4]
                         {
                             new HPoint(0,0),
                             new HPoint(0,height),
@@ -149,79 +169,22 @@ namespace TestDelaunayGenerator
         }
         public void Run()
         {
-            var boundary = new IHPoint[]
-            {
-                new HPoint(0.21, 0.26765),
-                new HPoint(0.2, 0.8),
-                new HPoint(0.81, 0.8576),
-                new HPoint(0.8, 0.2134356),
-            };
             BoundaryContainer container = null;
-            container = new BoundaryContainer();
-            container.ReplaceOuterBoundary(boundary, new GeneratorFixed(10));
-            boundary = new IHPoint[]
+            //инициализация границы, если заданы контура
+            if (outerBoundary != null)
             {
-                new HPoint(0.41, 0.4),
-                new HPoint(0.443, 0.601232),
-                new HPoint(0.61, 0.6),
-                new HPoint(0.6, 0.44223),
-            };
-            container.AddInnerBoundary(boundary, new GeneratorFixed(10));
-            //int exPointsLen = points.Length;
-            //Array.Resize(ref points, points.Length + container.AllBoundaryPoints.Length);
-            //container.AllBoundaryPoints.CopyTo(points, exPointsLen);
-            int indexID = 0;
-            HNumbKnot[] newPoints = points.Select(p => new HNumbKnot(p.X, p.Y, -1, indexID++)).ToArray();
+                container = new BoundaryContainer();
+                container.ReplaceOuterBoundary(outerBoundary, generator);
+                if (innerBoundary != null)
+                    container.AddInnerBoundary(innerBoundary, generator);
+            }
+            //преобразовать массив из HPoint В HNumbKnot
+            HKnot[] newPoints = points.Select(p => new HKnot(p.X, p.Y, -1)).ToArray();
             Delaunator delaunator = new Delaunator(newPoints, container);
             delaunator.Generate();
             var mesh = delaunator.ToMesh();
 
             ShowMesh(mesh);
-        }
-
-
-        public void Run(AreaBase area, bool usePointsFilter = true, int count = 1, bool openForm = true)
-        {
-            //for (int i = 0; i < count; i++)
-            //{
-            //    IHPoint[] points = area.Points;
-            //    BoundaryContainer_Old boundaryContainer = area.BoundaryContainer;
-            //    //TODO переместить в AreaBase
-            //    //если граница задана, то расширяем исходное множество узлов множеством граничных узлов
-            //    if (boundaryContainer != null)
-            //    {
-            //        IHPoint[] boundary = boundaryContainer.AllBoundaryKnots;
-            //        int exPointsLength = points.Length;
-            //        Array.Resize(ref points, points.Length + boundary.Length);
-            //        boundary.CopyTo(points, exPointsLength);
-            //    }
-
-            //    DelaunayMeshGenerator delaunator = new DelaunayMeshGenerator(points, boundaryContainer, usePointsFilter);
-            //    //измерение времени предварительной фильтрации
-            //    Stopwatch watch = Stopwatch.StartNew();
-            //    delaunator.PreFilterPoints();
-            //    double filterPointsSeconds = watch.Elapsed.TotalSeconds;
-
-            //    //измерение времени генерации сетки
-            //    watch = Stopwatch.StartNew();
-            //    delaunator.Generator();
-            //    double genSeconds = watch.Elapsed.TotalSeconds;
-
-            //    //фильтрация треугольников
-            //    watch = Stopwatch.StartNew();
-            //    IMesh mesh = delaunator.CreateMesh();
-            //    double filterSeconds = watch.Elapsed.TotalSeconds;
-
-            //    //TriangulationLog log = new TriangulationLog(area, mesh, filterPointsSeconds, genSeconds, filterSeconds, usePointsFilter);
-            //    //Log.Information(log.ToString());
-            //    //if (specialLogger != null)
-            //    //    specialLogger.Information("{@info}", log);
-
-            //    //отобразить форму
-            //    if (openForm)
-            //        ShowMesh(mesh);
-            //}
-
         }
 
         protected void ShowMesh(IMesh mesh)
