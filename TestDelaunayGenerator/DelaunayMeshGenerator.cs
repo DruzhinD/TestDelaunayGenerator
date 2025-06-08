@@ -1281,7 +1281,7 @@ namespace TestDelaunayGenerator
                     }
                     //записываем флаг принадлежности треугольника области
                     isIncluded[triangleId] = value;
-                    vertex = triangleId * 3;
+                    vertex = triangleId * 3;    
                     knot = 0;
                 }
             }

@@ -1,6 +1,7 @@
 ﻿using CommonLib;
 using CommonLib.Geometry;
 using DelaunayGenerator;
+using GeometryLib;
 using GeometryLib.Aalgorithms;
 using GeometryLib.Vector;
 using MeshLib;
@@ -29,13 +30,18 @@ namespace TestDelaunayGenerator
             {
                 case 0:
                     Boundary = null;
-                    points = new IHPoint[5]
+                    points = new IHPoint[]
                     {
                         new HPoint(0, 0),
                         new HPoint(1, 0),
                         new HPoint(1, 1),
                         new HPoint(0, 1),
-                        new HPoint(0.5, 0.5)
+                        new HPoint(0.5, 0.5),
+                        new HPoint(0.4, 0.5),
+                        new HPoint(0.6, 0.8),
+                        new HPoint(0.55, 0.54),
+                        new HPoint(0.31, 0.58),
+                        new HPoint(0.7, 0.3),
                     };
                     break;
                 case 1:
@@ -143,67 +149,33 @@ namespace TestDelaunayGenerator
         }
         public void Run()
         {
-            //старая триангуляция
-            //DMeshGenerator delaunator = new DMeshGenerator();
-            //delaunator.Generator(points, Boundary);
-
-
-            IHPoint[] workingPoints = (IHPoint[])points.Clone();
-            //новая триангуляция
-            BoundaryContainer boundaryContainer = null;
-            if (Boundary != null)
+            var boundary = new IHPoint[]
             {
-                boundaryContainer = new BoundaryContainer();
-                boundaryContainer.ReplaceOuterBoundary(Boundary, new GeneratorFixed());
-                //boundaryContainer.AddInnerBoundary(Boundary2, new GeneratorFixed(10));
-                IHPoint[] boundaryPoints = boundaryContainer.AllBoundaryPoints;
-
-                // Объединяем points и boundaryPoints
-                int exPointsLength = workingPoints.Length;
-                Array.Resize(ref workingPoints, workingPoints.Length + boundaryPoints.Length);
-                boundaryPoints.CopyTo(workingPoints, exPointsLength);
-            }
-
-            Delaunator delaunator = new Delaunator(workingPoints, boundaryContainer);
-
+                new HPoint(0.21, 0.26765),
+                new HPoint(0.2, 0.8),
+                new HPoint(0.81, 0.8576),
+                new HPoint(0.8, 0.2134356),
+            };
+            BoundaryContainer container = null;
+            container = new BoundaryContainer();
+            container.ReplaceOuterBoundary(boundary, new GeneratorFixed(10));
+            boundary = new IHPoint[]
+            {
+                new HPoint(0.41, 0.4),
+                new HPoint(0.443, 0.601232),
+                new HPoint(0.61, 0.6),
+                new HPoint(0.6, 0.44223),
+            };
+            container.AddInnerBoundary(boundary, new GeneratorFixed(10));
+            //int exPointsLen = points.Length;
+            //Array.Resize(ref points, points.Length + container.AllBoundaryPoints.Length);
+            //container.AllBoundaryPoints.CopyTo(points, exPointsLen);
+            int indexID = 0;
+            HNumbKnot[] newPoints = points.Select(p => new HNumbKnot(p.X, p.Y, -1, indexID++)).ToArray();
+            Delaunator delaunator = new Delaunator(newPoints, container);
             delaunator.Generate();
+            var mesh = delaunator.ToMesh();
 
-
-
-
-
-            //IHPoint[] workingPoints = (IHPoint[])points.Clone();
-
-            //// Создаем BoundaryContainer, если граница задана
-            //BoundaryContainer boundaryContainer = null;
-            //if (Boundary != null && Boundary.Length > 0)
-            //{
-
-            //    boundaryContainer = BoundaryContainer.CreateWithBoundary(Boundary, new GeneratorFixed(20)); // Используем новый статический метод
-            //    boundaryContainer.Add(Boundary2);
-            //    IHPoint[] boundaryPoints = boundaryContainer.AllBoundaryKnots;
-
-            //    // Объединяем points и boundaryPoints
-            //    int exPointsLength = workingPoints.Length;
-            //    Array.Resize(ref workingPoints, workingPoints.Length + boundaryPoints.Length);
-            //    boundaryPoints.CopyTo(workingPoints, exPointsLength);
-            //}
-
-            //// Создаем генератор триангуляции
-            //DelaunayMeshGenerator delaunator = new DelaunayMeshGenerator(workingPoints, boundaryContainer);
-
-
-            //delaunator.PreFilterPoints(true);
-            //delaunator.Generator();
-
-
-
-
-
-            IMesh mesh = delaunator.ToMesh();
-
-            IConvexHull ch = new ConvexHull();
-            // ch.FindHull(points, )
             ShowMesh(mesh);
         }
 

@@ -1,6 +1,7 @@
 ﻿using CommonLib;
 using CommonLib.Geometry;
 using GeometryLib;
+using GeometryLib.Geometry;
 using GeometryLib.Locators;
 using MemLogLib;
 using MeshLib;
@@ -18,14 +19,17 @@ namespace TestDelaunayGenerator
     {
         #region Базовые поля, свойства
         /// <summary>
-        /// Узлы триангуляции
+        /// Узлы триангуляции <br/>
+        /// marker 1 - узел граничный 
         /// </summary>
-        IHPoint[] points;
+        HNumbKnot[] points;
+
 
         /// <summary>
-        /// Узлы триангуляции
+        /// Узлы триангуляции <br/>
+        /// marker 1 - входит в область
         /// </summary>
-        public IHPoint[] Points => points;
+        public HNumbKnot[] Points => points;
 
         /// <summary>
         /// контейнер граничных оболочек
@@ -40,7 +44,7 @@ namespace TestDelaunayGenerator
         public BoundaryContainer BoundaryContainer => boundaryContainer;
         #endregion
 
-        public Delaunator(IHPoint[] points, BoundaryContainer boundaryContainer = null)
+        public Delaunator(HNumbKnot[] points, BoundaryContainer boundaryContainer = null)
         {
             //проверка на null
             if (points is null || points.Length < 3)
@@ -48,7 +52,6 @@ namespace TestDelaunayGenerator
 
             this.points = points;
             this.boundaryContainer = boundaryContainer;
-            MEM.Alloc(points.Length * 3, ref isBoundaryEdge);
         }
 
 
@@ -145,9 +148,11 @@ namespace TestDelaunayGenerator
         /// увеличение в <see cref="AddTriangle"/>
         /// </summary>
         int triangleVertexCounter;
+
         /// <summary>
         /// Массив троек вершин, образующих треугольник
-        /// Обход вершин всех треугольников направлен против ч.с.
+        /// Обход вершин всех треугольников направлен против ч.с. <br/>
+        /// flag = 20 - принадлежит области, 10 - не принадлежит области
         /// </summary>
         Troika[] Triangles;
         #endregion
@@ -160,7 +165,14 @@ namespace TestDelaunayGenerator
             //MEM.Alloc(Triangles.Length, ref mesh.AreaElems);
 
             //TODO вызов заражения
-            mesh.AreaElems = this.Triangles.Select(triangle => triangle.GetTri).ToArray();
+            var triangles = new List<Troika>(Triangles.Length);
+            for (int i = 0; i < Triangles.Length; i++)
+                if (Triangles[i].flag == (int)TriangleInfect.Internal)
+                    triangles.Add(Triangles[i]);
+            mesh.AreaElems = triangles.Select(triangle => triangle.GetTri).ToArray();
+
+            //mesh.AreaElems = this.Triangles.Select(triangle => triangle.GetTri).ToArray();
+
             mesh.CoordsX = this.coordsX;
             mesh.CoordsY = this.coordsY;
 
@@ -310,6 +322,7 @@ namespace TestDelaunayGenerator
             MEM.Alloc(points.Length, ref hullPrev);
             MEM.Alloc(points.Length, ref hullNext);
             MEM.Alloc(points.Length, ref hullTri);
+            MEM.Alloc(maxTriangles * 3, ref isBoundaryEdge);
 
             //вычисление размера хеш-пространства
             //и выделение памяти
@@ -490,9 +503,11 @@ namespace TestDelaunayGenerator
             }
             //удаление ссылок на временные массивы
             hullPrev = hullNext = hullTri = null;
-            //обрезка триангуляционны= массивов
+            //обрезка триангуляционных массивов
             HalfEdges = HalfEdges.Take(triangleVertexCounter).ToArray();
 
+            //отсечение треугольников
+            ClippingTriangles();
             #endregion
         }
 
@@ -917,10 +932,45 @@ namespace TestDelaunayGenerator
 
         #endregion
 
+        /// <summary>
+        /// Внешняя точка по отношению к области триангуляции,
+        /// в частности ко внешней оболочке
+        /// </summary>
         IHPoint externalPoint;
+        /// <summary>
+        /// Инициализация внешней точки <see cref="externalPoint"/>
+        /// </summary>
+        void InitializeExternalPoint()
+        {
+            //если точка уже инициализирована, то выходим
+            if (externalPoint != null)
+                return;
+
+            //гарантированно внешняя точка
+            var maxX = points.Max(x => x.X);
+            externalPoint = new HPoint(maxX * 1.1, pc.Y);
+        }
+
+        enum PointStatus
+        {
+            /// <summary>
+            /// Внешний
+            /// </summary>
+            External = 0,
+            /// <summary>
+            /// Входит в область
+            /// </summary>
+            Internal = 10,
+            /// <summary>
+            /// Принадлежит границе
+            /// </summary>
+            Boundary = 20
+        }
 
         /// <summary>
-        /// Отсечение точек <see cref="points"/>
+        /// Отсечение точек <see cref="points"/>.
+        /// Массив <see cref="points"/> расширяется засчет <see cref="boundaryContainer"/>,
+        /// если такой определен
         /// </summary>
         /// <exception cref="ArgumentNullException">не задана внешняя оболочка</exception>
         void ClippingPoints()
@@ -932,39 +982,63 @@ namespace TestDelaunayGenerator
             if (this.boundaryContainer.OuterBoundary is null)
                 throw new ArgumentNullException($"контейнер границ передан, но не задана внешняя оболочка!");
 
-            //гарантированно внешняя точка
-            var maxX = points.Max(x => x.X);
-            externalPoint = new HPoint(maxX * 1.1, pc.Y);
+            InitializeExternalPoint();
 
             //true - точка по такому же индексу принадлежит области
             //иначе - false
-            bool[] mark = null;
-            MEM.Alloc(points.Length, ref mark, true);
+            //bool[] mark = null;
+            //MEM.Alloc(points.Length, ref mark, true);
 
+            //количество точек, входящих в область
+            int markedPointAmount = 0;
             //определение принадлежности точек области
             Parallel.For(
-                0, points.Length - this.boundaryContainer.AllBoundaryPoints.Length, (i, loopState) =>
+                0, points.Length, (i, loopState) =>
                 {
                     bool isInArea = IsInArea(points[i]);
-                    mark[i] = isInArea;
+                    //mark[i] = isInArea;
+                    //устанавливаем текущую точку, как входящую в область marker == 1
+                    if (isInArea)
+                    {
+                        points[i].marker = (int)PointStatus.Internal;
+                        markedPointAmount++;
+                    }
+                    //точка не граничная
+                    else
+                    {
+                        points[i].marker = (int)PointStatus.External;
+                    }
                 }
             );
-            
+
             //количество точек, входящих в область
-            int markedPointAmount = mark.Count(x => x is true);
+            //int markedPointAmount = mark.Count(x => x is true);
             //текущий индекс для перезаписи в массиве
             int currentPointIndex = 0;
             //оставляем в массиве только точки, входящие в область
-            for (int i = 0; i < mark.Length; i++)
+            for (int i = 0; i < points.Length; i++)
             {
-                if (mark[i])
+                if (points[i].marker == (int)PointStatus.Internal)
                 {
                     points[currentPointIndex] = points[i];
                     currentPointIndex++;
                 }
             }
-            Array.Resize(ref points, markedPointAmount);
-            mark = null;
+            //массив points в индексе currentPointIndex раз через двое выходит за предел
+            //currentPointIndex--;
+            //Изменяем размер массива до количества точек, входящих в область +
+            //граничных точек
+            Array.Resize(ref points, markedPointAmount + boundaryContainer.AllBoundaryPoints.Length);
+            //сохраняем в массиве граничные точки
+            for (int i = 0; i < boundaryContainer.AllBoundaryPoints.Length; i++)
+            {
+                //TODO заменить массив на HNumbKnot
+                IHPoint boundPoint = boundaryContainer.AllBoundaryPoints[i];
+                points[currentPointIndex++] = new HNumbKnot(
+                    boundPoint.X, boundPoint.Y, (int)PointStatus.Boundary, i);
+            }
+
+            //mark = null;
         }
 
 
@@ -1049,5 +1123,163 @@ namespace TestDelaunayGenerator
             return crossCount;
         }
         #endregion
+
+        enum TriangleInfect
+        {
+            /// <summary>
+            /// Треугольник внешний
+            /// </summary>
+            External = 10,
+            /// <summary>
+            /// треугольник принадлежит области
+            /// </summary>
+            Internal = 20,
+        };
+
+        /// <summary>
+        /// Отсечение треугольников
+        /// </summary>
+        protected void ClippingTriangles()
+        {
+            //выход, если граница не задана
+            if (this.boundaryContainer is null)
+                return;
+            //задана ли внешняя оболочка
+            if (this.boundaryContainer.OuterBoundary is null)
+                throw new ArgumentNullException($"контейнер границ передан, но не задана внешняя оболочка!");
+
+            InitializeExternalPoint();
+
+            //определение принадлежности области "нулевого" треугольника
+            for (int triangleId = 0; triangleId < Triangles.Length; triangleId++)
+                InfectTriangles(triangleId);
+        }
+
+        void InfectTriangles(int triangleId)
+        {
+            //массив возможных значений флага треугольника
+            int[] trInfectValues = { (int)TriangleInfect.External, (int)TriangleInfect.Internal };
+
+            //треугольник ранее был обработан
+            if (trInfectValues.Contains(Triangles[triangleId].flag))
+                return;
+
+            int triangleInfectCnt = 1; //количество зараженных треугольников
+
+            bool isInArea = IsTriangleInArea(triangleId);
+            //значение для заражения (по умолчанию треугольник - внешний)
+            TriangleInfect infectValue = TriangleInfect.External;
+            //входит в область
+            if (isInArea)
+                infectValue = TriangleInfect.Internal;
+            Triangles[triangleId].flag = (int)infectValue;
+
+            //стек заражения
+            int[] infectionStack = null;
+            MEM.Alloc(this.Triangles.Length, ref infectionStack, -1);
+            //размещаем 
+            //текущий индекс пустого элемента в стеке
+            int freeIndex = 0;
+            //математическая погрешность для типа double (уточнить)
+            double inaccuracy = 1e-15;
+            //начинаем заражение, счетчик может наращиваться внутри цикла
+            for (int currentStackId = 1; currentStackId > 0; currentStackId--)
+            {
+                //if (freeIndex == 0)
+                //{
+                //    infectionStack[0] = triangleId;
+                //    currentStackId = 0;
+                //    freeIndex = 1;
+                //}
+                //достаем из стека следующий элемент
+                triangleId = infectionStack[freeIndex];
+                int knot = 0;
+                //проход по вершинам (ребрам) треугольника
+                for (int localVertex = 0; localVertex < 3;)
+                {
+                    //глобальный индекс вершины треугольника
+                    int globalKnotId = Triangles[triangleId][localVertex];
+                    int halfEdge = HalfEdges[globalKnotId];
+                    //смежный треугольник
+                    int adjacentTriangleId = halfEdge / 3;
+
+                    //пропуск, если треугольник уже был обработан
+                    //или нет смежного треугольника
+                    if (halfEdge == -1 || trInfectValues.Contains(Triangles[adjacentTriangleId].flag))
+                    {
+                        localVertex++;
+                        knot++;
+                        continue;
+                    }
+                    //помещаем текущий треугольник в стек заражения
+                    infectionStack[currentStackId++] = triangleId;
+                    //индексы вершин смежного ребра между двумя треугольниками
+                    int edgeIdStart = Triangles[triangleId][localVertex];
+                    int edgeIdEnd = Triangles[adjacentTriangleId][halfEdge % 3];
+                    //в качестве текущего треугольника устанавливаем смежный
+                    triangleId = adjacentTriangleId;
+
+                    //проверка - является ли смежное ребро граничным
+                    for (int boundaryId = 0; boundaryId < boundaryContainer.Count; boundaryId++)
+                    {
+                        //одна из вершин ребра не является граничным узлом
+                        if (Points[edgeIdStart].marker != (int)PointStatus.Boundary ||
+                            Points[edgeIdEnd].marker != (int)PointStatus.Boundary)
+                            break;
+
+                        //проход по граничным ребрам
+                        BoundaryNew currentBoundary = boundaryContainer[boundaryId];
+                        for (int edgeId = 0; edgeId < currentBoundary.BoundaryEdges.Length; edgeId++)
+                        {
+                            IHEdge currentEdge = currentBoundary.BoundaryEdges[edgeId];
+                            //расчитываем суммы по координате X сначала по индексам точек,
+                            //вычисляем разность двух сумм
+                            //если разность больше эпсилон, то это не то ребро
+                            if (Math.Abs((points[edgeIdStart].X + points[edgeIdEnd].X) -
+                                (currentEdge.A.X + currentEdge.B.X)) > inaccuracy)
+                                continue;
+                            //аналогично для Y
+                            if ((points[edgeIdStart].Y + points[edgeIdEnd].Y) -
+                                (currentEdge.A.Y + currentEdge.B.Y) > inaccuracy)
+                                continue;
+
+                            //т.к. предыдущие условия не выполнились =>
+                            //смежное ребро  является текущим граничным ребром.
+                            //Инвертируем значение для заражения
+                            if (infectValue == TriangleInfect.External)
+                                infectValue = TriangleInfect.Internal;
+                            else
+                                infectValue = TriangleInfect.External;
+                            break;
+                        }
+                    }
+                    triangleInfectCnt++;
+                    Triangles[triangleId].flag = (int)infectValue;
+                    localVertex++;
+                }
+            }
+#if DEBUG
+            Console.WriteLine($"TriangleId:{triangleId};\tЗаражено: {triangleInfectCnt}");
+#endif
+        }
+
+        /// <summary>
+        /// Определить принадлежность треугольника области
+        /// </summary>
+        /// <param name="triangleId">id треугольника из <see cref="Triangles"/></param>
+        /// <returns>true - принаделжит области, иначе - false</returns>
+        bool IsTriangleInArea(int triangleId)
+        {
+            var triangle = Triangles[triangleId];
+            (int i, int j, int k) = triangle.Get();
+
+            //вычисляем принадлежность треугольника области
+            double ctx = (coordsX[i] + coordsX[j] + coordsX[k]) / 3;
+            double cty = (coordsY[i] + coordsY[j] + coordsY[k]) / 3;
+            HPoint ctri = new HPoint(ctx, cty);
+
+            bool isInArea = IsInArea(ctri);
+            return isInArea;
+        }
     }
 }

@@ -12,6 +12,16 @@ namespace TestDelaunayGenerator.Boundary
     public class BoundaryNew
     {
         /// <summary>
+        /// Счетчик для уникальности границ
+        /// </summary>
+        protected static int uniqueIdCounter = 0;
+
+        /// <summary>
+        /// уникальный идентификатор границы
+        /// </summary>
+        public readonly int ID;
+
+        /// <summary>
         /// Вершины, обращующие форму оболочки (опорные вершины)
         /// </summary>
         public IHPoint[] BaseVertexes { get => baseVertexes; }
@@ -76,6 +86,9 @@ namespace TestDelaunayGenerator.Boundary
         /// <exception cref="ArgumentNullException"></exception>
         public BoundaryNew(IHPoint[] baseVertexes, IGeneratorBase generator)
         {
+            this.ID = BoundaryNew.uniqueIdCounter;
+            //наращиваем счетчик для индексации границ
+            BoundaryNew.uniqueIdCounter++;
             //проверка на null
             if (baseVertexes is null || baseVertexes.Length == 0)
                 throw new ArgumentNullException($"{nameof(baseVertexes)} null или пуст");
