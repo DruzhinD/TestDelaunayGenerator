@@ -488,5 +488,22 @@ namespace CommonLib.Geometry
             return new HPoint(x, y);
         }
 
+        public static bool IsPointOnSegment(HPoint p, HPoint a, HPoint b, double tolerance = MEM.Error7)
+        {
+            // Проверяем, лежит ли точка p на отрезке ab
+            double lengthAB = HPoint.Length(a, b);
+            if (lengthAB < tolerance)
+                return Math.Abs(HPoint.Length(a, p)) < tolerance; // Если отрезок вырожден, проверяем совпадение с точкой a
+
+            // Проверяем, что точка p находится в пределах проекции на отрезок ab
+            double dot = ((p.X - a.X) * (b.X - a.X) + (p.Y - a.Y) * (b.Y - a.Y)) / (lengthAB * lengthAB);
+            if (dot < 0 || dot > 1)
+                return false; // Точка вне проекции отрезка
+
+            // Проверяем расстояние от точки до прямой, проходящей через ab
+            double distance = Math.Abs((b.Y - a.Y) * p.X - (b.X - a.X) * p.Y + b.X * a.Y - b.Y * a.X) / lengthAB;
+            return distance < tolerance;
+        }
+
     }
 }

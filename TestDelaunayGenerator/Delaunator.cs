@@ -32,7 +32,6 @@ namespace TestDelaunayGenerator
         /// </summary>
         BoundaryContainer boundaryContainer;
 
-        private bool[] isBoundaryEdge;
 
         /// <summary>
         /// контейнер граничных оболочек
@@ -48,7 +47,6 @@ namespace TestDelaunayGenerator
 
             this.points = points;
             this.boundaryContainer = boundaryContainer;
-            MEM.Alloc(points.Length * 3, ref isBoundaryEdge);
         }
 
 
@@ -155,44 +153,224 @@ namespace TestDelaunayGenerator
 
         public IMesh ToMesh(bool debug = false)
         {
-            //инициализация объекта сетки и выделение памяти
+            ////инициализация объекта сетки и выделение памяти
+            //TriMesh mesh = new TriMesh();
+            ////MEM.Alloc(Triangles.Length, ref mesh.AreaElems);
+
+            ////TODO вызов заражения
+            //mesh.AreaElems = this.Triangles.Select(triangle => triangle.GetTri).ToArray();
+            //mesh.CoordsX = this.coordsX;
+            //mesh.CoordsY = this.coordsY;
+
+            ////формирование граничных точек и ребер
+
+            ////выделение памяти
+            //MEM.Alloc(CountHullKnots, ref mesh.BoundElems);
+            //MEM.Alloc(CountHullKnots, ref mesh.BoundElementsMark);
+            //for (int i = 0; i < Hull.Length; i++)
+            //{
+            //    mesh.BoundElems[i].Vertex1 = (uint)Hull[i];
+            //    mesh.BoundElems[i].Vertex2 = (uint)Hull[(i + 1) % Hull.Length];
+            //    mesh.BoundElementsMark[i] = 0;
+            //}
+
+            //MEM.Alloc(CountHullKnots, ref mesh.BoundKnots);
+            //MEM.Alloc(CountHullKnots, ref mesh.BoundKnotsMark);
+            //for (int i = 0; i < Hull.Length; i++)
+            //{
+            //    mesh.BoundKnots[i] = Hull[i];
+            //    mesh.BoundKnotsMark[i] = 0;
+            //}
+
+
+            ////TODO помечать граничные ребра и узлы
+
+
+
+
+            //if (debug)
+            //    mesh.Print();
+            //return mesh;
+
+
+            // Инициализация объекта сетки
             TriMesh mesh = new TriMesh();
-            //MEM.Alloc(Triangles.Length, ref mesh.AreaElems);
+            int countElems = Triangles.Length; // Количество треугольников
+            mesh.tMesh = TypeMesh.Triangle;
+            mesh.tRangeMesh = TypeRangeMesh.mRange1;
 
-            //TODO вызов заражения
-            mesh.AreaElems = this.Triangles.Select(triangle => triangle.GetTri).ToArray();
-            mesh.CoordsX = this.coordsX;
-            mesh.CoordsY = this.coordsY;
+            // Выделение памяти для треугольников
+            MEM.Alloc(countElems, ref mesh.AreaElems);
+            int[] isIncluded = null; // 0 - не в области, 1 - в области, 2 - не обработан
+            MEM.Alloc(countElems, ref isIncluded, 2);
 
-            //формирование граничных точек и ребер
+            // Реализация алгоритма заражения для определения треугольников в области
+            List<TriElement> triElements = new List<TriElement>();
+            int infectionInitiatorCount = 0;
 
-            //выделение памяти
-            MEM.Alloc(CountHullKnots, ref mesh.BoundElems);
-            MEM.Alloc(CountHullKnots, ref mesh.BoundElementsMark);
-            for (int i = 0; i < Hull.Length; i++)
+            // Поиск начального треугольника, принадлежащего области
+            for (int i = 0; i < countElems; i++)
             {
-                mesh.BoundElems[i].Vertex1 = (uint)Hull[i];
-                mesh.BoundElems[i].Vertex2 = (uint)Hull[(i + 1) % Hull.Length];
-                mesh.BoundElementsMark[i] = 0;
+                if (isIncluded[i] != 2) continue; // Пропускаем уже обработанные
+
+                // Проверяем, лежит ли центр треугольника внутри области
+                double cx = (coordsX[Triangles[i].i] + coordsX[Triangles[i].j] + coordsX[Triangles[i].k]) / 3.0;
+                double cy = (coordsY[Triangles[i].i] + coordsY[Triangles[i].j] + coordsY[Triangles[i].k]) / 3.0;
+                IHPoint centroid = new HPoint(cx, cy);
+
+                if (boundaryContainer == null || IsInArea(centroid))
+                {
+                    // Найден начальный треугольник
+                    Queue<int> queue = new Queue<int>();
+                    queue.Enqueue(i);
+                    isIncluded[i] = 1;
+                    triElements.Add(new TriElement((uint)Triangles[i].i, (uint)Triangles[i].j, (uint)Triangles[i].k));
+
+                    // Проходим по соседним треугольникам
+                    while (queue.Count > 0)
+                    {
+                        int t = queue.Dequeue();
+                        int tId = t * 3;
+
+                        // Проверяем соседей через HalfEdges
+                        for (int e = 0; e < 3; e++)
+                        {
+                            int edge = tId + e;
+                            int oppEdge = HalfEdges[edge];
+                            if (oppEdge == -1) continue; // Нет соседа (граница)
+
+                            int oppTri = oppEdge / 3;
+                            if (isIncluded[oppTri] != 2) continue; // Уже обработан
+
+                            // Проверяем, является ли ребро граничным
+                            int v0 = Triangles[t][(e + 1) % 3];
+                            int v1 = Triangles[t][(e + 2) % 3];
+                            bool isBoundaryEdge = points[v0] is HPoint hp0 && points[v1] is HPoint hp1 &&
+                                                 hp0.IsBoundary && hp1.IsBoundary;
+
+                            // Разрешаем переход через граничное ребро, если оно соединяет опорные вершины одной границы
+                            if (isBoundaryEdge && boundaryContainer != null)
+                            {
+                                bool isValidEdge = false;
+                                foreach (BoundaryNew boundary in boundaryContainer)
+                                {
+                                    int[] vertexIds = boundary.VertexesIds;
+                                    for (int j = 0; j < vertexIds.Length; j++)
+                                    {
+                                        int startId = vertexIds[j];
+                                        int endId = vertexIds[(j + 1) % vertexIds.Length];
+                                        if ((startId == v0 && endId == v1) || (startId == v1 && endId == v0))
+                                        {
+                                            isValidEdge = true;
+                                            break;
+                                        }
+                                    }
+                                    if (isValidEdge) break;
+                                }
+                                if (!isValidEdge) continue; // Пропускаем недопустимое граничное ребро
+                            }
+                            else if (isBoundaryEdge)
+                            {
+                                continue; // Пропускаем граничное ребро, если нет boundaryContainer
+                            }
+
+                            // Проверяем центр соседнего треугольника
+                            cx = (coordsX[Triangles[oppTri].i] + coordsX[Triangles[oppTri].j] + coordsX[Triangles[oppTri].k]) / 3.0;
+                            cy = (coordsY[Triangles[oppTri].i] + coordsY[Triangles[oppTri].j] + coordsY[Triangles[oppTri].k]) / 3.0;
+                            centroid = new HPoint(cx, cy);
+
+                            if (boundaryContainer == null || IsInArea(centroid))
+                            {
+                                queue.Enqueue(oppTri);
+                                isIncluded[oppTri] = 1;
+                                triElements.Add(new TriElement((uint)Triangles[oppTri].i, (uint)Triangles[oppTri].j, (uint)Triangles[oppTri].k));
+                            }
+                            else
+                            {
+                                isIncluded[oppTri] = 0;
+                                infectionInitiatorCount++;
+                            }
+                        }
+                    }
+                    break; // Найден один связный компонент
+                }
+                else
+                {
+                    isIncluded[i] = 0;
+                    infectionInitiatorCount++;
+                }
             }
 
-            MEM.Alloc(CountHullKnots, ref mesh.BoundKnots);
-            MEM.Alloc(CountHullKnots, ref mesh.BoundKnotsMark);
-            for (int i = 0; i < Hull.Length; i++)
+            // Сохраняем треугольники
+            mesh.AreaElems = triElements.ToArray();
+            mesh.CoordsX = coordsX.ToArray();
+            mesh.CoordsY = coordsY.ToArray();
+
+            // Формируем граничные точки и рёбра
+            int boundaryPointsAmount = CountHullKnots;
+            if (boundaryContainer != null)
             {
-                mesh.BoundKnots[i] = Hull[i];
-                mesh.BoundKnotsMark[i] = 0;
+                boundaryPointsAmount = boundaryContainer.AllBoundaryPoints.Length;
             }
 
+            // Выделяем память для граничных элементов
+            MEM.Alloc(boundaryPointsAmount, ref mesh.BoundElems);
+            MEM.Alloc(boundaryPointsAmount, ref mesh.BoundElementsMark);
+            MEM.Alloc(boundaryPointsAmount, ref mesh.BoundKnots);
+            MEM.Alloc(boundaryPointsAmount, ref mesh.BoundKnotsMark);
+            int meshIndex = 0;
 
-            //TODO помечать граничные ребра и узлы
+            // Добавляем граничные элементы на основе опорных вершин из boundaryContainer
+            if (boundaryContainer != null)
+            {
+                int currentOffset = points.Length - boundaryContainer.AllBoundaryPoints.Length;
 
+                foreach (BoundaryNew boundary in boundaryContainer)
+                {
+                    int[] vertexIds = boundary.VertexesIds;
+                    for (int i = 0; i < vertexIds.Length; i++)
+                    {
+                        int edgeStartId = vertexIds[i] + currentOffset;
+                        int edgeEndId = vertexIds[(i + 1) % vertexIds.Length] + currentOffset;
 
+                        mesh.BoundElems[meshIndex] = new TwoElement((uint)edgeStartId, (uint)edgeEndId);
+                        mesh.BoundKnots[meshIndex] = edgeStartId;
 
+                        // Устанавливаем маркеры
+                        if (points[edgeStartId] is HPoint hpStart)
+                        {
+                            mesh.BoundKnotsMark[meshIndex] = hpStart.BoundaryEdgeMarker;
+                            mesh.BoundElementsMark[meshIndex] = hpStart.BoundaryEdgeMarker;
+                        }
+
+                        meshIndex++;
+                    }
+                    currentOffset += boundary.Points.Length; // Смещение для следующей границы
+                }
+            }
+            else
+            {
+                // Используем выпуклую оболочку
+                for (int i = 0; i < CountHullKnots; i++)
+                {
+                    mesh.BoundElems[meshIndex] = new TwoElement((uint)Hull[i], (uint)Hull[(i + 1) % CountHullKnots]);
+                    mesh.BoundElementsMark[meshIndex] = 0;
+                    mesh.BoundKnots[meshIndex] = Hull[i];
+                    mesh.BoundKnotsMark[meshIndex] = 0;
+                    meshIndex++;
+                }
+            }
 
             if (debug)
+            {
+                Console.WriteLine($"Количество нулевых треугольников в заражении: {infectionInitiatorCount}");
                 mesh.Print();
+            }
+
+
             return mesh;
+
+
         }
 
 
@@ -201,6 +379,17 @@ namespace TestDelaunayGenerator
         /// </summary>
         public void Generate()
         {
+            // Проверка и пометка граничных точек
+            if (boundaryContainer != null)
+            {
+                foreach (var point in boundaryContainer.AllBoundaryPoints)
+                {
+                    if (point is HPoint hp)
+                    {
+                        hp.IsBoundary = true; // Гарантируем, что все точки границы помечены
+                    }
+                }
+            }
             //определение центра триангуляции (временного)
             pc = new HPoint(
                 points.Sum(p => p.X) / points.Length,
@@ -511,36 +700,29 @@ namespace TestDelaunayGenerator
             // рекурсия устранена с помощью стека фиксированного размера
             while (true)
             {
-                //if (isBoundaryEdge[EdgeA_ID])
-                //{
-                //    //int triA_ID = EdgeA_ID - EdgeA_ID % 3;
-                //    //int idxElemA = triA_ID / 3;
-                //    //int v1 = Triangles[idxElemA][(EdgeA_ID + 0) % 3];
-                //    //int v2 = Triangles[idxElemA][(EdgeA_ID + 1) % 3];
-                //    if (i == 0)
-                //        break;
-                //    EdgeA_ID = EdgeStack[--i];
-                //    continue;
-                //}
-                // Проверяем, является ли ребро граничным
-                int triA_ID = EdgeA_ID - EdgeA_ID % 3;
-                int idxElemA = triA_ID / 3;
-                int v1 = Triangles[idxElemA][(EdgeA_ID + 0) % 3];
-                int v2 = Triangles[idxElemA][(EdgeA_ID + 1) % 3];
-                bool isBoundaryEdge = boundaryContainer != null &&
-                                      boundaryContainer.IsBoundaryEdge(v1, v2, points.Length - boundaryContainer.AllBoundaryPoints.Length);
-
-                if (isBoundaryEdge)
-                {
-                    if (i == 0)
-                        break;
-                    EdgeA_ID = EdgeStack[--i];
-                    continue;
-                }
-
-                
+                                
                 //TODO Пропускаем легализацию, если ребро является граничным
                 var EdgeB_ID = HalfEdges[EdgeA_ID];
+
+
+                // Проверка, является ли ребро граничным
+                int triA_ID = EdgeA_ID - EdgeA_ID % 3;
+                int al = triA_ID + (EdgeA_ID + 1) % 3;
+                ar = triA_ID + (EdgeA_ID + 2) % 3;
+
+                int p0 = Triangles[triA_ID / 3][(EdgeA_ID + 2) % 3];
+                int pl = Triangles[triA_ID / 3][(EdgeA_ID + 1) % 3];
+
+                bool isBoundaryEdge = false;
+                if (points[p0] is HPoint hp0 && points[pl] is HPoint hpl)
+                {
+                    isBoundaryEdge = hp0.IsBoundary && hpl.IsBoundary && hp0.BoundaryEdgeMarker == hpl.BoundaryEdgeMarker;
+                    //isBoundaryEdge = hp0.IsBoundary && hpl.IsBoundary &&
+                    //         (hp0.BoundaryEdgeMarker == hpl.BoundaryEdgeMarker ||
+                    //          Math.Abs(hp0.BoundaryEdgeMarker - hpl.BoundaryEdgeMarker) == 1 ||
+                    //          (hp0.BoundaryEdgeMarker == 0 && hpl.BoundaryEdgeMarker == boundaryContainer.OuterBoundary.BaseVertexes.Length - 1) ||
+                    //          (hpl.BoundaryEdgeMarker == 0 && hp0.BoundaryEdgeMarker == boundaryContainer.OuterBoundary.BaseVertexes.Length - 1));
+                }
 
 
                 // Если пара треугольников не удовлетворяет условию Делоне
@@ -563,11 +745,15 @@ namespace TestDelaunayGenerator
 
                 // адрес - смешение для 1 треугольника (1-ый индекс в треугольнике)
                 //int triA_ID = EdgeA_ID - EdgeA_ID % 3;
-                ar = triA_ID + (EdgeA_ID + 2) % 3;
+                //ar = triA_ID + (EdgeA_ID + 2) % 3;
 
                 //если смежный треугольник не был найден (т.е. -1), то достаем следующий из стека
-                if (EdgeB_ID == -1)
+                if (EdgeB_ID == -1 || isBoundaryEdge)
                 {
+                    if (isBoundaryEdge)
+                    {
+                        Console.WriteLine($"Пропуск легализации для граничного ребра между точками {p0} и {pl}");
+                    }
                     // граница выпуклой оболочки 
                     if (i == 0)
                         break;
@@ -575,17 +761,17 @@ namespace TestDelaunayGenerator
                     continue;
                 }
 
-                int al = triA_ID + (EdgeA_ID + 1) % 3;
+                //int al = triA_ID + (EdgeA_ID + 1) % 3;
                 // адрес - смешение для 2 треугольника
                 int triB_ID = EdgeB_ID - EdgeB_ID % 3;
                 int bl = triB_ID + (EdgeB_ID + 2) % 3;
 
                 //индексы вершин двух смежных треугольников 
-                //int idxElemA = triA_ID / 3;
+                int idxElemA = triA_ID / 3;
                 int idxElemB = triB_ID / 3;
-                int p0 = Triangles[idxElemA][(EdgeA_ID + 2) % 3];
+                //p0 = Triangles[idxElemA][(EdgeA_ID + 2) % 3];
                 int pr = Triangles[idxElemA][(EdgeA_ID + 0) % 3];
-                int pl = Triangles[idxElemA][(EdgeA_ID + 1) % 3];
+                //pl = Triangles[idxElemA][(EdgeA_ID + 1) % 3];
                 //вершина смежного треугольника
                 int p1 = Triangles[idxElemB][(EdgeB_ID + 2) % 3];
 
@@ -608,18 +794,7 @@ namespace TestDelaunayGenerator
                     Triangles[idxElemB][(EdgeB_ID + 0) % 3] = p0;
 
                     //TODO Обновляем статус граничных ребер после флипа
-
-                    // Проверяем новые рёбра на принадлежность границе
-                    bool[] newBoundaryStatus = new bool[4];
-                    if (boundaryContainer != null)
-                    {
-                        int offset = points.Length - boundaryContainer.AllBoundaryPoints.Length;
-                        newBoundaryStatus[0] = boundaryContainer.IsBoundaryEdge(p1, pr, offset);
-                        newBoundaryStatus[1] = boundaryContainer.IsBoundaryEdge(p0, pl, offset);
-                        newBoundaryStatus[2] = boundaryContainer.IsBoundaryEdge(p0, p1, offset);
-                        newBoundaryStatus[3] = boundaryContainer.IsBoundaryEdge(pr, pl, offset);
-                    }
-
+                    
                     int hbl = HalfEdges[bl];
                     // ребро поменяно местами на другой стороне оболочки (редко);
                     // исправить ссылку ребра смежного треугольника
@@ -637,9 +812,9 @@ namespace TestDelaunayGenerator
                         }
                         while (e != hullStart);
                     }
-                    Link(EdgeA_ID, hbl, newBoundaryStatus[0]);
-                    Link(EdgeB_ID, HalfEdges[ar], newBoundaryStatus[1]);
-                    Link(ar, bl, newBoundaryStatus[2]);
+                    Link(EdgeA_ID, hbl);
+                    Link(EdgeB_ID, HalfEdges[ar]);
+                    Link(ar, bl);
                     // не беспокойтесь о достижении предела: это может
                     // произойти только при крайне вырожденном вводе
                     if (i < EdgeStack.Length)
@@ -801,18 +976,11 @@ namespace TestDelaunayGenerator
             //относительно массива точек
             int triangleIndex = triangleVertexCounter;
 
-            bool[] isBoundary = new bool[3];
-            if (boundaryContainer != null)
-            {
-                int offset = points.Length - boundaryContainer.AllBoundaryPoints.Length;
-                isBoundary[0] = boundaryContainer.IsBoundaryEdge(i0, i1, offset);
-                isBoundary[1] = boundaryContainer.IsBoundaryEdge(i1, i2, offset);
-                isBoundary[2] = boundaryContainer.IsBoundaryEdge(i2, i0, offset);
-            }
+            
 
-            Link(triangleIndex, a, isBoundary[0]);
-            Link(triangleIndex + 1, b, isBoundary[1]);
-            Link(triangleIndex + 2, c, isBoundary[2]);
+            Link(triangleIndex, a);
+            Link(triangleIndex + 1, b);
+            Link(triangleIndex + 2, c);
             triangleVertexCounter += 3;
 
             return triangleIndex;
@@ -824,12 +992,11 @@ namespace TestDelaunayGenerator
         /// <param name="EdgesID"></param>
         /// <param name="b"></param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void Link(int EdgesID, int b, bool isBoundary = false)
+        void Link(int EdgesID, int b)
         {
             HalfEdges[EdgesID] = b;
             if (b != -1)
                 HalfEdges[b] = EdgesID;
-            isBoundaryEdge[EdgesID] = isBoundary;
         }
 
         #region Хеширование
@@ -951,6 +1118,77 @@ namespace TestDelaunayGenerator
             //иначе - false
             bool[] mark = null;
             MEM.Alloc(points.Length, ref mark, true);
+            // Проверяем точки на принадлежность границе и маркируем их
+            if (boundaryContainer.OuterBoundary != null)
+            {
+                var baseVertexes = boundaryContainer.OuterBoundary.BaseVertexes;
+                Parallel.For(0, points.Length, i =>
+                {
+                    if (points[i] is HPoint hp)
+                    {
+                        // Пропускаем уже граничные точки
+                        if (hp.IsBoundary)
+                            return;
+
+                        // Проверяем, лежит ли точка на каком-либо ребре границы
+                        for (int j = 0; j < baseVertexes.Length; j++)
+                        {
+                            HPoint a = baseVertexes[j] as HPoint;
+                            HPoint b = baseVertexes[(j + 1) % baseVertexes.Length] as HPoint;
+                            if (HPoint.IsPointOnSegment(hp, a, b))
+                            {
+                                hp.IsBoundary = true;
+                                hp.BoundaryEdgeMarker = j; // Номер ребра
+                                break;
+                            }
+                        }
+                    }
+                });
+            }
+
+            if (boundaryContainer.OuterBoundary != null)
+{
+    var outRect = boundaryContainer.OuterBoundary.OutRect;
+    Parallel.For(0, points.Length, i =>
+    {
+        if (points[i] is HPoint hp && !hp.IsBoundary)
+        {
+            // Проверяем внешнюю границу
+            if (hp.X >= outRect[0].X && hp.X <= outRect[2].X && hp.Y >= outRect[0].Y && hp.Y <= outRect[2].Y)
+            {
+                var baseVertexes = boundaryContainer.OuterBoundary.BaseVertexes;
+                for (int j = 0; j < baseVertexes.Length; j++)
+                {
+                    HPoint a = baseVertexes[j] as HPoint;
+                    HPoint b = baseVertexes[(j + 1) % baseVertexes.Length] as HPoint;
+                    if (HPoint.IsPointOnSegment(hp, a, b))
+                    {
+                        hp.IsBoundary = true;
+                        hp.BoundaryEdgeMarker = j;
+                        return; // Выходим, чтобы не проверять другие границы
+                    }
+                }
+            }
+
+            // Проверяем внутренние границы
+            foreach (var innerBoundary in boundaryContainer.InnerBoundaries)
+            {
+                var innerBaseVertexes = innerBoundary.BaseVertexes;
+                for (int j = 0; j < innerBaseVertexes.Length; j++)
+                {
+                    HPoint a = innerBaseVertexes[j] as HPoint;
+                    HPoint b = innerBaseVertexes[(j + 1) % innerBaseVertexes.Length] as HPoint;
+                    if (HPoint.IsPointOnSegment(hp, a, b))
+                    {
+                        hp.IsBoundary = true;
+                        hp.BoundaryEdgeMarker = j + innerBaseVertexes.Length; // Уникальный маркер для внутренней границы
+                        return;
+                    }
+                }
+            }
+        }
+    });
+}
 
             //определение принадлежности точек области
             Parallel.For(

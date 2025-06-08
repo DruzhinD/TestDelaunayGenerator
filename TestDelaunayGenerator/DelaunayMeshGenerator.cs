@@ -797,10 +797,10 @@ namespace TestDelaunayGenerator
                     int offset = Points.Length - (boundaryContainer?.AllBoundaryPoints.Length ?? 0);
                     if (boundaryContainer != null)
                     {
-                        isBoundaryEdge[EdgeA_ID] = boundaryContainer.IsBoundaryEdge(p1, pr, offset);
-                        isBoundaryEdge[EdgeB_ID] = boundaryContainer.IsBoundaryEdge(p0, pl, offset);
-                        isBoundaryEdge[ar] = boundaryContainer.IsBoundaryEdge(p0, p1, offset);
-                        isBoundaryEdge[bl] = boundaryContainer.IsBoundaryEdge(pr, pl, offset);
+                        //isBoundaryEdge[EdgeA_ID] = boundaryContainer.IsBoundaryEdge(p1, pr, offset);
+                        //isBoundaryEdge[EdgeB_ID] = boundaryContainer.IsBoundaryEdge(p0, pl, offset);
+                        //isBoundaryEdge[ar] = boundaryContainer.IsBoundaryEdge(p0, p1, offset);
+                        //isBoundaryEdge[bl] = boundaryContainer.IsBoundaryEdge(pr, pl, offset);
                     }
 
                     int hbl = HalfEdges[bl];
@@ -900,9 +900,9 @@ namespace TestDelaunayGenerator
             int offset = Points.Length - (boundaryContainer?.AllBoundaryPoints.Length ?? 0);
             if (boundaryContainer != null)
             {
-                isBoundaryEdge[triangleID] = boundaryContainer.IsBoundaryEdge(i0, i1, offset);
-                isBoundaryEdge[triangleID + 1] = boundaryContainer.IsBoundaryEdge(i1, i2, offset);
-                isBoundaryEdge[triangleID + 2] = boundaryContainer.IsBoundaryEdge(i2, i0, offset);
+                //isBoundaryEdge[triangleID] = boundaryContainer.IsBoundaryEdge(i0, i1, offset);
+                //isBoundaryEdge[triangleID + 1] = boundaryContainer.IsBoundaryEdge(i1, i2, offset);
+                //isBoundaryEdge[triangleID + 2] = boundaryContainer.IsBoundaryEdge(i2, i0, offset);
             }
 
             Link(triangleID, a);

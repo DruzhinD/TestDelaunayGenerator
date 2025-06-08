@@ -207,72 +207,8 @@ namespace TestDelaunayGenerator.Boundary
             return offset;
         }
 
-        /// <summary>
-        /// Проверяет, принадлежит ли ребро (start, end) какой-либо границе
-        /// </summary>
-        /// <param name="start">Индекс начальной точки ребра</param>
-        /// <param name="end">Индекс конечной точки ребра</param>
-        /// <param name="offset">Смещение индексов точек в общем массиве</param>
-        /// <returns>True, если ребро принадлежит границе</returns>
 
 
-
-        public bool IsBoundaryEdge2(int start, int end, int offset)
-        {
-            foreach (var boundary in this)
-            {
-                int localStart = start - offset;
-                int localEnd = end - offset;
-                if (localStart >= 0 && localEnd >= 0 && localStart < boundary.Points.Length && localEnd < boundary.Points.Length)
-                {
-                    if (boundary.IsBoundaryEdge(localStart, localEnd))
-                    {
-                        return true;
-                    }
-                }
-                offset += boundary.Points.Length;
-            }
-            return false;
-        }
-        public bool IsBoundaryEdge(int start, int end, int offset)
-        {
-            foreach (var boundary in this)
-            {
-                foreach (var edge in boundary.BoundaryEdges)
-                {
-                    int edgeStart = Array.IndexOf(boundary.Points, edge.A) + offset;
-                    int edgeEnd = Array.IndexOf(boundary.Points, edge.B) + offset;
-                    if ((start == edgeStart && end == edgeEnd) || (start == edgeEnd && end == edgeStart))
-                        return true;
-                }
-                offset += boundary.Points.Length;
-            }
-            return false;
-        }
-        //public IHillEdge[] GetAllBoundaryEdges()
-        //{
-        //    int totalEdges = OuterBoundary?.BoundaryEdges.Length ?? 0;
-        //    totalEdges += InnerBoundaries.Sum(b => b.BoundaryEdges.Length);
-        //    var allEdges = new IHillEdge[totalEdges];
-        //    int index = 0;
-
-        //    if (OuterBoundary != null)
-        //    {
-        //        foreach (var edge in OuterBoundary.BoundaryEdges)
-        //        {
-        //            allEdges[index++] = new HEdge(edge.ID, edge.A, edge.B, edge.mark, edge.Count, isBoundary: true);
-        //        }
-        //    }
-
-        //    foreach (var innerBoundary in InnerBoundaries)
-        //    {
-        //        foreach (var edge in innerBoundary.BoundaryEdges)
-        //        {
-        //            allEdges[index++] = new HEdge(edge.ID, edge.A, edge.B, edge.mark, edge.Count, isBoundary: true);
-        //        }
-        //    }
-
-        //    return allEdges;
-        //}
+      
     }
 }

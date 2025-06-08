@@ -35,11 +35,6 @@ namespace TestDelaunayGenerator.Boundary
 
         public int[] VertexesIds;
 
-        /// <summary>
-        /// массив граничных ребер(пары индексов точек)
-        /// </summary>
-        private IHillEdge[] _boundaryEdges;
-        public IHillEdge[] BoundaryEdges { get => _boundaryEdges; private set => _boundaryEdges = value; }
 
         /// <summary>
         /// Инициализация оболочки
@@ -55,20 +50,10 @@ namespace TestDelaunayGenerator.Boundary
             if (generator is null)
                 throw new ArgumentNullException($"{nameof(generator)} не может быть null");
 
-            // Помечаем опорные вершины как граничные
-            this.baseVertexes = new IHPoint[baseVertexes.Length];
-            for (int i = 0; i < baseVertexes.Length; i++)
-            {
-                if (baseVertexes[i] is HPoint hp)
-                {
-                    this.baseVertexes[i] = new HPoint(hp.X, hp.Y, isBoundary: true, boundaryEdgeMarker: i);
-                }
-                else
-                {
-                    this.baseVertexes[i] = new HPoint(baseVertexes[i].X, baseVertexes[i].Y, isBoundary: true, boundaryEdgeMarker: i);
-                }
-            }
-
+            // Инициализация baseVertexes
+            this.baseVertexes = baseVertexes; // Сохраняем массив опорных вершин
+            this.points = generator.Generate(this); // Генерируем точки границы
+            this.InitilizeRect(); // Инициализация описывающего прямоугольника
             //TODO сменить тип
             this.points = generator.Generate(this);
             this.InitilizeRect();
@@ -87,44 +72,9 @@ namespace TestDelaunayGenerator.Boundary
                         break;
                 }
             }
-            // Инициализация граничных ребер
-            InitializeBoundaryEdges2();
+
         }
-        private void InitializeBoundaryEdges2()
-        {
-            int n = BaseVertexes.Length;
-            _boundaryEdges = new IHillEdge[n];
-            for (int i = 0; i < n; i++)
-            {
-                int start = VertexesIds[i];
-                int end = VertexesIds[(i + 1) % n];
-                _boundaryEdges[i] = new HEdge(i, Points[start], Points[end], mark: 1, isBoundary: true);
-            }
-        }
-        private void InitializeBoundaryEdges()
-        {
-
-            // Количество опорных вершин (только они определяют настоящие граничные рёбра)
-            int n = BaseVertexes.Length;
-            _boundaryEdges = new IHillEdge[n];
-            for (int i = 0; i < n; i++)
-            {
-                int start = VertexesIds[i];
-                int end = VertexesIds[(i + 1) % n];
-                _boundaryEdges[i] = new HEdge(i, Points[start], Points[end], mark: 1, isBoundary: true);
-            
-
-
-
-
-            //Console.WriteLine($"Edge {i}: ({start}, {end})");
-            // Выводим индексы и координаты вершин ребра
-            //Console.WriteLine($"Edge {i}: ({start}, {end}) -> " +
-            //                  $"(({Points[start].X}, {Points[start].Y}), " +
-            //                  $"({Points[end].X}, {Points[end].Y}))");
-            }
-        }
-
+        
 
         /// <summary>
         /// Прямоугольник, описанный около текущей ограниченной области
@@ -161,29 +111,7 @@ namespace TestDelaunayGenerator.Boundary
             rectangle[3] = new HPoint(maxX, minY);
             this.outRect = rectangle;
         }
-        public bool IsBoundaryEdge(int start, int end)
-        {
-            if (Points[start] is HPoint p1 && Points[end] is HPoint p2)
-            {
-                bool isBoundary = p1.IsBoundary && p2.IsBoundary && p1.BoundaryEdgeMarker == p2.BoundaryEdgeMarker;
-                if (isBoundary)
-                {
-                    Console.WriteLine($"Граничное ребро найдено: ");
-                    Console.WriteLine($"Точка 1: ({p1.X:F4}, {p1.Y:F4}), IsBoundary: {p1.IsBoundary}, BoundaryEdgeMarker: {p1.BoundaryEdgeMarker}");
-                    Console.WriteLine($"Точка 2: ({p2.X:F4}, {p2.Y:F4}), IsBoundary: {p2.IsBoundary}, BoundaryEdgeMarker: {p2.BoundaryEdgeMarker}");
-                }
-                return isBoundary;
-            }
-            return false;
-        }
-        public bool IsBoundaryEdge2(int start, int end)
-        {
-            if (Points[start] is HPoint p1 && Points[end] is HPoint p2)
-            {
-                return p1.IsBoundary && p2.IsBoundary && p1.BoundaryEdgeMarker == p2.BoundaryEdgeMarker;
-            }
-            return false;
-        }
+
        
     }
 }

@@ -41,8 +41,7 @@
             for (int i = 0; i < boundLength; i++)
             {
                 //добавляем начальное ребро
-                var vertex = boundary.Vertexes[i % boundLength];
-                boundaryPoints[curId] = new HPoint(vertex.X, vertex.Y, isBoundary: true, boundaryEdgeMarker: i);
+                boundaryPoints[curId % boundaryPoints.Length] = boundary.Vertexes[i % boundLength];
                 curId++;
 
                 //получаем длину ребра, образованного двумя вершинами
@@ -54,12 +53,7 @@
                 //добавляем точки в промежутке между вершинами ребер
                 for (int j = 1; j <= fixedByEdge; j++)
                 {
-                    boundaryPoints[curId] = new HPoint(
-                    v1.X + intervalX * j,
-                    v1.Y + intervalY * j,
-                    isBoundary: true,
-                    boundaryEdgeMarker: i
-                    );
+                    boundaryPoints[curId] = new HPoint(v1.X + intervalX * j, v1.Y + intervalY * j);
                     curId++;
                 }
             }
@@ -69,6 +63,11 @@
 
         public IHPoint[] Generate(BoundaryNew boundary)
         {
+            // Проверка на null
+            if (boundary == null)
+                throw new ArgumentNullException(nameof(boundary), "Параметр boundary не может быть null.");
+            if (boundary.BaseVertexes == null || boundary.BaseVertexes.Length == 0)
+                throw new ArgumentNullException(nameof(boundary.BaseVertexes), "BaseVertexes не может быть null или пустым.");
             //количество ребер по сути равно количеству вершин.
             //Общее количество точек на всех границах,
             //т.е. сумма точек на всех ребрах + сами вершины
@@ -79,8 +78,13 @@
             int curId = 0;
             for (int i = 0; i < boundLength; i++)
             {
-                //добавляем начальное ребро
-                boundaryPoints[curId % boundaryPoints.Length] = boundary.BaseVertexes[i % boundLength];
+                // Добавляем начальную вершину ребра, помечаем как граничную
+                HPoint vertex = new HPoint(boundary.BaseVertexes[i % boundLength])
+                {
+                    IsBoundary = true,
+                    BoundaryEdgeMarker = i // Номер ребра соответствует индексу i
+                };
+                boundaryPoints[curId % boundaryPoints.Length] = vertex;
                 curId++;
 
                 //получаем длину ребра, образованного двумя вершинами
@@ -92,7 +96,12 @@
                 //добавляем точки в промежутке между вершинами ребер
                 for (int j = 1; j <= fixedByEdge; j++)
                 {
-                    boundaryPoints[curId] = new HPoint(v1.X + intervalX * j, v1.Y + intervalY * j);
+                    HPoint point = new HPoint(v1.X + intervalX * j, v1.Y + intervalY * j)
+                    {
+                        IsBoundary = true,
+                        BoundaryEdgeMarker = i // Те же маркеры, что у начальной вершины ребра
+                    };
+                    boundaryPoints[curId] = point;
                     curId++;
                 }
             }
