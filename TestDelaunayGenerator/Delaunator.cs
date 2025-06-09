@@ -47,7 +47,7 @@ namespace TestDelaunayGenerator
         /// <param name="boundaryContainer">контейнер границ.
         /// Не требуется объединять с <paramref name="points"/></param>
         /// <exception cref="ArgumentException"></exception>
-        public Delaunator(HKnot[] points, BoundaryContainer boundaryContainer = null)
+        public Delaunator(IHPoint[] points, BoundaryContainer boundaryContainer = null)
         {
             //валидация множества точек
             if (points is null || points.Length < 3)
@@ -211,7 +211,7 @@ namespace TestDelaunayGenerator
             {
                 //количество граничных точек
                 int boundPointCnt = boundaryContainer.AllBoundaryPoints.Length;
-                
+
                 //ребра
                 MEM.Alloc(boundPointCnt, ref mesh.BoundElems);
                 MEM.Alloc(boundPointCnt, ref mesh.BoundElementsMark);
@@ -1005,55 +1005,6 @@ namespace TestDelaunayGenerator
 
         #endregion
 
-
-        //есть пограничные случаи, когда точка находится на стыке пары ребер
-        /// <summary>
-        /// Является ли смежное ребро у вершины <paramref name="vertexId"/> граничным
-        /// </summary>
-        /// <param name="triangleId"></param>
-        /// <param name="vertexId"></param>
-        /// <returns></returns>
-        bool IsBoundaryEdge(int triangleId, int vertexId)
-        {
-            int edgeIdStart = Triangles[triangleId][vertexId];
-            int halfEdge = HalfEdges[edgeIdStart];
-            int edgeIdEnd = Triangles[halfEdge / 3][halfEdge % 3];
-            //одно из ребер не является граничным
-            if (pointStatuses[edgeIdStart] != PointStatus.Boundary ||
-                pointStatuses[edgeIdEnd] != PointStatus.Boundary)
-                return false;
-
-            HBoundaryKnot v1 = (HBoundaryKnot)Points[edgeIdStart];
-            HBoundaryKnot v2 = (HBoundaryKnot)Points[edgeIdEnd];
-
-            //ребра лежат на разных оболочках
-            if (v1.boundaryId != v2.boundaryId)
-                return false;
-
-            //если индекс ребра у вершин совпадает
-            if (v1.edgeId == v2.edgeId)
-                return true;
-
-            //далее рассмотрен случай, когда хотя бы одна из точек является опорной
-            //т.е. находится на стыке двух ребер
-
-            double epsilon = 1e-15;
-            //проверка принадлежности точек одному ребру в рамках одной оболочки
-            BoundaryNew boundary = boundaryContainer.GetBoundaryById(v1.boundaryId);
-            for (int i = 0; i < boundary.BoundaryEdges.Length; i++)
-            {
-                //проверка точек на равенство с учетом того, что double имеет погрешность
-                var edge = boundary.BoundaryEdges[i];
-                if (Math.Abs((v1.X + v2.X) - (edge.A.X + edge.B.X)) < epsilon &&
-                        Math.Abs((v1.Y + v2.Y) - (edge.A.Y + edge.B.Y)) < epsilon)
-                    return true;
-
-            }
-
-            //точки мб граничными, но лежать на разных
-            return false;
-        }
-
         /// <summary>
         /// Внешняя точка по отношению к области триангуляции,
         /// в частности ко внешней оболочке
@@ -1378,55 +1329,19 @@ namespace TestDelaunayGenerator
                     triangleId = adjacentTriangleId;
 
                     //проверка - является ли смежное ребро граничным
-
                     if (
                         //обе точки являются граничными
                         (pointStatuses[edgeIdStart] == PointStatus.Boundary ||
                         pointStatuses[edgeIdEnd] == PointStatus.Boundary) &&
                         //первая точка имеет соседа - вторую точку
                         boundaryEdges[edgeIdStart].Adjacents.Contains(edgeIdEnd)
-                        )
+                    )
                     {
                         if (infectValue == TriangleInfect.External)
                             infectValue = TriangleInfect.Internal;
                         else
                             infectValue = TriangleInfect.External;
                     }
-
-                    //проверка - является ли смежное ребро граничным
-                    //for (int boundaryId = 0; boundaryId < boundaryContainer.Count; boundaryId++)
-                    //{
-                    //    //одна из вершин ребра не является граничным узлом
-                    //    if (pointStatuses[edgeIdStart] == PointStatus.Boundary ||
-                    //        pointStatuses[edgeIdEnd] == PointStatus.Boundary)
-                    //        break;
-
-                    //    //проход по граничным ребрам
-                    //    BoundaryNew currentBoundary = boundaryContainer[boundaryId];
-                    //    for (int edgeId = 0; edgeId < currentBoundary.BoundaryEdges.Length; edgeId++)
-                    //    {
-                    //        IHEdge currentEdge = currentBoundary.BoundaryEdges[edgeId];
-                    //        //расчитываем суммы по координате X сначала по индексам точек,
-                    //        //вычисляем разность двух сумм
-                    //        //если разность больше эпсилон, то это не то ребро
-                    //        if (Math.Abs((points[edgeIdStart].X + points[edgeIdEnd].X) -
-                    //            (currentEdge.A.X + currentEdge.B.X)) > inaccuracy)
-                    //            continue;
-                    //        //аналогично для Y
-                    //        if ((points[edgeIdStart].Y + points[edgeIdEnd].Y) -
-                    //            (currentEdge.A.Y + currentEdge.B.Y) > inaccuracy)
-                    //            continue;
-
-                    //        //т.к. предыдущие условия не выполнились =>
-                    //        //смежное ребро  является текущим граничным ребром.
-                    //        //Инвертируем значение для заражения
-                    //        if (infectValue == TriangleInfect.External)
-                    //            infectValue = TriangleInfect.Internal;
-                    //        else
-                    //            infectValue = TriangleInfect.External;
-                    //        break;
-                    //    }
-                    //}
                     triangleInfectCnt++;
                     Triangles[triangleId].flag = (int)infectValue;
                     localVertex = 0;

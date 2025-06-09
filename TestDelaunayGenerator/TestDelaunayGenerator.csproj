@@ -56,7 +56,6 @@
     <Compile Include="Boundary\IGeneratorBase.cs" />
     <Compile Include="Boundary\GeneratorFixed.cs" />
     <Compile Include="Enums.cs" />
-    <Compile Include="HBoundaryKnot.cs" />
     <Compile Include="HillEdgeDel.cs" />
     <Compile Include="Troika.cs" />
     <Compile Include="Program.cs" />

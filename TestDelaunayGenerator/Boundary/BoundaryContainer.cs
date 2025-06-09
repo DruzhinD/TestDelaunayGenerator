@@ -229,49 +229,5 @@ namespace TestDelaunayGenerator.Boundary
             }
             return false;
         }
-        //public IHillEdge[] GetAllBoundaryEdges()
-        //{
-        //    int totalEdges = OuterBoundary?.BoundaryEdges.Length ?? 0;
-        //    totalEdges += InnerBoundaries.Sum(b => b.BoundaryEdges.Length);
-        //    var allEdges = new IHillEdge[totalEdges];
-        //    int index = 0;
-
-        //    if (OuterBoundary != null)
-        //    {
-        //        foreach (var edge in OuterBoundary.BoundaryEdges)
-        //        {
-        //            allEdges[index++] = new HEdge(edge.ID, edge.A, edge.B, edge.mark, edge.Count, isBoundary: true);
-        //        }
-        //    }
-
-        //    foreach (var innerBoundary in InnerBoundaries)
-        //    {
-        //        foreach (var edge in innerBoundary.BoundaryEdges)
-        //        {
-        //            allEdges[index++] = new HEdge(edge.ID, edge.A, edge.B, edge.mark, edge.Count, isBoundary: true);
-        //        }
-        //    }
-
-        //    return allEdges;
-        //}
-
-        /// <summary>
-        /// Получить оболочку по её идентификатору
-        /// </summary>
-        /// <returns></returns>
-        /// <exception cref="ArgumentException"></exception>
-        public BoundaryNew GetBoundaryById(int boundaryId)
-        {
-            if (this.outerBoundary.ID == boundaryId)
-                return this.outerBoundary;
-
-            for (int i = 0; i < this.innerBoundaries.Count; i++)
-            {
-                if (this.innerBoundaries[i].ID == boundaryId)
-                    return this.innerBoundaries[i];
-            }
-
-            throw new ArgumentException($"Отсутствует граница с {boundaryId} ID!");
-        }
     }
 }

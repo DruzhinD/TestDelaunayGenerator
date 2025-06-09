@@ -181,8 +181,8 @@ namespace TestDelaunayGenerator
                     container.AddInnerBoundary(innerBoundary, generator);
             }
             //преобразовать массив из HPoint В HNumbKnot
-            HKnot[] newPoints = points.Select(p => new HKnot(p.X, p.Y, -1)).ToArray();
-            Delaunator delaunator = new Delaunator(newPoints, container);
+            //HKnot[] newPoints = points.Select(p => new HKnot(p.X, p.Y, -1)).ToArray();
+            Delaunator delaunator = new Delaunator(points, container);
             delaunator.Generate();
             var mesh = delaunator.ToMesh();
 

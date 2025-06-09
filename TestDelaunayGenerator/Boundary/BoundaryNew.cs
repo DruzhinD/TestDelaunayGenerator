@@ -24,25 +24,25 @@ namespace TestDelaunayGenerator.Boundary
         /// <summary>
         /// Вершины, обращующие форму оболочки (опорные вершины)
         /// </summary>
-        public HBoundaryKnot[] BaseVertexes { get => baseVertexes; }
+        public IHPoint[] BaseVertexes { get => baseVertexes; }
 
         /// <summary>
         /// Все множество точек, принадлежащее оболочке, включая опорные вершины
         /// <see cref="BaseVertexes"/>
         /// </summary>
-        public HBoundaryKnot[] Points { get => points; }
+        public IHPoint[] Points { get => points; }
 
 
         /// <summary>
         /// вершины, образующие форму оболочки (опорные вершины)
         /// </summary>
-        protected HBoundaryKnot[] baseVertexes;
+        protected IHPoint[] baseVertexes;
 
         /// <summary>
         /// все множество точек, принадлежащее оболочке, включая опорные вершины
         /// <see cref="baseVertexes"/>
         /// </summary>
-        protected HBoundaryKnot[] points;
+        protected IHPoint[] points;
 
         public int[] VertexesIds;
 
@@ -95,38 +95,9 @@ namespace TestDelaunayGenerator.Boundary
             if (generator is null)
                 throw new ArgumentNullException($"{nameof(generator)} не может быть null");
 
-            //преобразование в граничные точки
-            this.baseVertexes = new HBoundaryKnot[baseVertexes.Length];
-            for (int i = 0; i < baseVertexes.Length; i++)
-                this.baseVertexes[i] = new HBoundaryKnot(
-                    baseVertexes[i].X, baseVertexes[i].Y,
-                    borderId: this.ID, edgeId: i
-                );
-
+            this.baseVertexes = baseVertexes;
             //генерация точек
-            IHPoint[] interfacePoints = generator.Generate(this);
-
-            //идентификатор опорной вершины внутри генератора
-            int basePointId = 0;
-            //преобразование сгенерированных точек в граничные точки
-            this.points = new HBoundaryKnot[interfacePoints.Length];
-            for (int i = 0; i < interfacePoints.Length; i++)
-            {
-                //опорная вершина
-                if (generator.BaseVertexIds[basePointId % baseVertexes.Length] == i)
-                {
-                    //перезаписываем значения X и Y для опорных вершин
-                    //из-за особенности типа double
-                    baseVertexes[basePointId].X = interfacePoints[i].X;
-                    baseVertexes[basePointId].Y = interfacePoints[i].Y;
-                    basePointId++;
-                }
-
-                this.points[i] = new HBoundaryKnot(
-                    interfacePoints[i].X, interfacePoints[i].Y,
-                    borderId: this.ID, edgeId: basePointId
-                    );
-            }
+            this.points = generator.Generate(this);
 
             //инициализация описанного прямоугольника
             this.InitilizeRect();
@@ -155,8 +126,8 @@ namespace TestDelaunayGenerator.Boundary
                 //если достигнута следующая опорная вершина
                 //делаем инкремент для индекса опорных вершин
                 //и создаем новое опорное ребро с началом в baseEdgeId + 1
-                HBoundaryKnot v1 = Points[i];
-                HBoundaryKnot v2 = BaseVertexes[(baseEdgeId + 1) % BaseVertexes.Length];
+                IHPoint v1 = Points[i];
+                IHPoint v2 = BaseVertexes[(baseEdgeId + 1) % BaseVertexes.Length];
                 if (Math.Abs(v1.X - v2.X) < 1e-15 && Math.Abs(v1.Y - v2.Y) < 1e-15)
                 //if (Points[i] == BaseVertexes[(baseEdgeId + 1) % BaseVertexes.Length])
                 {
@@ -231,24 +202,5 @@ namespace TestDelaunayGenerator.Boundary
             }
         }
         #endregion
-
-        //TODO есть необходимость в этом?
-        /// <summary>
-        /// Определить принадлежит ли ребро оболочке в рамках индексов точек делонатора
-        /// </summary>
-        /// <param name="start">индекс начала ребра</param>
-        /// <param name="end">индекс конца ребра</param>
-        /// <returns></returns>
-        public bool IsBoundaryEdge(int start, int end)
-        {
-            foreach (var edge in BaseBoundaryEdges)
-            {
-                int edgeStart = Array.IndexOf(Points, edge.A);
-                int edgeEnd = Array.IndexOf(Points, edge.B);
-                if ((start == edgeStart && end == edgeEnd) || (start == edgeEnd && end == edgeStart))
-                    return true;
-            }
-            return false;
-        }
     }
 }
