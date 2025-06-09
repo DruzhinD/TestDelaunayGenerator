@@ -207,24 +207,52 @@ namespace TestDelaunayGenerator
             mesh.CoordsY = this.coordsY;
 
             //формирование граничных точек и ребер
-            
-
-            //выделение памяти
-            MEM.Alloc(CountHullKnots, ref mesh.BoundElems);
-            MEM.Alloc(CountHullKnots, ref mesh.BoundElementsMark);
-            for (int i = 0; i < Hull.Length; i++)
+            if (boundaryContainer != null)
             {
-                mesh.BoundElems[i].Vertex1 = (uint)Hull[i];
-                mesh.BoundElems[i].Vertex2 = (uint)Hull[(i + 1) % Hull.Length];
-                mesh.BoundElementsMark[i] = 0;
+                //количество граничных точек
+                int boundPointCnt = boundaryContainer.AllBoundaryPoints.Length;
+                
+                //ребра
+                MEM.Alloc(boundPointCnt, ref mesh.BoundElems);
+                MEM.Alloc(boundPointCnt, ref mesh.BoundElementsMark);
+
+                //узлы
+                MEM.Alloc(boundPointCnt, ref mesh.BoundKnots);
+                MEM.Alloc(boundPointCnt, ref mesh.BoundKnotsMark);
+
+                int meshPointId = 0;
+                for (int i = this.points.Length - boundPointCnt; i < this.points.Length; i++)
+                {
+                    //заполняем ребра
+                    mesh.BoundElems[meshPointId].Vertex1 = (uint)i;
+                    mesh.BoundElems[meshPointId].Vertex2 = (uint)boundaryEdges[i].adjacent1;
+                    mesh.BoundElementsMark[meshPointId] = boundaryEdges[i].BoundaryID;
+
+                    //заполняем узлы
+                    mesh.BoundKnots[meshPointId] = i;
+                    mesh.BoundKnotsMark[meshPointId] = i;
+                    meshPointId++;
+                }
             }
-
-            MEM.Alloc(CountHullKnots, ref mesh.BoundKnots);
-            MEM.Alloc(CountHullKnots, ref mesh.BoundKnotsMark);
-            for (int i = 0; i < Hull.Length; i++)
+            else
             {
-                mesh.BoundKnots[i] = Hull[i];
-                mesh.BoundKnotsMark[i] = 0;
+                //выделение памяти
+                MEM.Alloc(CountHullKnots, ref mesh.BoundElems);
+                MEM.Alloc(CountHullKnots, ref mesh.BoundElementsMark);
+                for (int i = 0; i < Hull.Length; i++)
+                {
+                    mesh.BoundElems[i].Vertex1 = (uint)Hull[i];
+                    mesh.BoundElems[i].Vertex2 = (uint)Hull[(i + 1) % Hull.Length];
+                    mesh.BoundElementsMark[i] = 0;
+                }
+
+                MEM.Alloc(CountHullKnots, ref mesh.BoundKnots);
+                MEM.Alloc(CountHullKnots, ref mesh.BoundKnotsMark);
+                for (int i = 0; i < Hull.Length; i++)
+                {
+                    mesh.BoundKnots[i] = Hull[i];
+                    mesh.BoundKnotsMark[i] = 0;
+                }
             }
 
             if (debug)
@@ -1130,7 +1158,7 @@ namespace TestDelaunayGenerator
         {
             if (this.boundaryContainer is null)
                 throw new ArgumentNullException($"{nameof(boundaryContainer)} не должен быть null!");
-            
+
             //Изменяем размер массива до количества точек, входящих в область + граничных точек
             Array.Resize(ref points, notBorderPointCnt + boundaryContainer.AllBoundaryPoints.Length);
             //количество ребер совпадает с количеством точек
@@ -1350,7 +1378,7 @@ namespace TestDelaunayGenerator
                     triangleId = adjacentTriangleId;
 
                     //проверка - является ли смежное ребро граничным
-                    
+
                     if (
                         //обе точки являются граничными
                         (pointStatuses[edgeIdStart] == PointStatus.Boundary ||
