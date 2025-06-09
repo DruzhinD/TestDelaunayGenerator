@@ -37,6 +37,7 @@ namespace TestDelaunayGenerator
                     outerBoundary = new IHPoint[]
                     {
                         new HPoint(0.1, 0.1),
+                        //new HPoint(0.3, 0.61),
                         new HPoint(0.1, 0.91),
                         new HPoint(0.9, 0.91),
                         new HPoint(0.9, 0.1),
@@ -84,9 +85,10 @@ namespace TestDelaunayGenerator
                             idd = idd % dxx.Length;
                         }
                     generator = new GeneratorFixed(15);
-                    outerBoundary = new IHPoint[4]
+                    outerBoundary = new IHPoint[]
                         {
                             new HPoint(1.1,1.1),
+                            new HPoint(1.3, 1.6),
                             new HPoint(1.1, 2.1),
                             new HPoint(2.1, 2.1),
                             new HPoint(2.1 ,1.1)

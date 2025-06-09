@@ -21,16 +21,13 @@ namespace TestDelaunayGenerator
         #region Базовые поля, свойства
         /// <summary>
         /// Узлы триангуляции <br/>
-        /// см. <see cref="PointStatus"/>
         /// </summary>
-        HKnot[] points;
-
+        IHPoint[] points;
 
         /// <summary>
         /// Узлы триангуляции <br/>
-        /// см. <see cref="PointStatus"/>
         /// </summary>
-        public HKnot[] Points => points;
+        public IHPoint[] Points => points;
 
         /// <summary>
         /// контейнер граничных оболочек
@@ -167,6 +164,17 @@ namespace TestDelaunayGenerator
         /// </summary>
         Troika[] Triangles;
 
+        /// <summary>
+        /// Принадлежность точки области.
+        /// Индексация совпадает с <see cref="points"/>
+        /// </summary>
+        PointStatus[] pointStatuses;
+
+        /// <summary>
+        /// Граничные ребра.
+        /// Индексация внутри <see cref="EdgeIndex"/> используется из <see cref="points"/>
+        /// </summary>
+        EdgeIndex[] boundaryEdges;
 
         /// <summary>
         /// Является ли ребро граничным.
@@ -180,8 +188,6 @@ namespace TestDelaunayGenerator
         {
             //инициализация объекта сетки и выделение памяти
             TriMesh mesh = new TriMesh();
-            //MEM.Alloc(Triangles.Length, ref mesh.AreaElems);
-
 
             if (boundaryContainer != null)
             {
@@ -197,13 +203,12 @@ namespace TestDelaunayGenerator
                 mesh.AreaElems = this.Triangles.Select(triangle => triangle.GetTri).ToArray();
             }
 
-
             mesh.CoordsX = this.coordsX;
             mesh.CoordsY = this.coordsY;
 
             //формирование граничных точек и ребер
-
             
+
             //выделение памяти
             MEM.Alloc(CountHullKnots, ref mesh.BoundElems);
             MEM.Alloc(CountHullKnots, ref mesh.BoundElementsMark);
@@ -239,8 +244,29 @@ namespace TestDelaunayGenerator
                 points.Sum(p => p.Y) / points.Length
                 );
 
-            //отсечение точек
-            this.ClippingPoints();
+            if (this.boundaryContainer != null)
+            {
+                //выделение памяти принадлежностей точек
+                //по умолчанию точки входят в область
+                MEM.Alloc(
+                    points.Length + this.boundaryContainer.AllBoundaryPoints.Length,
+                    ref pointStatuses,
+                    PointStatus.Internal);
+
+                //отсечение точек
+                int pointCnt = this.ClippingPoints();
+                //объединение с множеством граничных точек
+                CombinePointSets(pointCnt);
+
+                //если не совпадает с размером массива точек, то обрезаем массив до нужного размера
+                if (this.points.Length != pointStatuses.Length)
+                    Array.Resize(ref pointStatuses, points.Length);
+            }
+            else
+            {
+                MEM.Alloc(points.Length, ref pointStatuses, PointStatus.Internal);
+            }
+
 
             //выделение памяти для массива точек и его заполнение
             MEM.Alloc(points.Length, ref coordsX);
@@ -384,7 +410,8 @@ namespace TestDelaunayGenerator
                 bool isInArea = IsTriangleInArea(triangleId);
                 TriangleInfect isInAreaEnum = TriangleInfect.External;
                 if (isInArea)
-                    Triangles[triangleId].flag = (int)TriangleInfect.Internal;
+                    isInAreaEnum = TriangleInfect.Internal;
+                Triangles[triangleId].flag = (int)isInAreaEnum;
             }
             #endregion
 
@@ -964,8 +991,8 @@ namespace TestDelaunayGenerator
             int halfEdge = HalfEdges[edgeIdStart];
             int edgeIdEnd = Triangles[halfEdge / 3][halfEdge % 3];
             //одно из ребер не является граничным
-            if (Points[edgeIdStart].marker != (int)PointStatus.Boundary ||
-                Points[edgeIdEnd].marker != (int)PointStatus.Boundary)
+            if (pointStatuses[edgeIdStart] != PointStatus.Boundary ||
+                pointStatuses[edgeIdEnd] != PointStatus.Boundary)
                 return false;
 
             HBoundaryKnot v1 = (HBoundaryKnot)Points[edgeIdStart];
@@ -1018,21 +1045,6 @@ namespace TestDelaunayGenerator
             externalPoint = new HPoint(maxX * 1.1, pc.Y);
         }
 
-        enum PointStatus
-        {
-            /// <summary>
-            /// Внешний
-            /// </summary>
-            External = 0,
-            /// <summary>
-            /// Входит в область
-            /// </summary>
-            Internal = 10,
-            /// <summary>
-            /// Принадлежит границе
-            /// </summary>
-            Boundary = 20
-        }
 
         /// <summary>
         /// Отсечение точек <see cref="points"/>.
@@ -1040,14 +1052,11 @@ namespace TestDelaunayGenerator
         /// если такой определен
         /// </summary>
         /// <exception cref="ArgumentNullException">не задана внешняя оболочка</exception>
-        void ClippingPoints()
+        /// <returns>Фактический размер <see cref="points"/></returns>
+        int ClippingPoints()
         {
-            //выход, если граница не задана
             if (this.boundaryContainer is null)
-                return;
-            //задана ли внешняя оболочка
-            if (this.boundaryContainer.OuterBoundary is null)
-                throw new ArgumentNullException($"контейнер границ передан, но не задана внешняя оболочка!");
+                throw new ArgumentNullException($"{nameof(boundaryContainer)} не должен быть null!");
 
             InitializeExternalPoint();
 
@@ -1082,14 +1091,14 @@ namespace TestDelaunayGenerator
                     //устанавливаем текущую точку, как входящую в область marker == 1
                     if (isInArea)
                     {
-                        points[i].marker = (int)PointStatus.Internal;
+                        pointStatuses[i] = PointStatus.Internal;
                         //требуется для корректного результата в рамках "гонки потоков"
                         Interlocked.Increment(ref markedPointAmount);
                     }
                     //точка не граничная
                     else
                     {
-                        points[i].marker = (int)PointStatus.External;
+                        pointStatuses[i] = PointStatus.External;
                     }
                 }
             );
@@ -1099,27 +1108,67 @@ namespace TestDelaunayGenerator
             //оставляем в массиве только точки, входящие в область
             for (int i = 0; i < points.Length; i++)
             {
-                if (points[i].marker == (int)PointStatus.Internal)
+                if (pointStatuses[i] == PointStatus.Internal)
                 {
                     points[currentPointIndex] = points[i];
                     currentPointIndex++;
                 }
             }
 
-            //Изменяем размер массива до количества точек, входящих в область +
-            //граничных точек
-            Array.Resize(ref points, markedPointAmount + boundaryContainer.AllBoundaryPoints.Length);
-            //сохраняем в массиве граничные точки
-            for (int i = 0; i < boundaryContainer.AllBoundaryPoints.Length; i++)
+            return markedPointAmount;
+        }
+
+        /// <summary>
+        /// Объединить точки из <see cref="points"/> с точками из <see cref="boundaryContainer"/>.
+        /// Усекает массив до размера суммы точек из этих множеств.
+        /// </summary>
+        /// <param name="notBorderPointCnt">
+        /// количество точек, которое необходимо взять из <see cref="points"/> от начала массива
+        /// </param>
+        /// <exception cref="ArgumentNullException"></exception>
+        void CombinePointSets(int notBorderPointCnt)
+        {
+            if (this.boundaryContainer is null)
+                throw new ArgumentNullException($"{nameof(boundaryContainer)} не должен быть null!");
+            
+            //Изменяем размер массива до количества точек, входящих в область + граничных точек
+            Array.Resize(ref points, notBorderPointCnt + boundaryContainer.AllBoundaryPoints.Length);
+            //количество ребер совпадает с количеством точек
+            MEM.Alloc(this.points.Length, ref boundaryEdges);
+
+            //текущий свободный индекс для записи
+            int curPointId = notBorderPointCnt;
+            //смещение по количеству точек до граничных точек
+            int offset = curPointId;
+            //проход по каждой оболочке
+            for (int boundId = 0; boundId < boundaryContainer.Count; boundId++)
             {
-                //TODO заменить массив на HNumbKnot
-                IHPoint boundPoint = boundaryContainer.AllBoundaryPoints[i];
-                //граничные точки - тип HBoundaryKnot
-                points[currentPointIndex] = (HBoundaryKnot)boundPoint;
-                points[currentPointIndex].marker = (int)PointStatus.Boundary;
-                currentPointIndex++;
-                //points[currentPointIndex] = new HKnot(
-                //    boundPoint.X, boundPoint.Y, (int)PointStatus.Boundary, i);
+                //количество точек на текущем контуре
+                int bndPointCnt = boundaryContainer[boundId].Points.Length;
+                //проход по точкам внутри оболочки
+                for (int i = 0; i < bndPointCnt; i++)
+                {
+                    //копируем граничную точку в общий массив точек
+                    points[curPointId] = boundaryContainer[boundId].Points[i];
+                    pointStatuses[curPointId] = PointStatus.Boundary;
+
+                    //сосед 1
+                    int leftNeighId = offset + (bndPointCnt + (curPointId - offset) - 1) % bndPointCnt;
+                    //сосед 2
+                    int rightNeighId = offset + ((curPointId - offset) + 1) % bndPointCnt;
+                    //соседние точки для текущей точки
+                    boundaryEdges[curPointId] = new EdgeIndex(
+                        curPointId, //ID текущей точки
+                        leftNeighId,
+                        rightNeighId,
+                        boundaryContainer[boundId].ID
+                        );
+
+                    curPointId++;
+                }
+                //при переходе к следующему контуру
+                //учитываем смещение по количеству точек в текущем контуре
+                offset += boundaryContainer[boundId].Points.Length;
             }
         }
 
@@ -1206,17 +1255,6 @@ namespace TestDelaunayGenerator
         }
         #endregion
 
-        enum TriangleInfect
-        {
-            /// <summary>
-            /// Треугольник внешний
-            /// </summary>
-            External = 10,
-            /// <summary>
-            /// треугольник принадлежит области
-            /// </summary>
-            Internal = 20,
-        };
 
         /// <summary>
         /// Отсечение треугольников
@@ -1312,39 +1350,55 @@ namespace TestDelaunayGenerator
                     triangleId = adjacentTriangleId;
 
                     //проверка - является ли смежное ребро граничным
-                    for (int boundaryId = 0; boundaryId < boundaryContainer.Count; boundaryId++)
+                    
+                    if (
+                        //обе точки являются граничными
+                        (pointStatuses[edgeIdStart] == PointStatus.Boundary ||
+                        pointStatuses[edgeIdEnd] == PointStatus.Boundary) &&
+                        //первая точка имеет соседа - вторую точку
+                        boundaryEdges[edgeIdStart].Adjacents.Contains(edgeIdEnd)
+                        )
                     {
-                        //одна из вершин ребра не является граничным узлом
-                        if (Points[edgeIdStart].marker != (int)PointStatus.Boundary ||
-                            Points[edgeIdEnd].marker != (int)PointStatus.Boundary)
-                            break;
-
-                        //проход по граничным ребрам
-                        BoundaryNew currentBoundary = boundaryContainer[boundaryId];
-                        for (int edgeId = 0; edgeId < currentBoundary.BoundaryEdges.Length; edgeId++)
-                        {
-                            IHEdge currentEdge = currentBoundary.BoundaryEdges[edgeId];
-                            //расчитываем суммы по координате X сначала по индексам точек,
-                            //вычисляем разность двух сумм
-                            //если разность больше эпсилон, то это не то ребро
-                            if (Math.Abs((points[edgeIdStart].X + points[edgeIdEnd].X) -
-                                (currentEdge.A.X + currentEdge.B.X)) > inaccuracy)
-                                continue;
-                            //аналогично для Y
-                            if ((points[edgeIdStart].Y + points[edgeIdEnd].Y) -
-                                (currentEdge.A.Y + currentEdge.B.Y) > inaccuracy)
-                                continue;
-
-                            //т.к. предыдущие условия не выполнились =>
-                            //смежное ребро  является текущим граничным ребром.
-                            //Инвертируем значение для заражения
-                            if (infectValue == TriangleInfect.External)
-                                infectValue = TriangleInfect.Internal;
-                            else
-                                infectValue = TriangleInfect.External;
-                            break;
-                        }
+                        if (infectValue == TriangleInfect.External)
+                            infectValue = TriangleInfect.Internal;
+                        else
+                            infectValue = TriangleInfect.External;
                     }
+
+                    //проверка - является ли смежное ребро граничным
+                    //for (int boundaryId = 0; boundaryId < boundaryContainer.Count; boundaryId++)
+                    //{
+                    //    //одна из вершин ребра не является граничным узлом
+                    //    if (pointStatuses[edgeIdStart] == PointStatus.Boundary ||
+                    //        pointStatuses[edgeIdEnd] == PointStatus.Boundary)
+                    //        break;
+
+                    //    //проход по граничным ребрам
+                    //    BoundaryNew currentBoundary = boundaryContainer[boundaryId];
+                    //    for (int edgeId = 0; edgeId < currentBoundary.BoundaryEdges.Length; edgeId++)
+                    //    {
+                    //        IHEdge currentEdge = currentBoundary.BoundaryEdges[edgeId];
+                    //        //расчитываем суммы по координате X сначала по индексам точек,
+                    //        //вычисляем разность двух сумм
+                    //        //если разность больше эпсилон, то это не то ребро
+                    //        if (Math.Abs((points[edgeIdStart].X + points[edgeIdEnd].X) -
+                    //            (currentEdge.A.X + currentEdge.B.X)) > inaccuracy)
+                    //            continue;
+                    //        //аналогично для Y
+                    //        if ((points[edgeIdStart].Y + points[edgeIdEnd].Y) -
+                    //            (currentEdge.A.Y + currentEdge.B.Y) > inaccuracy)
+                    //            continue;
+
+                    //        //т.к. предыдущие условия не выполнились =>
+                    //        //смежное ребро  является текущим граничным ребром.
+                    //        //Инвертируем значение для заражения
+                    //        if (infectValue == TriangleInfect.External)
+                    //            infectValue = TriangleInfect.Internal;
+                    //        else
+                    //            infectValue = TriangleInfect.External;
+                    //        break;
+                    //    }
+                    //}
                     triangleInfectCnt++;
                     Triangles[triangleId].flag = (int)infectValue;
                     localVertex = 0;

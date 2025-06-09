@@ -50,10 +50,12 @@
     <Compile Include="Boundary\BoundaryNew.cs" />
     <Compile Include="Boundary\BoundaryContainer.cs" />
     <Compile Include="Boundary\CounturHill.cs" />
+    <Compile Include="EdgeIndex.cs" />
     <Compile Include="Delaunator.cs" />
     <Compile Include="DelaunayMeshGenerator.cs" />
     <Compile Include="Boundary\IGeneratorBase.cs" />
     <Compile Include="Boundary\GeneratorFixed.cs" />
+    <Compile Include="Enums.cs" />
     <Compile Include="HBoundaryKnot.cs" />
     <Compile Include="HillEdgeDel.cs" />
     <Compile Include="Troika.cs" />
