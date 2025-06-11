@@ -613,18 +613,7 @@ namespace TestDelaunayGenerator
             // рекурсия устранена с помощью стека фиксированного размера
             while (true)
             {
-                //TODO Пропускаем легализацию, если ребро является граничным
-                //if (boundaryContainer != null)
-                //{
-                //    //если смежное ребро принадлежит границе, то пропускаем легализацию для такого случая
-                //    if (isBoundaryEdge[EdgeA_ID])
-                //    {
-                //        if (i == 0)
-                //            break;
-                //        EdgeA_ID = EdgeStack[--i];
-                //        continue;
-                //    }
-                //}
+                
                 //смежное полуребро для EdgeA_ID
                 var EdgeB_ID = HalfEdges[EdgeA_ID];
                 //если смежный треугольник не был найден (т.е. -1), то достаем следующий из стека
@@ -635,7 +624,8 @@ namespace TestDelaunayGenerator
                         break;
                     EdgeA_ID = EdgeStack[--i];
                     continue;
-                }
+                }                   
+                
 
                 // адрес - смешение для 1 треугольника (1-ый индекс в треугольнике)
                 int triA_ID = EdgeA_ID - EdgeA_ID % 3;
@@ -656,6 +646,42 @@ namespace TestDelaunayGenerator
                 int p1 = Triangles[idxElemB][(EdgeB_ID + 2) % 3];
 
                 bool illegal = InCircle(p0, pr, pl, p1);
+
+                //if (isBoundaryEdge[EdgeA_ID] && boundaryContainer != null)
+                //{
+                //    // Ребро уже помечено как граничное
+                //    Console.WriteLine($"111111111111111111111111111111111111Легализация пропущена для треугольника ");
+                //    if (i == 0)
+                //        break;
+                //    EdgeA_ID = EdgeStack[--i];
+                //    continue;
+                //}
+                if (boundaryContainer != null)
+                {
+                    // начало ребра
+                    int triangleID = EdgeA_ID / 3;
+                    int localVertex = EdgeA_ID % 3;
+                    int edgeIdStart = Triangles[triangleID][localVertex];
+
+                    // конец ребра
+                    triangleID = EdgeB_ID / 3;
+                    localVertex = EdgeB_ID % 3;
+                    int edgeIdEnd = Triangles[triangleID][localVertex];
+                    if ((pointStatuses[edgeIdStart] == PointStatus.Boundary &&
+                         pointStatuses[edgeIdEnd] == PointStatus.Boundary) &&
+                         boundaryEdges[edgeIdStart].Adjacents.Contains(edgeIdEnd) &&
+                         boundaryEdges[edgeIdEnd].Adjacents.Contains(edgeIdStart))
+                    {
+                        //isBoundaryEdge[EdgeA_ID] = true;
+                        Console.WriteLine($"Легализация пропущена для треугольника {triangleID}, ребро {EdgeA_ID} ({edgeIdStart}-{edgeIdEnd}) является граничным");
+                        if (i == 0)
+                            break;
+                        EdgeA_ID = EdgeStack[--i];
+                        continue;
+                    }
+                }
+                
+                
                 if (illegal)
                 {
                     // Если пара треугольников не удовлетворяет условию Делоне
@@ -679,19 +705,7 @@ namespace TestDelaunayGenerator
                     Triangles[idxElemB][(EdgeB_ID + 0) % 3] = p0;
 
                     //TODO Обновляем статус граничных ребер после флипа
-
-                    //int offset = points.Length - (boundaryContainer?.AllBoundaryPoints.Length ?? 0);
-                    //if (boundaryContainer != null)
-                    //{
-                    //    isBoundaryEdge[EdgeA_ID] = boundaryContainer.IsBoundaryEdge(p1, pr, offset) ||
-                    //                               boundaryContainer.IsBoundaryEdge(pr, p1, offset);
-                    //    isBoundaryEdge[EdgeB_ID] = boundaryContainer.IsBoundaryEdge(p0, pl, offset) ||
-                    //                               boundaryContainer.IsBoundaryEdge(pl, p0, offset);
-                    //    isBoundaryEdge[ar] = boundaryContainer.IsBoundaryEdge(p0, p1, offset) ||
-                    //                         boundaryContainer.IsBoundaryEdge(p1, p0, offset);
-                    //    isBoundaryEdge[bl] = boundaryContainer.IsBoundaryEdge(pr, pl, offset) ||
-                    //                         boundaryContainer.IsBoundaryEdge(pl, pr, offset);
-                    //}
+                    
 
                     int hbl = HalfEdges[bl];
                     // ребро поменяно местами на другой стороне оболочки (редко);
@@ -737,6 +751,7 @@ namespace TestDelaunayGenerator
             return ar;
         }
 
+        
 
         /// <summary>
         /// Рассчитать квадрат расстояния между двумя точками
@@ -874,18 +889,32 @@ namespace TestDelaunayGenerator
             //относительно массива точек
             int triangleIndex = triangleVertexCounter;
 
-            bool[] isBoundary = new bool[3];
+            //bool[] isBoundary = new bool[3];
             //if (boundaryContainer != null)
             //{
             //    int offset = points.Length - boundaryContainer.AllBoundaryPoints.Length;
-            //    isBoundary[0] = boundaryContainer.IsBoundaryEdge(i0, i1, offset);
-            //    isBoundary[1] = boundaryContainer.IsBoundaryEdge(i1, i2, offset);
-            //    isBoundary[2] = boundaryContainer.IsBoundaryEdge(i2, i0, offset);
+            //    isBoundary[0] = (pointStatuses[i0] == PointStatus.Boundary &&
+            //                     boundaryEdges[i0].Adjacents.Contains(i1)) ||
+            //                    (pointStatuses[i1] == PointStatus.Boundary &&
+            //                     boundaryEdges[i1].Adjacents.Contains(i0));
+            //    isBoundary[1] = (pointStatuses[i1] == PointStatus.Boundary &&
+            //                     boundaryEdges[i1].Adjacents.Contains(i2)) ||
+            //                    (pointStatuses[i2] == PointStatus.Boundary &&
+            //                     boundaryEdges[i2].Adjacents.Contains(i1));
+            //    isBoundary[2] = (pointStatuses[i2] == PointStatus.Boundary &&
+            //                     boundaryEdges[i2].Adjacents.Contains(i0)) ||
+            //                    (pointStatuses[i0] == PointStatus.Boundary &&
+            //                     boundaryEdges[i0].Adjacents.Contains(i2));
             //}
+
+            //Link(triangleIndex, a, isBoundary[0]);
+            //Link(triangleIndex + 1, b, isBoundary[1]);
+            //Link(triangleIndex + 2, c, isBoundary[2]);
 
             Link(triangleIndex, a);
             Link(triangleIndex + 1, b);
             Link(triangleIndex + 2, c);
+
             triangleVertexCounter += 3;
 
             return triangleIndex;
@@ -901,7 +930,10 @@ namespace TestDelaunayGenerator
         {
             HalfEdges[EdgesID] = b;
             if (b != -1)
+            {
                 HalfEdges[b] = EdgesID;
+                isBoundaryEdge[b] = isBoundary; // Устанавливаем для смежного ребра
+            }
             isBoundaryEdge[EdgesID] = isBoundary;
         }
 
