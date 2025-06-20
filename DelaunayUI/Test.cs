@@ -1,6 +1,5 @@
 ﻿using CommonLib;
 using CommonLib.Geometry;
-using DelaunayGenerator;
 using GeometryLib;
 using GeometryLib.Aalgorithms;
 using GeometryLib.Vector;
@@ -12,10 +11,11 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection.Emit;
 using System.Windows.Forms;
+using TestDelaunayGenerator;
 using TestDelaunayGenerator.Areas;
 using TestDelaunayGenerator.Boundary;
 
-namespace TestDelaunayGenerator
+namespace DelaunayUI
 {
     public class Test
     {
