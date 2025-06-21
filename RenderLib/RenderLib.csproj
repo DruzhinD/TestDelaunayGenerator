@@ -190,6 +190,10 @@
       <Project>{b8062e08-76ac-4ec2-a7aa-2d7a4c601351}</Project>
       <Name>MeshLib</Name>
     </ProjectReference>
+    <ProjectReference Include="..\TestDelaunayGenerator\TestDelaunayGenerator.csproj">
+      <Project>{aa3f285e-66bd-4f90-bea6-534d016c06d8}</Project>
+      <Name>TestDelaunayGenerator</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Clouds\CPRenderEditControlClouds.resx">

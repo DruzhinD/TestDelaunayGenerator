@@ -61,6 +61,11 @@
     <Compile Include="Boundary\GeneratorFixed.cs" />
     <Compile Include="Enums.cs" />
     <Compile Include="HillEdgeDel.cs" />
+    <Compile Include="Smoothing\ExtendedTriMesh.cs" />
+    <Compile Include="Smoothing\IHalfEdge.cs" />
+    <Compile Include="Smoothing\ISmoother.cs" />
+    <Compile Include="Smoothing\LaplacianSmoother.cs" />
+    <Compile Include="Smoothing\OdtSmoother.cs" />
     <Compile Include="Troika.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="CircleDelaunayGenerator.cs" />
@@ -89,10 +94,6 @@
     <ProjectReference Include="..\Mesh\MeshLib\MeshLib.csproj">
       <Project>{b8062e08-76ac-4ec2-a7aa-2d7a4c601351}</Project>
       <Name>MeshLib</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\RenderLib\RenderLib.csproj">
-      <Project>{3330d65d-e283-47a3-b43c-ce8c4eb2b201}</Project>
-      <Name>RenderLib</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup />

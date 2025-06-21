@@ -23,6 +23,7 @@ namespace RenderLib
     using CommonLib.Geometry;
     using MeshLib.Locators;
     using GeometryLib.Geometry;
+    using TestDelaunayGenerator.Smoothing;
 
     /// <summary>
     ///ОО: Компонент визуализации данных (сетки, и сеточных полей, кривых (устарело) ) 
@@ -37,7 +38,7 @@ namespace RenderLib
         /// Владелец
         /// </summary>
         /// <param name="owner"></param>
-        public void AddOwner(Form owner){ this.owner = owner; }
+        public void AddOwner(Form owner) { this.owner = owner; }
         /// <summary>
         /// Список наблюдаемых сечений
         /// </summary>
@@ -188,16 +189,16 @@ namespace RenderLib
             colorScheme.MaxIsoLine = trackBarMax.Value;
             colorScheme.MinIsoLine = trackBarMin.Value;
             colorScheme.CountIsoLine = (int)nUD_CountIsoLine.Value;
-            colorScheme.formatText      = (uint)nUD_formatText.Value;
+            colorScheme.formatText = (uint)nUD_formatText.Value;
             colorScheme.formatTextReper = (uint)nUD_formatReper.Value;
             // 15 07 24 изменяемый масштаб координатных осей
             colorScheme.scaleCoords = (int)nUD_formatCoordMan.Value;
-   
+
 
             renderOptions.indexValues = listBoxPoles.SelectedIndex;
             renderOptions.showBoudary = cb_showBoudary.Checked;
             renderOptions.showBoudaryKnots = cb_showBoudaryKnots.Checked;
-            renderOptions.showBoudaryElems  = cb_showBoudaryElems.Checked;
+            renderOptions.showBoudaryElems = cb_showBoudaryElems.Checked;
             renderOptions.showElementNamber = cb_showElementNamber.Checked;
             renderOptions.showMesh = cb_showMesh.Checked;
             renderOptions.showKnotNamber = cb_showKnotNamber.Checked;
@@ -225,7 +226,7 @@ namespace RenderLib
 
             CValue(ref renderOptions.opIsoLineSelectValue, tb_opIsoLineSelectValue);
 
-            float aX =0, aY=0, bX=0, bY=0;
+            float aX = 0, aY = 0, bX = 0, bY = 0;
             getCrossLine(ref aX, ref aY, ref bX, ref bY);
             renderOptions.a.X = aX;
             renderOptions.a.Y = aY;
@@ -263,7 +264,7 @@ namespace RenderLib
             }
             proxyRendererControl.renderOptions = renderOptions;
             proxyRendererControl.colorScheme = colorScheme;
-            
+
         }
 
         /// <summary>
@@ -405,10 +406,10 @@ namespace RenderLib
         #region Работа с кистями
         private void SetColorBrush()
         {
-            button1.BackColor  = colorScheme.BrushPoint.Color;
-            button3.BackColor  = colorScheme.BrushBoundaryPoint.Color;
-            button4.BackColor  = colorScheme.BrushTextKnot.Color;
-            button5.BackColor  = colorScheme.BrushTextValues.Color;
+            button1.BackColor = colorScheme.BrushPoint.Color;
+            button3.BackColor = colorScheme.BrushBoundaryPoint.Color;
+            button4.BackColor = colorScheme.BrushTextKnot.Color;
+            button5.BackColor = colorScheme.BrushTextValues.Color;
             button13.BackColor = colorScheme.BrushTextReper.Color;
         }
         public SolidBrush GetBraush(SolidBrush b, object sender)
@@ -526,7 +527,7 @@ namespace RenderLib
                         // создаем объект BinaryFormatter
                         BinaryFormatter formatter = new BinaryFormatter();
                         // получаем поток, куда будем записывать сериализованный объект
-                        using (FileStream fs = new FileStream(saveFileDialog1.FileName, 
+                        using (FileStream fs = new FileStream(saveFileDialog1.FileName,
                             FileMode.OpenOrCreate))
                         {
                             sp.Name = Path.GetFileNameWithoutExtension(saveFileDialog1.FileName);
@@ -650,7 +651,7 @@ namespace RenderLib
         }
         public void SetSavePointCurves(ISavePoint isp)
         {
-            sps = isp; 
+            sps = isp;
         }
         private void btCurves_Click(object sender, EventArgs e)
         {
@@ -756,15 +757,15 @@ namespace RenderLib
                 else
                     Logger.Instance.Info("Буффер файл створа - отсутствует");
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Logger.Instance.Info("Буффер файл створа - отсутствует : " + ex.Message);
             }
-        
+
         }
 
 
-        private void listBoxPoles_SelectedIndexChanged(object sender, EventArgs e) 
+        private void listBoxPoles_SelectedIndexChanged(object sender, EventArgs e)
         {
             SendOption();
         }
@@ -840,9 +841,9 @@ namespace RenderLib
         }
         private void nUD_penMeshLine_ValueChanged(object sender, EventArgs e)
         {
-            if(flagstart == true)
-                colorScheme.PenMeshLine =  
-                        new Pen(colorScheme.PenMeshLine.Color, 
+            if (flagstart == true)
+                colorScheme.PenMeshLine =
+                        new Pen(colorScheme.PenMeshLine.Color,
                         (int)nUD_penMeshLine.Value);
         }
 
@@ -881,7 +882,7 @@ namespace RenderLib
         private void button14_Click_1(object sender, EventArgs e)
         {
             SaveFileDialog sfd = new SaveFileDialog();
-            string ext = ".bed"; 
+            string ext = ".bed";
             string ext1 = ".node";
             string filter = "(*" + ext + ")|*" + ext + "| ";
             filter += "(*" + ext1 + ")|*" + ext1 + "| ";
@@ -896,7 +897,7 @@ namespace RenderLib
             }
             else
             {
-                
+
             }
         }
 
@@ -931,7 +932,7 @@ namespace RenderLib
             }
 
             string sf = openFileDialog1.Filter;
-            try 
+            try
             {
                 string ext = ".mesh";
                 string ext1 = ".node";
@@ -943,18 +944,18 @@ namespace RenderLib
                 openFileDialog1.Filter = filter;
                 if (openFileDialog1.ShowDialog() == DialogResult.OK)
                 {
-                   sp.ImportSPMesh(openFileDialog1.FileName);
+                    sp.ImportSPMesh(openFileDialog1.FileName);
                 }
-            } 
-            catch (Exception ex) 
-            { 
-                    
+            }
+            catch (Exception ex)
+            {
+
             }
             openFileDialog1.Filter = sf;
 
-            
-            
-            
+
+
+
         }
         /// <summary>
         /// Выбор состояния обработки мышки
@@ -968,7 +969,7 @@ namespace RenderLib
 
         private void cb_GradScaleLimit_CheckedChanged(object sender, EventArgs e)
         {
-            if(cb_GradScaleLimit.Checked == true)
+            if (cb_GradScaleLimit.Checked == true)
             {
                 tbMin.Enabled = true;
                 tbMax.Enabled = true;
@@ -1072,7 +1073,7 @@ namespace RenderLib
             if (sp != null)
             {
                 ISavePoint spv = new SavePoint();
-                GraphicsData gdata =(GraphicsData)sp.graphicsData;
+                GraphicsData gdata = (GraphicsData)sp.graphicsData;
                 for (int i = 0; i < spData.graphicsData.curves.Count; i++)
                 {
                     if (checkedListBoxCurve.GetItemCheckState(i) == CheckState.Checked)
@@ -1115,6 +1116,37 @@ namespace RenderLib
         private void btCrossSection_Click(object sender, EventArgs e)
         {
 
+        }
+
+        ISmoother smoother = new LaplacianSmoother();
+        private void btSmooth_Click(object sender, EventArgs e)
+        {
+            ExtendedTriMesh mesh;
+            //попытка преобразования
+            try
+            {
+                mesh = spData.mesh as ExtendedTriMesh;
+                if (mesh is null)
+                    throw new Exception();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Сетка не является типом или не наследуется от {nameof(ExtendedTriMesh)}, " +
+                    $"сглаживание невозможно!");
+                return;
+            }
+
+            //сглаживание
+            if (!double.TryParse(tbSmoothRatio.Text, out double smoothRatio))
+            {
+                smoothRatio = 0.5;
+                MessageBox.Show($"Неверное значение коэффициента! Установлено значение по умолчанию: {smoothRatio}");
+                tbSmoothRatio.Text = smoothRatio.ToString();
+            }
+            smoother.Smooth(mesh, smoothRatio);
+#if DEBUG
+            Console.WriteLine($"Выполнено сглаживание с коэффициентом {smoothRatio}");
+#endif
         }
     }
 }
