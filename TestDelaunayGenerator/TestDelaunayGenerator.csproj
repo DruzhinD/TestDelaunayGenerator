@@ -64,7 +64,6 @@
     <Compile Include="Smoothing\OdtSmoother.cs" />
     <Compile Include="SimpleStructures\Troika.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="TriangulationLog.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

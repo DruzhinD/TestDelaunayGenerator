@@ -13,6 +13,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using TestDelaunayGenerator.Boundary;
+using TestDelaunayGenerator.SimpleStructures;
 using TestDelaunayGenerator.Smoothing;
 
 namespace TestDelaunayGenerator

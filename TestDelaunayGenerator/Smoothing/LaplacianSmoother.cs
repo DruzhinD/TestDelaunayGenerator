@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using TestDelaunayGenerator;
+using TestDelaunayGenerator.SimpleStructures;
 
 namespace TestDelaunayGenerator.Smoothing
 {

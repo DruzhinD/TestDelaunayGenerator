@@ -12,7 +12,6 @@ using System.Linq;
 using System.Reflection.Emit;
 using System.Windows.Forms;
 using TestDelaunayGenerator;
-using TestDelaunayGenerator.Areas;
 using TestDelaunayGenerator.Boundary;
 
 namespace DelaunayUI
