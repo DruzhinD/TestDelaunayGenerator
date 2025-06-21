@@ -47,28 +47,23 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Area\AreaBase.cs" />
-    <Compile Include="Area\GridArea.cs" />
-    <Compile Include="Area\UniformArea.cs" />
     <Compile Include="Boundary\BoundaryNew.cs" />
     <Compile Include="Boundary\BoundaryContainer.cs" />
     <Compile Include="Boundary\CounturHill.cs" />
     <Compile Include="HalfEdgesUtils.cs" />
-    <Compile Include="EdgeIndex.cs" />
+    <Compile Include="SimpleStructures\EdgeIndex.cs" />
     <Compile Include="Delaunator.cs" />
-    <Compile Include="DelaunayMeshGenerator.cs" />
     <Compile Include="Boundary\IGeneratorBase.cs" />
     <Compile Include="Boundary\GeneratorFixed.cs" />
-    <Compile Include="Enums.cs" />
-    <Compile Include="HillEdgeDel.cs" />
+    <Compile Include="SimpleStructures\Enums.cs" />
+    <Compile Include="SimpleStructures\HillEdgeDel.cs" />
     <Compile Include="Smoothing\ExtendedTriMesh.cs" />
     <Compile Include="Smoothing\IHalfEdge.cs" />
     <Compile Include="Smoothing\ISmoother.cs" />
     <Compile Include="Smoothing\LaplacianSmoother.cs" />
     <Compile Include="Smoothing\OdtSmoother.cs" />
-    <Compile Include="Troika.cs" />
+    <Compile Include="SimpleStructures\Troika.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="CircleDelaunayGenerator.cs" />
     <Compile Include="TriangulationLog.cs" />
   </ItemGroup>
   <ItemGroup>
