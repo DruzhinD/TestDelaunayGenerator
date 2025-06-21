@@ -645,8 +645,6 @@ namespace TestDelaunayGenerator
                 //вершина смежного треугольника
                 int p1 = Triangles[idxElemB][(EdgeB_ID + 2) % 3];
 
-                bool illegal = InCircle(p0, pr, pl, p1);
-
                 //if (isBoundaryEdge[EdgeA_ID] && boundaryContainer != null)
                 //{
                 //    // Ребро уже помечено как граничное
@@ -656,6 +654,7 @@ namespace TestDelaunayGenerator
                 //    EdgeA_ID = EdgeStack[--i];
                 //    continue;
                 //}
+                
                 if (boundaryContainer != null)
                 {
                     // начало ребра
@@ -672,7 +671,7 @@ namespace TestDelaunayGenerator
                          boundaryEdges[edgeIdStart].Adjacents.Contains(edgeIdEnd) &&
                          boundaryEdges[edgeIdEnd].Adjacents.Contains(edgeIdStart))
                     {
-                        //isBoundaryEdge[EdgeA_ID] = true;
+                        isBoundaryEdge[EdgeA_ID] = true;
                         Console.WriteLine($"Легализация пропущена для треугольника {triangleID}, ребро {EdgeA_ID} ({edgeIdStart}-{edgeIdEnd}) является граничным");
                         if (i == 0)
                             break;
@@ -680,8 +679,8 @@ namespace TestDelaunayGenerator
                         continue;
                     }
                 }
-                
-                
+                bool illegal = InCircle(p0, pr, pl, p1);
+
                 if (illegal)
                 {
                     // Если пара треугольников не удовлетворяет условию Делоне
@@ -1070,7 +1069,8 @@ namespace TestDelaunayGenerator
                 throw new ArgumentNullException($"{nameof(boundaryContainer)} не должен быть null!");
 
             InitializeExternalPoint();
-
+            // Определяем допуск для близости к границе
+            double tolerance = 0.01;
             //количество точек, входящих в область
             int markedPointAmount = 0;
             //определение принадлежности точек области
@@ -1099,12 +1099,18 @@ namespace TestDelaunayGenerator
                 0, points.Length, (i, loopState) =>
                 {
                     bool isInArea = IsInArea(points[i]);
+                    bool isCloseToBoundary = IsPointCloseToBoundary(points[i], tolerance);
                     //устанавливаем текущую точку, как входящую в область marker == 1
                     if (isInArea)
                     {
-                        pointStatuses[i] = PointStatus.Internal;
-                        //требуется для корректного результата в рамках "гонки потоков"
-                        Interlocked.Increment(ref markedPointAmount);
+                        // Если точка внутри области, но близко к границе, помечаем ее как граничную
+                        pointStatuses[i] = isCloseToBoundary ? PointStatus.External : PointStatus.Internal;
+
+                        if (pointStatuses[i] == PointStatus.Internal)
+                            Interlocked.Increment(ref markedPointAmount);
+                        //pointStatuses[i] = PointStatus.Internal;
+                        ////требуется для корректного результата в рамках "гонки потоков"
+                        //Interlocked.Increment(ref markedPointAmount);
                     }
                     //точка не граничная
                     else
@@ -1400,5 +1406,87 @@ namespace TestDelaunayGenerator
             bool isInArea = IsInArea(ctri);
             return isInArea;
         }
+
+
+
+
+
+
+
+        /// <summary>
+        /// Проверяет, находится ли точка близко к границе области.
+        /// </summary>
+        /// <param name="point">Точка для проверки, реализующая интерфейс <see cref="IHPoint"/>.</param>
+        /// <param name="tolerance">Допустимое расстояние до границы.</param>
+        /// <returns>true, если точка находится ближе, чем tolerance, к любой границе, иначе false.</returns>
+        private bool IsPointCloseToBoundary(IHPoint point, double tolerance)
+        {
+            if (boundaryContainer == null) return false;
+
+            // Проверяем близость к внешней границе
+            if (IsPointCloseToBoundarySegment(point, boundaryContainer.OuterBoundary.BaseVertexes, tolerance))
+                return true;
+
+            // Проверяем близость к внутренним границам
+            foreach (var innerBoundary in boundaryContainer.InnerBoundaries)
+            {
+                if (IsPointCloseToBoundarySegment(point, innerBoundary.BaseVertexes, tolerance))
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Проверяет, находится ли точка близко к сегменту границы.
+        /// </summary>
+        /// <param name="point">Точка для проверки, реализующая интерфейс <see cref="IHPoint"/>.</param>
+        /// <param name="boundary">Массив вершин границы, реализующих интерфейс <see cref="IHPoint"/>.</param>
+        /// <param name="tolerance">Допустимое расстояние до сегмента границы.</param>
+        /// <returns>true, если точка находится ближе, чем tolerance, к любому сегменту границы, иначе false.</returns>
+        private bool IsPointCloseToBoundarySegment(IHPoint point, IHPoint[] boundary, double tolerance)
+        {
+            double toleranceSq = tolerance * tolerance;
+
+            for (int i = 0; i < boundary.Length; i++)
+            {
+                IHPoint p1 = boundary[i];
+                IHPoint p2 = boundary[(i + 1) % boundary.Length];
+
+                // Проверяем расстояние от точки до отрезка границы
+                double distSq = DistanceToSegmentSquared(point, p1, p2);
+                if (distSq <= toleranceSq)
+                    return true;
+            }
+
+            return false;
+        }
+        /// <summary>
+        /// Вычисляет квадрат расстояния от точки до отрезка.
+        /// </summary>
+        /// <param name="point">Точка, от которой измеряется расстояние, реализующая интерфейс <see cref="IHPoint"/>.</param>
+        /// <param name="segStart">Начальная точка отрезка, реализующая интерфейс <see cref="IHPoint"/>.</param>
+        /// <param name="segEnd">Конечная точка отрезка, реализующая интерфейс <see cref="IHPoint"/>.</param>
+        /// <returns>Квадрат минимального расстояния от точки до отрезка.</returns>
+        private double DistanceToSegmentSquared(IHPoint point, IHPoint segStart, IHPoint segEnd)
+        {
+            // Вычисляем квадрат длины отрезка между segStart и segEnd
+            double l2 = HPoint.Length2((HPoint)segStart, (HPoint)segEnd);
+            // Если отрезок вырожден (длина равна нулю), возвращаем квадрат расстояния от точки до начальной точки отрезка
+            if (l2 == 0) return HPoint.Length2((HPoint)point, (HPoint)segStart);
+            // Вычисляем параметр t для проекции точки point на прямую, проходящую через отрезок
+            double t = ((point.X - segStart.X) * (segEnd.X - segStart.X) +
+                        (point.Y - segStart.Y) * (segEnd.Y - segStart.Y)) / l2;
+            // Ограничиваем t в диапазоне [0, 1], чтобы проекция лежала на отрезке
+            //t = Math.Max(0, Math.Min(1, t));
+            // Вычисляем координату X точки проекции на отрезке
+            double projX = segStart.X + t * (segEnd.X - segStart.X);
+            // Вычисляем координату Y точки проекции на отрезке
+            double projY = segStart.Y + t * (segEnd.Y - segStart.Y);
+            // Возвращаем квадрат расстояния от исходной точки до точки проекции
+            return HPoint.Length2(point.X, point.Y, projX, projY);
+        }
+
+
     }
 }

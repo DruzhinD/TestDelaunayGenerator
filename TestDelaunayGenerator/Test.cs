@@ -25,7 +25,7 @@ namespace TestDelaunayGenerator
         //внутренняя оболочка
         IHPoint[] innerBoundary = null;
         //генератор для граничных точек
-        IGeneratorBase generator = new GeneratorFixed();
+        IGeneratorBase generator = new GeneratorFixed(5);
         public Test() { }
         public void CreateRestArea(int idx)
         {
@@ -118,9 +118,17 @@ namespace TestDelaunayGenerator
                             new HPoint(0.5,0.25),
                             new HPoint(1.1,-0.1),
                             new HPoint(1.1,0.7),
+                            //new HPoint(0.5,0.5),
                             new HPoint(-0.1,0.7),
                             //new HPoint(-0.1,-0.1)
                      };
+                    //innerBoundary = new IHPoint[4]
+                    //    {
+                    //        new HPoint(0.1,0.1),
+                    //        new HPoint(0.2, 0.1),
+                    //        new HPoint(0.2, 0.2),
+                    //        new HPoint(0.1,0.2)
+                    //    };
                     break;
                 case 3:
                     {
