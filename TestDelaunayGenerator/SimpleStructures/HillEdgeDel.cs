@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace TestDelaunayGenerator
+namespace TestDelaunayGenerator.SimpleStructures
 {
     //TODO перенести в либу GeometryLib
     /// <summary>

@@ -8,7 +8,7 @@
 //                  + 
 //                 кодировка : 29.03.2025 Потапов И.И.
 //---------------------------------------------------------------------------
-namespace TestDelaunayGenerator
+namespace TestDelaunayGenerator.SimpleStructures
 {
     using CommonLib;
     using System.Runtime.CompilerServices;
