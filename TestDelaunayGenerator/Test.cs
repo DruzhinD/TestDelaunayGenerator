@@ -211,5 +211,7 @@ namespace TestDelaunayGenerator
             }
         }
 
+
+        public void Foo() { }
     }
 }
