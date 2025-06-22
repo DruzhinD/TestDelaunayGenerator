@@ -47,24 +47,23 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Area\AreaBase.cs" />
-    <Compile Include="Area\GridArea.cs" />
-    <Compile Include="Area\UniformArea.cs" />
     <Compile Include="Boundary\BoundaryNew.cs" />
     <Compile Include="Boundary\BoundaryContainer.cs" />
     <Compile Include="Boundary\CounturHill.cs" />
     <Compile Include="HalfEdgesUtils.cs" />
-    <Compile Include="EdgeIndex.cs" />
+    <Compile Include="SimpleStructures\EdgeIndex.cs" />
     <Compile Include="Delaunator.cs" />
-    <Compile Include="DelaunayMeshGenerator.cs" />
     <Compile Include="Boundary\IGeneratorBase.cs" />
     <Compile Include="Boundary\GeneratorFixed.cs" />
-    <Compile Include="Enums.cs" />
-    <Compile Include="HillEdgeDel.cs" />
-    <Compile Include="Troika.cs" />
+    <Compile Include="SimpleStructures\Enums.cs" />
+    <Compile Include="SimpleStructures\HillEdgeDel.cs" />
+    <Compile Include="Smoothing\ExtendedTriMesh.cs" />
+    <Compile Include="Smoothing\IHalfEdge.cs" />
+    <Compile Include="Smoothing\ISmoother.cs" />
+    <Compile Include="Smoothing\LaplacianSmoother.cs" />
+    <Compile Include="Smoothing\OdtSmoother.cs" />
+    <Compile Include="SimpleStructures\Troika.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="CircleDelaunayGenerator.cs" />
-    <Compile Include="TriangulationLog.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
@@ -89,10 +88,6 @@
     <ProjectReference Include="..\Mesh\MeshLib\MeshLib.csproj">
       <Project>{b8062e08-76ac-4ec2-a7aa-2d7a4c601351}</Project>
       <Name>MeshLib</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\RenderLib\RenderLib.csproj">
-      <Project>{3330d65d-e283-47a3-b43c-ce8c4eb2b201}</Project>
-      <Name>RenderLib</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup />

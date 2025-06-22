@@ -28,10 +28,11 @@
         /// </summary>
         private void InitializeComponent()
         {
-            RenderLib.ColorSchemeFields colorSchemeFields2 = new RenderLib.ColorSchemeFields();
+            RenderLib.ColorSchemeFields colorSchemeFields1 = new RenderLib.ColorSchemeFields();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(GDI_Control));
-            RenderLib.RenderOptionsFields renderOptionsFields2 = new RenderLib.RenderOptionsFields();
+            RenderLib.RenderOptionsFields renderOptionsFields1 = new RenderLib.RenderOptionsFields();
             this.panel2 = new System.Windows.Forms.Panel();
+            this.btSmooth = new System.Windows.Forms.Button();
             this.btCrossSection = new System.Windows.Forms.Button();
             this.btCurve = new System.Windows.Forms.Button();
             this.btShow = new System.Windows.Forms.Button();
@@ -182,6 +183,8 @@
             this.toolStripStatusLabel10 = new System.Windows.Forms.ToolStripStatusLabel();
             this.tss_TaskName = new System.Windows.Forms.ToolStripStatusLabel();
             this.saveFileDialog1 = new System.Windows.Forms.SaveFileDialog();
+            this.tbSmoothRatio = new System.Windows.Forms.TextBox();
+            this.label29 = new System.Windows.Forms.Label();
             this.panel2.SuspendLayout();
             this.tbc_Task.SuspendLayout();
             this.tabPage6.SuspendLayout();
@@ -218,6 +221,9 @@
             // 
             this.panel2.BackColor = System.Drawing.SystemColors.ScrollBar;
             this.panel2.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
+            this.panel2.Controls.Add(this.label29);
+            this.panel2.Controls.Add(this.tbSmoothRatio);
+            this.panel2.Controls.Add(this.btSmooth);
             this.panel2.Controls.Add(this.btCrossSection);
             this.panel2.Controls.Add(this.btCurve);
             this.panel2.Controls.Add(this.btShow);
@@ -234,6 +240,17 @@
             this.panel2.Name = "panel2";
             this.panel2.Size = new System.Drawing.Size(290, 884);
             this.panel2.TabIndex = 11;
+            // 
+            // btSmooth
+            // 
+            this.btSmooth.Font = new System.Drawing.Font("Microsoft Sans Serif", 14F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
+            this.btSmooth.Location = new System.Drawing.Point(18, 505);
+            this.btSmooth.Name = "btSmooth";
+            this.btSmooth.Size = new System.Drawing.Size(221, 31);
+            this.btSmooth.TabIndex = 0;
+            this.btSmooth.Text = "сглаживание";
+            this.btSmooth.UseVisualStyleBackColor = true;
+            this.btSmooth.Click += new System.EventHandler(this.btSmooth_Click);
             // 
             // btCrossSection
             // 
@@ -855,10 +872,10 @@
             this.tabControlOption.Controls.Add(this.tabPage3);
             this.tabControlOption.Controls.Add(this.tabPage2);
             this.tabControlOption.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
-            this.tabControlOption.Location = new System.Drawing.Point(6, 507);
+            this.tabControlOption.Location = new System.Drawing.Point(6, 585);
             this.tabControlOption.Name = "tabControlOption";
             this.tabControlOption.SelectedIndex = 0;
-            this.tabControlOption.Size = new System.Drawing.Size(273, 371);
+            this.tabControlOption.Size = new System.Drawing.Size(273, 293);
             this.tabControlOption.TabIndex = 80;
             // 
             // tabPage1
@@ -870,7 +887,7 @@
             this.tabPage1.Location = new System.Drawing.Point(4, 25);
             this.tabPage1.Name = "tabPage1";
             this.tabPage1.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPage1.Size = new System.Drawing.Size(265, 342);
+            this.tabPage1.Size = new System.Drawing.Size(265, 264);
             this.tabPage1.TabIndex = 0;
             this.tabPage1.Text = "Объекты";
             // 
@@ -881,14 +898,14 @@
             this.listBoxPoles.ItemHeight = 20;
             this.listBoxPoles.Location = new System.Drawing.Point(6, 3);
             this.listBoxPoles.Name = "listBoxPoles";
-            this.listBoxPoles.Size = new System.Drawing.Size(256, 336);
+            this.listBoxPoles.Size = new System.Drawing.Size(256, 258);
             this.listBoxPoles.TabIndex = 12;
             // 
             // splitter1
             // 
             this.splitter1.Location = new System.Drawing.Point(3, 3);
             this.splitter1.Name = "splitter1";
-            this.splitter1.Size = new System.Drawing.Size(3, 336);
+            this.splitter1.Size = new System.Drawing.Size(3, 258);
             this.splitter1.TabIndex = 10;
             this.splitter1.TabStop = false;
             // 
@@ -899,7 +916,7 @@
             this.tabPage4.Controls.Add(this.panel9);
             this.tabPage4.Location = new System.Drawing.Point(4, 25);
             this.tabPage4.Name = "tabPage4";
-            this.tabPage4.Size = new System.Drawing.Size(265, 342);
+            this.tabPage4.Size = new System.Drawing.Size(265, 310);
             this.tabPage4.TabIndex = 3;
             this.tabPage4.Text = "Кривые";
             // 
@@ -980,7 +997,7 @@
             this.tabPage3.Location = new System.Drawing.Point(4, 25);
             this.tabPage3.Name = "tabPage3";
             this.tabPage3.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPage3.Size = new System.Drawing.Size(265, 342);
+            this.tabPage3.Size = new System.Drawing.Size(265, 310);
             this.tabPage3.TabIndex = 2;
             this.tabPage3.Text = "Перья";
             // 
@@ -1293,7 +1310,7 @@
             this.tabPage2.Location = new System.Drawing.Point(4, 25);
             this.tabPage2.Name = "tabPage2";
             this.tabPage2.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPage2.Size = new System.Drawing.Size(265, 342);
+            this.tabPage2.Size = new System.Drawing.Size(265, 310);
             this.tabPage2.TabIndex = 1;
             this.tabPage2.Text = "Кисти";
             // 
@@ -1673,19 +1690,19 @@
             // renderControl1
             // 
             this.renderControl1.BackColor = System.Drawing.Color.White;
-            colorSchemeFields2.Background = System.Drawing.Color.White;
-            colorSchemeFields2.FontKnot = new System.Drawing.Font("Arial", 8F);
-            colorSchemeFields2.FontReper = new System.Drawing.Font("Arial", 8F);
-            colorSchemeFields2.FontValue = null;
-            colorSchemeFields2.formatTextReper = ((uint)(2u));
-            this.renderControl1.colorScheme = colorSchemeFields2;
+            colorSchemeFields1.Background = System.Drawing.Color.White;
+            colorSchemeFields1.FontKnot = new System.Drawing.Font("Arial", 8F);
+            colorSchemeFields1.FontReper = new System.Drawing.Font("Arial", 8F);
+            colorSchemeFields1.FontValue = null;
+            colorSchemeFields1.formatTextReper = ((uint)(2u));
+            this.renderControl1.colorScheme = colorSchemeFields1;
             this.renderControl1.IndexTask = 0;
             this.renderControl1.Location = new System.Drawing.Point(209, 3);
             this.renderControl1.Name = "renderControl1";
             this.renderControl1.Points = new System.Drawing.PointF[] {
         ((System.Drawing.PointF)(resources.GetObject("renderControl1.Points"))),
         ((System.Drawing.PointF)(resources.GetObject("renderControl1.Points1")))};
-            this.renderControl1.renderOptions = renderOptionsFields2;
+            this.renderControl1.renderOptions = renderOptionsFields1;
             this.renderControl1.Size = new System.Drawing.Size(32, 22);
             this.renderControl1.TabIndex = 0;
             this.renderControl1.Text = "renderControl1";
@@ -1947,6 +1964,25 @@
             this.tss_TaskName.Size = new System.Drawing.Size(17, 21);
             this.tss_TaskName.Text = "_";
             // 
+            // tbSmoothRatio
+            // 
+            this.tbSmoothRatio.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
+            this.tbSmoothRatio.Location = new System.Drawing.Point(19, 561);
+            this.tbSmoothRatio.Name = "tbSmoothRatio";
+            this.tbSmoothRatio.Size = new System.Drawing.Size(100, 23);
+            this.tbSmoothRatio.TabIndex = 94;
+            this.tbSmoothRatio.Text = "0,5";
+            // 
+            // label29
+            // 
+            this.label29.AutoSize = true;
+            this.label29.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
+            this.label29.Location = new System.Drawing.Point(13, 539);
+            this.label29.Name = "label29";
+            this.label29.Size = new System.Drawing.Size(224, 20);
+            this.label29.TabIndex = 95;
+            this.label29.Text = "Коэффициент сглаживания";
+            // 
             // GDI_Control
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -2161,5 +2197,8 @@
         private System.Windows.Forms.CheckBox cbTauNormals;
         private System.Windows.Forms.Button btGraph;
         private System.Windows.Forms.Button btEvalGraph;
+        private System.Windows.Forms.Button btSmooth;
+        private System.Windows.Forms.Label label29;
+        private System.Windows.Forms.TextBox tbSmoothRatio;
     }
 }
