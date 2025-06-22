@@ -45,8 +45,8 @@
         public void AddBoundary(IHPoint[] boundary)
         {
             if (BoundaryContainer == null)
-                BoundaryContainer = new BoundaryContainer(BoundaryGenerator);
-            BoundaryContainer.Add(boundary);
+                BoundaryContainer = new BoundaryContainer();
+            BoundaryContainer.ReplaceOuterBoundary(boundary, BoundaryGenerator);
         }
     }
 }

@@ -4,6 +4,16 @@
 
     public interface IGeneratorBase
     {
-        IHPoint[] Generate(BoundaryHill boundary);
+        /// <summary>
+        /// Множество точек
+        /// </summary>
+        IHPoint[] Points { get; }
+
+        IHPoint[] Generate(BoundaryNew boundary);
+
+        /// <summary>
+        /// Индексы опорных вершин внутри <see cref="Points"/>
+        /// </summary>
+        int[] BaseVertexIds { get; }
     }
 }
