@@ -1,6 +1,5 @@
 ﻿using CommonLib;
 using CommonLib.Geometry;
-using DelaunayGenerator;
 using GeometryLib;
 using GeometryLib.Aalgorithms;
 using GeometryLib.Vector;
@@ -12,10 +11,10 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection.Emit;
 using System.Windows.Forms;
-using TestDelaunayGenerator.Areas;
+using TestDelaunayGenerator;
 using TestDelaunayGenerator.Boundary;
 
-namespace TestDelaunayGenerator
+namespace DelaunayUI
 {
     public class Test
     {
@@ -58,7 +57,7 @@ namespace TestDelaunayGenerator
                         new HPoint(0, 1),
                         new HPoint(0.5, 0.5),
                         new HPoint(0.4, 0.5),
-                        new HPoint(0.6, 0.8),
+                        new HPoint(0.7, 0.85),
                         new HPoint(0.55, 0.54),
                         new HPoint(0.31, 0.58),
                         new HPoint(0.7, 0.3),
@@ -173,6 +172,14 @@ namespace TestDelaunayGenerator
                         points = new IHPoint[samples.Count];
                         for (int i = 0; i < samples.Count; i++)
                             points[i] = new HPoint(samples[i].X, samples[i].Y);
+                    }
+                    break;
+                case 6:
+                    {
+                        points = new IHPoint[N * N];
+                        var rnd = new Random();
+                        for (int i = 0; i < points.Length; i++)
+                            points[i] = new HPoint(rnd.NextDouble(), rnd.NextDouble());
                     }
                     break;
             }

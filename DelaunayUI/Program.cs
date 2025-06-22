@@ -1,14 +1,10 @@
-﻿using CommonLib.Geometry;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using TestDelaunayGenerator.Areas;
-using TestDelaunayGenerator.Boundary;
 
-namespace TestDelaunayGenerator
+namespace DelaunayUI
 {
     internal class Program
     {
@@ -29,6 +25,7 @@ namespace TestDelaunayGenerator
                 Console.WriteLine("4. Круглое множество");
                 Console.WriteLine("5. Круглое множество с границей");
                 Console.WriteLine("6. Круглое множество с вогнутой границей");
+                Console.WriteLine("7. Случайно сгенерированное множество точек");
                 //Console.WriteLine("7. Равномерное распределение");
                 //Console.WriteLine("8. Звезда (сетка) (с границей)");
                 Console.WriteLine("Esc: выход");
@@ -61,6 +58,10 @@ namespace TestDelaunayGenerator
                             break;
                         case ConsoleKey.D6:
                             test.CreateRestArea(5);
+                            test.Run();
+                            break;
+                        case ConsoleKey.D7:
+                            test.CreateRestArea(6);
                             test.Run();
                             break;
                     }

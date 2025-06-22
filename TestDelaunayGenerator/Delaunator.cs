@@ -13,6 +13,8 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using TestDelaunayGenerator.Boundary;
+using TestDelaunayGenerator.SimpleStructures;
+using TestDelaunayGenerator.Smoothing;
 
 namespace TestDelaunayGenerator
 {
@@ -183,11 +185,28 @@ namespace TestDelaunayGenerator
         private bool[] isBoundaryEdge;
         #endregion
 
-
-        public IMesh ToMesh(bool debug = false)
+        //разворачиваем структуру Triangles в сплошной массив
+        int[] ToArrayTriangles
         {
+            get
+            {
+                int[] intTriangles = new int[3 * Triangles.Length];
+                for (int i = 0; i < Triangles.Length; i++)
+                {
+                    for (int j = 0; j < 3; j++)
+                    {
+                        intTriangles[3 * i + j] = Triangles[i][j];
+                    }
+                }
+                return intTriangles;
+            }
+        }
+
+        public TriMesh ToMesh(bool debug = false)
+        {
+
             //инициализация объекта сетки и выделение памяти
-            TriMesh mesh = new TriMesh();
+            TriMesh mesh = new ExtendedTriMesh(this.HalfEdges, this.pointStatuses, this.Triangles);
 
             if (boundaryContainer != null)
             {
@@ -594,6 +613,9 @@ namespace TestDelaunayGenerator
 
             //отсечение треугольников
             ClippingTriangles();
+            //если множество оболочек не задано, то полученную выпуклую оболочку помечаем граничной
+            if (this.boundaryContainer is null)
+                Array.ForEach(Hull, x => pointStatuses[x] = PointStatus.Boundary);
             #endregion
         }
 
@@ -613,7 +635,7 @@ namespace TestDelaunayGenerator
             // рекурсия устранена с помощью стека фиксированного размера
             while (true)
             {
-                
+
                 //смежное полуребро для EdgeA_ID
                 var EdgeB_ID = HalfEdges[EdgeA_ID];
                 //если смежный треугольник не был найден (т.е. -1), то достаем следующий из стека
@@ -624,8 +646,8 @@ namespace TestDelaunayGenerator
                         break;
                     EdgeA_ID = EdgeStack[--i];
                     continue;
-                }                   
-                
+                }
+
 
                 // адрес - смешение для 1 треугольника (1-ый индекс в треугольнике)
                 int triA_ID = EdgeA_ID - EdgeA_ID % 3;
@@ -704,7 +726,7 @@ namespace TestDelaunayGenerator
                     Triangles[idxElemB][(EdgeB_ID + 0) % 3] = p0;
 
                     //TODO Обновляем статус граничных ребер после флипа
-                    
+
 
                     int hbl = HalfEdges[bl];
                     // ребро поменяно местами на другой стороне оболочки (редко);
@@ -750,7 +772,7 @@ namespace TestDelaunayGenerator
             return ar;
         }
 
-        
+
 
         /// <summary>
         /// Рассчитать квадрат расстояния между двумя точками
@@ -1128,6 +1150,7 @@ namespace TestDelaunayGenerator
                 if (pointStatuses[i] == PointStatus.Internal)
                 {
                     points[currentPointIndex] = points[i];
+                    pointStatuses[currentPointIndex] = pointStatuses[i];
                     currentPointIndex++;
                 }
             }
@@ -1329,13 +1352,10 @@ namespace TestDelaunayGenerator
             //размещаем в стеке нулевой треугольник
             infectionStack[currentStackId++] = triangleId;
 
-            //математическая погрешность для типа double (уточнить)
-            double inaccuracy = 1e-48;
-
             //начинаем заражение, счетчик может наращиваться внутри цикла
             for (currentStackId = 1; currentStackId > 0;)
             {
-                //достаем из стека следующий элемент
+                //достаем из стека верхний (последний) треугольник
                 triangleId = infectionStack[--currentStackId];
                 //зануляем значение в стеке
                 infectionStack[currentStackId] = -1;
@@ -1361,31 +1381,67 @@ namespace TestDelaunayGenerator
                     //помещаем текущий треугольник в стек заражения
                     infectionStack[currentStackId++] = triangleId;
                     //индексы вершин смежного ребра между двумя треугольниками
-                    int edgeIdStart = Triangles[triangleId][localVertex];
-                    int edgeIdEnd = Triangles[adjacentTriangleId][halfEdge % 3];
+                    int vertexIdStart = Triangles[triangleId][localVertex];
+                    int vertexIdEnd = Triangles[adjacentTriangleId][halfEdge % 3];
+
+                    int halfEdgeStart = triangleId * 3 + localVertex;
+                    int halfEdgeEnd = HalfEdges[halfEdgeStart];
                     //в качестве текущего треугольника устанавливаем смежный
                     triangleId = adjacentTriangleId;
 
                     //проверка - является ли смежное ребро граничным
                     if (
                         //обе точки являются граничными
-                        (pointStatuses[edgeIdStart] == PointStatus.Boundary ||
-                        pointStatuses[edgeIdEnd] == PointStatus.Boundary) &&
+                        (pointStatuses[vertexIdStart] == PointStatus.Boundary ||
+                        pointStatuses[vertexIdEnd] == PointStatus.Boundary) &&
                         //первая точка имеет соседа - вторую точку
-                        boundaryEdges[edgeIdStart].Adjacents.Contains(edgeIdEnd)
+                        boundaryEdges[vertexIdStart].Adjacents.Contains(vertexIdEnd)
                     )
                     {
                         if (infectValue == TriangleInfect.External)
                             infectValue = TriangleInfect.Internal;
                         else
                             infectValue = TriangleInfect.External;
+                        //разрываем связь между полуребрами треугольников
+                        UnLink(halfEdgeStart, halfEdgeEnd);
                     }
                     triangleInfectCnt++;
                     Triangles[triangleId].flag = (int)infectValue;
                     localVertex = 0;
                 }
+                //удаляем связи с треугольником, не входящим в область
+                if (Triangles[triangleId].flag == (int)TriangleInfect.External)
+                    UnLinkTriangle(triangleId);
             }
             return triangleInfectCnt;
+        }
+
+        /// <summary>
+        /// Удалить связи с треугольником. По сути очистить его из <see cref="HalfEdges"/>
+        /// </summary>
+        /// <param name="triangleId"></param>
+        void UnLinkTriangle(int triangleId)
+        {
+            //проходим по его полуребрам
+            for (int halfEdge = triangleId * 3; halfEdge < triangleId * 3 + 3; halfEdge++)
+            {
+                //пара к этому полуребру
+                int secondHalfEdge = HalfEdges[halfEdge];
+                UnLink(halfEdge, secondHalfEdge);
+            }
+        }
+
+        /// <summary>
+        /// Разорвать связь между 2 полуребрами
+        /// </summary>
+        /// <param name="edge1"></param>
+        /// <param name="edge2"></param>
+        void UnLink(int edge1, int edge2)
+        {
+            if (edge1 != -1)
+                this.HalfEdges[edge1] = -1;
+            if (edge2 != -1)
+                this.HalfEdges[edge2] = -1;
         }
 
         /// <summary>

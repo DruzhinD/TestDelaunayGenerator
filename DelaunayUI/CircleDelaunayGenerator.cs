@@ -1,4 +1,4 @@
-﻿namespace TestDelaunayGenerator
+﻿namespace DelaunayUI
 {
     using System;
     using System.Collections.Generic;
