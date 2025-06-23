@@ -676,7 +676,6 @@ namespace TestDelaunayGenerator
                 //    EdgeA_ID = EdgeStack[--i];
                 //    continue;
                 //}
-                
                 if (boundaryContainer != null)
                 {
                     // начало ребра
@@ -688,23 +687,42 @@ namespace TestDelaunayGenerator
                     triangleID = EdgeB_ID / 3;
                     localVertex = EdgeB_ID % 3;
                     int edgeIdEnd = Triangles[triangleID][localVertex];
+                    //if ((!IsEdgeValid(p1, p0) && ((pointStatuses[p1] == PointStatus.Boundary && pointStatuses[p0] == PointStatus.Internal) ||
+                    //    (pointStatuses[p1] == PointStatus.Internal && pointStatuses[p0] == PointStatus.Boundary))) ||
+                    //    (!IsEdgeValid(pr, pl) && ((pointStatuses[pr] == PointStatus.Boundary && pointStatuses[pl] == PointStatus.Internal) ||
+                    //    (pointStatuses[pr] == PointStatus.Internal && pointStatuses[pl] == PointStatus.Boundary))))
+                    //{
+                    //    if (i == 0)
+                    //        break;
+                    //    EdgeA_ID = EdgeStack[--i];
+                    //    continue;
+                    //}
                     if ((pointStatuses[edgeIdStart] == PointStatus.Boundary &&
                          pointStatuses[edgeIdEnd] == PointStatus.Boundary) &&
                          boundaryEdges[edgeIdStart].Adjacents.Contains(edgeIdEnd) &&
                          boundaryEdges[edgeIdEnd].Adjacents.Contains(edgeIdStart))
                     {
-                        isBoundaryEdge[EdgeA_ID] = true;
+                        //isBoundaryEdge[EdgeA_ID] = true;
                         Console.WriteLine($"Легализация пропущена для треугольника {triangleID}, ребро {EdgeA_ID} ({edgeIdStart}-{edgeIdEnd}) является граничным");
                         if (i == 0)
                             break;
                         EdgeA_ID = EdgeStack[--i];
                         continue;
                     }
+                    //if (!IsEdgeValid(edgeIdStart, pr))
+                    //{
+                    //    if (i == 0)
+                    //        break;
+                    //    EdgeA_ID = EdgeStack[--i];
+                    //    continue;
+                    //}
                 }
                 bool illegal = InCircle(p0, pr, pl, p1);
-
+                
                 if (illegal)
                 {
+                    int oldA_i = Triangles[idxElemA][(EdgeA_ID + 0) % 3];
+                    int oldB_i = Triangles[idxElemB][(EdgeB_ID + 0) % 3];
                     // Если пара треугольников не удовлетворяет условию Делоне
                     // (p1 находится внутри описанной окружности [p0, pl, pr]),
                     // переверните их против часовой стрелки.
@@ -724,9 +742,29 @@ namespace TestDelaunayGenerator
                     //                                    triB
                     Triangles[idxElemA][(EdgeA_ID + 0) % 3] = p1;
                     Triangles[idxElemB][(EdgeB_ID + 0) % 3] = p0;
-
+                    //if (!IsEdgeValid(p1, p0) && ((pointStatuses[p1] == PointStatus.Boundary && pointStatuses[p0] == PointStatus.Internal) ||
+                    //    (pointStatuses[p1] == PointStatus.Internal && pointStatuses[p0] == PointStatus.Boundary)))
+                    //if ((!IsEdgeValid(p1, p0) && ((pointStatuses[p1] == PointStatus.Boundary && pointStatuses[p0] == PointStatus.Internal) ||
+                    //    (pointStatuses[p1] == PointStatus.Internal && pointStatuses[p0] == PointStatus.Boundary))) ||
+                    //    (!IsEdgeValid(pr, pl) && ((pointStatuses[pr] == PointStatus.Boundary && pointStatuses[pl] == PointStatus.Internal) ||
+                    //    (pointStatuses[pr] == PointStatus.Internal && pointStatuses[pl] == PointStatus.Boundary))))
+                    //{
+                    //    if (i == 0)
+                    //        break;
+                    //    EdgeA_ID = EdgeStack[--i];
+                    //    continue;
+                    //}
                     //TODO Обновляем статус граничных ребер после флипа
-
+                    //if (boundaryContainer != null && (!IsTriangleInArea(idxElemA) || !IsTriangleInArea(idxElemB)))
+                    //{
+                    //    Triangles[idxElemA][(EdgeA_ID + 0) % 3] = oldA_i;
+                    //    Triangles[idxElemB][(EdgeB_ID + 0) % 3] = oldB_i;
+                    //    Console.WriteLine($"Флип ребра {EdgeA_ID} пропущен, так как новый треугольник вне области");
+                    //    if (i == 0)
+                    //        break;
+                    //    EdgeA_ID = EdgeStack[--i];
+                    //    continue;
+                    //}
 
                     int hbl = HalfEdges[bl];
                     // ребро поменяно местами на другой стороне оболочки (редко);
@@ -770,6 +808,51 @@ namespace TestDelaunayGenerator
                 }
             }
             return ar;
+        }
+
+        private bool IsEdgeValid(int startIdx, int endIdx)
+        {
+            if (boundaryContainer == null) return true;
+
+            // Пропускаем проверку, если ребро является частью границы
+            if (pointStatuses[startIdx] == PointStatus.Boundary &&
+                pointStatuses[endIdx] == PointStatus.Boundary &&
+                boundaryEdges[startIdx].Adjacents.Contains(endIdx))
+            {
+                return true;
+            }
+
+            IHPoint p1 = points[startIdx];
+            IHPoint p2 = points[endIdx];
+
+            // Проверка пересечения с внешней границей
+            if (CheckEdgeIntersection(p1, p2, boundaryContainer.OuterBoundary.BaseVertexes))
+                return false;
+
+            // Проверка пересечения с внутренними границами
+            foreach (var innerBoundary in boundaryContainer.InnerBoundaries)
+            {
+                if (CheckEdgeIntersection(p1, p2, innerBoundary.BaseVertexes))
+                    return false;
+            }
+
+            return true;
+        }
+        private bool CheckEdgeIntersection(IHPoint p1, IHPoint p2, IHPoint[] boundary)
+        {
+            for (int i = 0; i < boundary.Length; i++)
+            {
+                IHPoint b1 = boundary[i];
+                IHPoint b2 = boundary[(i + 1) / boundary.Length];
+
+                // Пропускаем, если ребро совпадает с граничным ребром
+                if ((p1.Equals(b1) && p2.Equals(b2)) || (p1.Equals(b2) && p2.Equals(b1)))
+                    continue;
+
+                if (CrossLineUtils.IsCrossing((HPoint)p1, (HPoint)p2, (HPoint)b1, (HPoint)b2))
+                    return true;
+            }
+            return false;
         }
 
 
@@ -937,7 +1020,15 @@ namespace TestDelaunayGenerator
             Link(triangleIndex + 2, c);
 
             triangleVertexCounter += 3;
-
+            // Проверяем принадлежность треугольника области
+            //if (boundaryContainer != null || (pointStatuses[i0] == PointStatus.Boundary || pointStatuses[i1] == PointStatus.Boundary || pointStatuses[i2] == PointStatus.Boundary))
+            //{
+            //    bool isInArea = IsTriangleInArea(triangleId);
+            //    TriangleInfect isInAreaEnum = TriangleInfect.External;
+            //    if (isInArea)
+            //        isInAreaEnum = TriangleInfect.Internal;
+            //    Triangles[triangleId].flag = (int)isInAreaEnum;
+            //}
             return triangleIndex;
         }
 
@@ -1126,13 +1217,13 @@ namespace TestDelaunayGenerator
                     if (isInArea)
                     {
                         // Если точка внутри области, но близко к границе, помечаем ее как граничную
-                        pointStatuses[i] = isCloseToBoundary ? PointStatus.External : PointStatus.Internal;
+                        //pointStatuses[i] = isCloseToBoundary ? PointStatus.External : PointStatus.Internal;
 
-                        if (pointStatuses[i] == PointStatus.Internal)
-                            Interlocked.Increment(ref markedPointAmount);
-                        //pointStatuses[i] = PointStatus.Internal;
-                        ////требуется для корректного результата в рамках "гонки потоков"
-                        //Interlocked.Increment(ref markedPointAmount);
+                        //if (pointStatuses[i] == PointStatus.Internal)
+                        //    Interlocked.Increment(ref markedPointAmount);
+                        pointStatuses[i] = PointStatus.Internal;
+                        //требуется для корректного результата в рамках "гонки потоков"
+                        Interlocked.Increment(ref markedPointAmount);
                     }
                     //точка не граничная
                     else
@@ -1314,9 +1405,35 @@ namespace TestDelaunayGenerator
             //определение принадлежности области "нулевого" треугольника
             for (int triangleId = 0; triangleId < Triangles.Length; triangleId++)
             {
+                var triangle = Triangles[triangleId];
+                (int i, int j, int k) = triangle.Get();
+
+                // Проверяем, все ли вершины граничные
+                bool allBoundary = pointStatuses[i] == PointStatus.Boundary &&
+                                   pointStatuses[j] == PointStatus.Boundary &&
+                                   pointStatuses[k] == PointStatus.Boundary;
+                bool noAllBoundary = pointStatuses[i] == PointStatus.Boundary ||
+                                   pointStatuses[j] == PointStatus.Boundary ||
+                                   pointStatuses[k] == PointStatus.Boundary;
+                //int triangleInfectCnt = 0;
+                //if (allBoundary && !IsTriangleInArea(triangleId))
+                //{
+
+                //    //Triangles[triangleId].flag = (int)TriangleInfect.External;
+
+                //    triangleInfectCnt = InfectTriangles(triangleId, possibleValues);
+
+                //}
+                //else  
+                //{
+
+                //    //Triangles[triangleId].flag = (int)TriangleInfect.Internal;
+                //    triangleInfectCnt = InfectTriangles(triangleId, possibleValues);
+
+                //}
                 //принадлежность треугольника области уже определена
-                if (possibleValues.Contains(Triangles[triangleId].flag))
-                    continue;
+                //if (possibleValues.Contains(Triangles[triangleId].flag))
+                //    continue;
                 int triangleInfectCnt = InfectTriangles(triangleId, possibleValues);
 #if DEBUG
                 Console.WriteLine($"TriangleId:{triangleId};\tЗаражено: {triangleInfectCnt}");
@@ -1451,6 +1568,57 @@ namespace TestDelaunayGenerator
         /// <returns>true - принаделжит области, иначе - false</returns>
         bool IsTriangleInArea(int triangleId)
         {
+            //var triangle = Triangles[triangleId];
+            //(int i, int j, int k) = triangle.Get();
+
+            //// Вычисляем центроид треугольника
+            //double ctx = (coordsX[i] + coordsX[j] + coordsX[k]) / 3.0;
+            //double cty = (coordsY[i] + coordsY[j] + coordsY[k]) / 3.0;
+            //HPoint ctri = new HPoint(ctx, cty);
+
+            //bool isInArea = IsInArea(ctri);
+            //// Проверяем, все ли вершины граничные
+            //bool allBoundary = pointStatuses[i] == PointStatus.Boundary ||
+            //                   pointStatuses[j] == PointStatus.Boundary ||
+            //                   pointStatuses[k] == PointStatus.Boundary;
+
+            //if (allBoundary)
+            //{
+            //    // Если все вершины граничные, проверяем центроид
+            //    if (isInArea)
+            //    {
+            //        return true;
+            //    }
+            //    // Если центроид вне области, проверяем принадлежность одной границе
+            //    int boundaryIdI = boundaryEdges[i].BoundaryID;
+            //    int boundaryIdJ = boundaryEdges[j].BoundaryID;
+            //    int boundaryIdK = boundaryEdges[k].BoundaryID;
+            //    if (boundaryIdI == boundaryIdJ && boundaryIdJ == boundaryIdK)
+            //    {
+            //        return false; // Если центроид вне, а все на одной границе, считаем внешним
+            //    }
+            //    return false; // Иначе считаем внешним, если не все условия совпадают
+            //}
+
+
+            //// Дополнительная проверка: если хотя бы одна вершина граничная, проверяем, чтобы рёбра не пересекали другие границы
+            //if (isInArea && (pointStatuses[i] == PointStatus.Boundary ||
+            //                 pointStatuses[j] == PointStatus.Boundary ||
+            //                 pointStatuses[k] == PointStatus.Boundary))
+            //{
+            //    // Проверяем рёбра треугольника (i-j, j-k, k-i) на пересечение с другими границами
+            //    if (!IsEdgeValidForTriangle(i, j, boundaryEdges[i].BoundaryID) ||
+            //        !IsEdgeValidForTriangle(j, k, boundaryEdges[j].BoundaryID) ||
+            //        !IsEdgeValidForTriangle(k, i, boundaryEdges[k].BoundaryID))
+            //    {
+            //        return false;
+            //    }
+            //}
+
+            //return isInArea;
+
+
+
             var triangle = Triangles[triangleId];
             (int i, int j, int k) = triangle.Get();
 
@@ -1460,7 +1628,56 @@ namespace TestDelaunayGenerator
             HPoint ctri = new HPoint(ctx, cty);
 
             bool isInArea = IsInArea(ctri);
+
+            // Дополнительная проверка: если хотя бы одна вершина граничная, проверяем, чтобы рёбра не пересекали другие границы
+            if (isInArea && (pointStatuses[i] == PointStatus.Boundary ||
+                             pointStatuses[j] == PointStatus.Boundary ||
+                             pointStatuses[k] == PointStatus.Boundary))
+            {
+                // Проверяем рёбра треугольника (i-j, j-k, k-i) на пересечение с другими границами
+                if (!IsEdgeValidForTriangle(i, j, boundaryEdges[i].BoundaryID) ||
+                    !IsEdgeValidForTriangle(j, k, boundaryEdges[j].BoundaryID) ||
+                    !IsEdgeValidForTriangle(k, i, boundaryEdges[k].BoundaryID))
+                {
+                    return false;
+                }
+            }
+
+
+
             return isInArea;
+        }
+
+        private bool IsEdgeValidForTriangle(int startIdx, int endIdx, int currentBoundaryId)
+        {
+            if (boundaryContainer == null)
+                return true;
+
+            if (//(pointStatuses[startIdx] == PointStatus.Boundary && pointStatuses[endIdx] == PointStatus.Boundary) ||
+                (pointStatuses[startIdx] == PointStatus.Internal && pointStatuses[endIdx] == PointStatus.Boundary) ||
+                (pointStatuses[startIdx] == PointStatus.Boundary && pointStatuses[endIdx] == PointStatus.Internal))
+            {
+                IHPoint p1 = points[startIdx];
+                IHPoint p2 = points[endIdx];
+
+                // Проверяем пересечение с внешней границей, исключая текущую границу
+                if (boundaryEdges[startIdx].BoundaryID != boundaryContainer.OuterBoundary.ID &&
+                    CheckEdgeIntersection(p1, p2, boundaryContainer.OuterBoundary.BaseVertexes))
+                {
+                    return false;
+                }
+
+                // Проверяем пересечение с внутренними границами, исключая текущую границу
+                foreach (var innerBoundary in boundaryContainer.InnerBoundaries)
+                {
+                    if (currentBoundaryId != innerBoundary.ID &&
+                        CheckEdgeIntersection(p1, p2, innerBoundary.BaseVertexes))
+                    {
+                        return false;
+                    }
+                }
+            }
+            return true;
         }
 
 

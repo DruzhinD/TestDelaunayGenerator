@@ -24,7 +24,7 @@ namespace DelaunayUI
         //внутренняя оболочка
         IHPoint[] innerBoundary = null;
         //генератор для граничных точек
-        IGeneratorBase generator = new GeneratorFixed(5);
+        IGeneratorBase generator = new GeneratorFixed(3);
         public Test() { }
         public void CreateRestArea(int idx)
         {
@@ -111,23 +111,25 @@ namespace DelaunayUI
                             points[i * N + j] = new HPoint(h * i, hx * j);
                     }
                     outerBoundary = null;
-                    outerBoundary = new IHPoint[5]
+                    outerBoundary = new IHPoint[7]
                     {
                             new HPoint(-0.1,-0.1),
                             new HPoint(0.5,0.25),
                             new HPoint(1.1,-0.1),
                             new HPoint(1.1,0.7),
-                            //new HPoint(0.5,0.5),
+                            new HPoint(0.5,0.5),
                             new HPoint(-0.1,0.7),
+                            new HPoint(0.1,0.35),
                             //new HPoint(-0.1,-0.1)
                      };
-                    //innerBoundary = new IHPoint[4]
-                    //    {
-                    //        new HPoint(0.1,0.1),
-                    //        new HPoint(0.2, 0.1),
-                    //        new HPoint(0.2, 0.2),
-                    //        new HPoint(0.1,0.2)
-                    //    };
+                    innerBoundary = new IHPoint[5]
+                        {
+                            new HPoint(0.1, 0.1),
+                            new HPoint(0.2, 0.1),
+                            new HPoint(0.15, 0.11),
+                            new HPoint(0.2, 0.2),
+                            new HPoint(0.1, 0.2)
+                        };
                     break;
                 case 3:
                     {
@@ -149,7 +151,8 @@ namespace DelaunayUI
                         {
                             new HPoint(0,0),
                             new HPoint(0,width),
-                            new HPoint(height,width)
+                            new HPoint(height,width),
+                            //new HPoint(20, 75),
                         };
                         List<Vector2> samples = CircleDelaunayGenerator.SampleCircle(new Vector2(width / 2, height / 3), 220, 3);
                         points = new IHPoint[samples.Count];
