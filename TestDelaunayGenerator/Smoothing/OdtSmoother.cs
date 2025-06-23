@@ -18,8 +18,9 @@ namespace TestDelaunayGenerator.Smoothing
             for (int pId = 0; pId < mesh.CountKnots; pId++)
             {
                 //треугольники, составляющие область омега
-                int[] trianglesInOmega =
-                    HalfEdgesUtils.AdjacentTrianglesWithEdge(mesh.HalfEdges, pId);
+                //TODO пока не реализовано
+                int[] trianglesInOmega = null;
+                    //HalfEdgesUtils.AdjacentTrianglesWithEdge(mesh.HalfEdges, pId);
 
                 //площадь сегмента омега
                 double omegaArea = 0;

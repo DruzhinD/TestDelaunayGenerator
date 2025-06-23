@@ -4,6 +4,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+using TestDelaunayGenerator.SimpleStructures;
 
 namespace TestDelaunayGenerator
 {
@@ -42,20 +43,39 @@ namespace TestDelaunayGenerator
             return prevHalfEdge;
         }
 
-        //TODO можно добавить флаг на замкнутость сегмента, т.е. если сегмент замкнут,
-        //то не делаем обход с другой стороны
+        //TODO Troika заменить на TriElement (в делонаторе нужно убрать треугольники, находящиеся вне области)
         /// <summary>
         /// Получить все ребра, окружающие конкретную вершину.
         /// </summary>
         /// <param name="halfEdges">массив полуребер</param>
-        /// <param name="startEdge">полуребро, указывающее на общую вершину.
+        /// <param name="edgeId">полуребро, указывающее на общую вершину.
         /// Индекс полуребра, которое хранит индекс общей вершины в массиве треугольников.
         /// Сами же полуребра указывают на вершины, смежные с указанной общей
         /// </param>
         /// <returns>индексы в массиве треугольников, которые содержат смежные вершины с искомой общей.
         /// Все полуребра (индексы, которые они хранят) указывают на общую вершину/returns>
-        public static int[] EdgesAroundVertex(int[] halfEdges, int startEdge)
+        public static int[] EdgesAroundVertex(int[] halfEdges, Troika[] triangles, int edgeId)
         {
+            //если нет смежного полуребра, то ищем другое полуребро, которое связано с такой же вершиной
+            if (halfEdges[edgeId] == -1)
+            {
+                //id треугольника и вершины в нем, переданные в качестве аргумента из edgeId
+                int currentTriangleId = edgeId / 3;
+                int currentVertexId = edgeId % 3;
+                for (int i = 0; i < triangles.Length; i++)
+                {
+                    for (int j = 0; j < 3; j++)
+                    {
+                        //если глобальный id вершины совпал и есть смежное полуребро
+                        if (triangles[i][j] == triangles[currentTriangleId][currentVertexId] &&
+                            halfEdges[i * 3 + j] != -1)
+                            //то используем его как исходное полуребро
+                            edgeId = i * 3 + j;
+                    }
+                }
+            }
+            int adjacentEdgeId = halfEdges[edgeId];
+
             //true - сегмент замкнут, т.е. треугольники окружают точку вкруг
             bool isSegmentClosed = false;
 
@@ -63,7 +83,7 @@ namespace TestDelaunayGenerator
             int incoming, outgoing;
 
             //обход по следующим ребрам
-            for (incoming = startEdge; ;)
+            for (incoming = adjacentEdgeId; ;)
             {
                 //помещаем текущее ребро в список ребер
                 segmentHalfEdges.Add(incoming);
@@ -73,7 +93,7 @@ namespace TestDelaunayGenerator
 
                 //достигли вершины, с которой начался цикл
                 //поэтому сегмент замкнут
-                if (incoming == startEdge)
+                if (incoming == adjacentEdgeId)
                 {
                     isSegmentClosed = true;
                     break;
@@ -89,7 +109,7 @@ namespace TestDelaunayGenerator
                 return segmentHalfEdges.ToArray();
 
             //обход по предыдущим ребрам (если сегмент не замкнут)
-            for (incoming = startEdge; ;)
+            for (incoming = adjacentEdgeId; ;)
             {
                 outgoing = halfEdges[incoming];
 
@@ -97,8 +117,8 @@ namespace TestDelaunayGenerator
                 if (outgoing == -1)
                     break;
                 //до исключения дойти не должно. Поднимается для анализа аномалии обхода
-                if (outgoing == startEdge)
-                    throw new ArgumentException($"Достигнута исходная вершина {startEdge} при обратном обходе!");
+                if (outgoing == adjacentEdgeId)
+                    throw new ArgumentException($"Достигнута исходная вершина {adjacentEdgeId} при обратном обходе!");
 
                 incoming = PrevHalfEdge(outgoing);
 
@@ -116,8 +136,9 @@ namespace TestDelaunayGenerator
         /// <returns></returns>
         public static int[] AdjacentTrianglesWithEdge(int[] halfEdges, int startEdge)
         {
-            int[] edgesAroundVertex = EdgesAroundVertex(halfEdges, startEdge);
-            return edgesAroundVertex.Select(x => x / 3).ToArray();
+            //int[] edgesAroundVertex = EdgesAroundVertex(halfEdges, startEdge);
+            //return edgesAroundVertex.Select(x => x / 3).ToArray();
+            return null;
         }
     }
 }
