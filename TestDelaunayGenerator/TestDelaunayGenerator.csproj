@@ -50,6 +50,8 @@
     <Compile Include="Boundary\BoundaryNew.cs" />
     <Compile Include="Boundary\BoundaryContainer.cs" />
     <Compile Include="Boundary\CounturHill.cs" />
+    <Compile Include="DebugDelaunay.cs" />
+    <Compile Include="DebugDelaunayRecord.cs" />
     <Compile Include="HalfEdgesUtils.cs" />
     <Compile Include="SimpleStructures\EdgeIndex.cs" />
     <Compile Include="Delaunator.cs" />

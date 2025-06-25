@@ -202,6 +202,49 @@ namespace TestDelaunayGenerator
             }
         }
 
+        /// <summary>
+        /// Выводит массивы размером 3 * количество треугольников. <br/>
+        /// Поля:
+        /// вхождение треугольника в область,
+        /// id треугольника (одинаковые значения идут тройками),
+        /// index в разрезе троек вершин,
+        /// halfEdge,
+        /// triangles (тройки вершин, образующие треугольники),
+        /// point_status (принадлежность области)
+        /// </summary>
+        public DebugDelaunay ToDebug()
+        {
+            //вхождение треугольника в область
+            TriangleInfect[] triangleInfects = new TriangleInfect[Triangles.Length * 3];
+            //id треугольника
+            int[] triangleIds = new int[Triangles.Length * 3];
+            //index в разрезе троек вершин
+            int[] indexes = new int[Triangles.Length * 3];
+            //triangles (тройки вершин, образующие треугольники),
+            int[] triangleVertexes = new int[Triangles.Length * 3];
+            PointStatus[] pointStatuses = new PointStatus[Triangles.Length * 3];
+
+            //заполнение
+            for (int i = 0; i < Triangles.Length * 3; i++)
+            {
+                triangleInfects[i] = (TriangleInfect)Triangles[i / 3].flag;
+                triangleIds[i] = i / 3;
+                indexes[i] = i;
+                triangleVertexes[i] = Triangles[i / 3][i % 3];
+                pointStatuses[i] = this.pointStatuses[Triangles[i / 3][i % 3]];
+            }
+
+            DebugDelaunay debugDelaunay = new DebugDelaunay(
+                triangleInfects,
+                triangleIds,
+                indexes,
+                HalfEdges,
+                triangleVertexes,
+                pointStatuses
+            );
+            return debugDelaunay;
+        }
+
         public TriMesh ToMesh(bool debug = false)
         {
 

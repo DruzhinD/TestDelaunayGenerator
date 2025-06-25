@@ -47,7 +47,19 @@ namespace TestDelaunayGenerator.Smoothing
                 }
 
                 //треугольники сегмента омега
-                int[] edgesAroundVId = HalfEdgesUtils.EdgesAroundVertex(mesh.HalfEdges, mesh.HalfEdges[halfEdgeId]);
+                int[] edgesAroundVId = HalfEdgesUtils.EdgesAroundVertex(mesh.HalfEdges, mesh.Triangles, halfEdgeId);
+                //нет соседей
+                if (edgesAroundVId.Length < 2)
+                {
+#if DEBUG
+                    var defaultColor = Console.BackgroundColor;
+                    Console.BackgroundColor = ConsoleColor.Red;
+                    Console.WriteLine($"{vertexId} пропущена, не найдено соседей, смежные ребра: {string.Join(", ", edgesAroundVId)}");
+                    Console.BackgroundColor = defaultColor;
+#endif
+                    isProcessed[vertexId] = true;
+                    continue;
+                }
                 int[] adjacentVertexes = edgesAroundVId.Select(x => mesh.GetVertex(x)).ToArray();
 
                 //суммируем вершины
