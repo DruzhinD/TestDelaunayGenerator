@@ -178,11 +178,6 @@ namespace TestDelaunayGenerator
         /// </summary>
         EdgeIndex[] boundaryEdges;
 
-        /// <summary>
-        /// Является ли ребро граничным.
-        /// Индексация совпадает с <see cref="HalfEdges"/>
-        /// </summary>
-        private bool[] isBoundaryEdge;
         #endregion
 
         //разворачиваем структуру Triangles в сплошной массив
@@ -251,19 +246,11 @@ namespace TestDelaunayGenerator
             //инициализация объекта сетки и выделение памяти
             TriMesh mesh = new ExtendedTriMesh(this.HalfEdges, this.pointStatuses, this.Triangles);
 
-            if (boundaryContainer != null)
-            {
-
-                var triangles = new List<Troika>(Triangles.Length);
-                for (int i = 0; i < Triangles.Length; i++)
-                    if (Triangles[i].flag == (int)TriangleInfect.Internal)
-                        triangles.Add(Triangles[i]);
-                mesh.AreaElems = triangles.Select(triangle => triangle.GetTri).ToArray();
-            }
-            else
-            {
-                mesh.AreaElems = this.Triangles.Select(triangle => triangle.GetTri).ToArray();
-            }
+            var triangles = new List<Troika>(Triangles.Length);
+            for (int i = 0; i < Triangles.Length; i++)
+                if (Triangles[i].flag == (int)TriangleInfect.Internal)
+                    triangles.Add(Triangles[i]);
+            mesh.AreaElems = triangles.Select(triangle => triangle.GetTri).ToArray();
 
             mesh.CoordsX = this.coordsX;
             mesh.CoordsY = this.coordsY;
@@ -458,7 +445,6 @@ namespace TestDelaunayGenerator
             MEM.Alloc(points.Length, ref hullPrev);
             MEM.Alloc(points.Length, ref hullNext);
             MEM.Alloc(points.Length, ref hullTri);
-            MEM.Alloc(maxTriangles * 3, ref isBoundaryEdge);
 
             //вычисление размера хеш-пространства
             //и выделение памяти
@@ -503,10 +489,14 @@ namespace TestDelaunayGenerator
                     isInAreaEnum = TriangleInfect.Internal;
                 Triangles[triangleId].flag = (int)isInAreaEnum;
             }
-            #endregion
+            else
+            {
+                Triangles[triangleId].flag = (int)TriangleInfect.Internal;
+            }
+                #endregion
 
-            //выделение памяти для массива стека перестроения
-            MEM.Alloc((int)Math.Sqrt(points.Length), ref EdgeStack);
+                //выделение памяти для массива стека перестроения
+                MEM.Alloc((int)Math.Sqrt(points.Length), ref EdgeStack);
             #region Поиск выпуклой оболочки и триангуляции
 
             //проход по всем узлам оболочки, за исключением тех, что уже в ней,
@@ -639,7 +629,7 @@ namespace TestDelaunayGenerator
                 hullHash[HashKey(pointId)] = pointId;
                 hullHash[HashKey(prewE)] = prewE;
             }
-            //TODO поправить массив граничных узлов
+
             //создаем массив граничных узлов выпуклой оболочки
             Hull = new int[CountHullKnots];
             int s = hullStart;
@@ -655,7 +645,7 @@ namespace TestDelaunayGenerator
             Triangles = Triangles.Take(triangleVertexCounter / 3).ToArray();
 
             //отсечение треугольников
-            ClippingTriangles();
+            //ClippingTriangles();
             //если множество оболочек не задано, то полученную выпуклую оболочку помечаем граничной
             if (this.boundaryContainer is null)
                 Array.ForEach(Hull, x => pointStatuses[x] = PointStatus.Boundary);
@@ -684,13 +674,12 @@ namespace TestDelaunayGenerator
                 //если смежный треугольник не был найден (т.е. -1), то достаем следующий из стека
                 if (EdgeB_ID == -1)
                 {
-                    // граница выпуклой оболочки 
+                    // граница выпуклой оболочки
                     if (i == 0)
                         break;
                     EdgeA_ID = EdgeStack[--i];
                     continue;
                 }
-
 
                 // адрес - смешение для 1 треугольника (1-ый индекс в треугольнике)
                 int triA_ID = EdgeA_ID - EdgeA_ID % 3;
@@ -701,8 +690,9 @@ namespace TestDelaunayGenerator
                 int triB_ID = EdgeB_ID - EdgeB_ID % 3;
                 int bl = triB_ID + (EdgeB_ID + 2) % 3;
 
-                //индексы вершин двух смежных треугольников 
+                //новый треугольник
                 int idxElemA = triA_ID / 3;
+                //треугольник, уже входящий в оболочку и смежный с новым
                 int idxElemB = triB_ID / 3;
                 int p0 = Triangles[idxElemA][(EdgeA_ID + 2) % 3];
                 int pr = Triangles[idxElemA][(EdgeA_ID + 0) % 3];
@@ -710,43 +700,54 @@ namespace TestDelaunayGenerator
                 //вершина смежного треугольника
                 int p1 = Triangles[idxElemB][(EdgeB_ID + 2) % 3];
 
-                bool illegal = InCircle(p0, pr, pl, p1);
-
-                //if (isBoundaryEdge[EdgeA_ID] && boundaryContainer != null)
-                //{
-                //    // Ребро уже помечено как граничное
-                //    Console.WriteLine($"111111111111111111111111111111111111Легализация пропущена для треугольника ");
-                //    if (i == 0)
-                //        break;
-                //    EdgeA_ID = EdgeStack[--i];
-                //    continue;
-                //}
+                //если задан граничный контур
                 if (boundaryContainer != null)
                 {
                     // начало ребра
-                    int triangleID = EdgeA_ID / 3;
                     int localVertex = EdgeA_ID % 3;
-                    int edgeIdStart = Triangles[triangleID][localVertex];
+                    int edgeIdStart = Triangles[idxElemA][localVertex];
 
                     // конец ребра
-                    triangleID = EdgeB_ID / 3;
                     localVertex = EdgeB_ID % 3;
-                    int edgeIdEnd = Triangles[triangleID][localVertex];
-                    if ((pointStatuses[edgeIdStart] == PointStatus.Boundary &&
-                         pointStatuses[edgeIdEnd] == PointStatus.Boundary) &&
-                         boundaryEdges[edgeIdStart].Adjacents.Contains(edgeIdEnd) &&
-                         boundaryEdges[edgeIdEnd].Adjacents.Contains(edgeIdStart))
+                    int edgeIdEnd = Triangles[idxElemB][localVertex];
+                    
+                    //смежное ребро между треугольниками является граничным
+                    if (pointStatuses[edgeIdStart] == PointStatus.Boundary &&
+                         pointStatuses[edgeIdEnd] == PointStatus.Boundary &&
+                         boundaryEdges[edgeIdStart].Adjacents.Contains(edgeIdEnd))
                     {
-                        //isBoundaryEdge[EdgeA_ID] = true;
-                        Console.WriteLine($"Легализация пропущена для треугольника {triangleID}, ребро {EdgeA_ID} ({edgeIdStart}-{edgeIdEnd}) является граничным");
+#if DEBUG
+
+                        Console.WriteLine($"Легализация пропущена для треугольников {idxElemA}(новый) {idxElemB}(в оболочке), " +
+                            $"ребро ({edgeIdStart}-{edgeIdEnd}) является граничным");
+#endif
+                        //инвертируем принадлежность области для нового треугольника (треуг A)
+                        //относительно смежного с ним (треуг B)
+
+                        TriangleInfect newTriangleValue = TriangleInfect.External;
+                        if (Triangles[idxElemB].flag == (int)newTriangleValue)
+                            newTriangleValue = TriangleInfect.Internal;
+                        Triangles[idxElemA].flag = (int)newTriangleValue;
+
+                        //берем следующий из стека
                         if (i == 0)
                             break;
                         EdgeA_ID = EdgeStack[--i];
                         continue;
                     }
+                    //смежное ребро не граничое => новый треугольник входит в область
+                    else
+                    {
+                        Triangles[idxElemA].flag = Triangles[idxElemB].flag;
+                    }
+                }
+                //граничный контур не задан => все треугольники входят в область
+                else
+                {
+                    Triangles[idxElemA].flag = (int)TriangleInfect.Internal;
                 }
 
-
+                    bool illegal = InCircle(p0, pr, pl, p1);
                 if (illegal)
                 {
                     // Если пара треугольников не удовлетворяет условию Делоне
@@ -768,9 +769,6 @@ namespace TestDelaunayGenerator
                     //                                    triB
                     Triangles[idxElemA][(EdgeA_ID + 0) % 3] = p1;
                     Triangles[idxElemB][(EdgeB_ID + 0) % 3] = p0;
-
-                    //TODO Обновляем статус граничных ребер после флипа
-
 
                     int hbl = HalfEdges[bl];
                     // ребро поменяно местами на другой стороне оболочки (редко);
@@ -954,28 +952,6 @@ namespace TestDelaunayGenerator
             //относительно массива точек
             int triangleIndex = triangleVertexCounter;
 
-            //bool[] isBoundary = new bool[3];
-            //if (boundaryContainer != null)
-            //{
-            //    int offset = points.Length - boundaryContainer.AllBoundaryPoints.Length;
-            //    isBoundary[0] = (pointStatuses[i0] == PointStatus.Boundary &&
-            //                     boundaryEdges[i0].Adjacents.Contains(i1)) ||
-            //                    (pointStatuses[i1] == PointStatus.Boundary &&
-            //                     boundaryEdges[i1].Adjacents.Contains(i0));
-            //    isBoundary[1] = (pointStatuses[i1] == PointStatus.Boundary &&
-            //                     boundaryEdges[i1].Adjacents.Contains(i2)) ||
-            //                    (pointStatuses[i2] == PointStatus.Boundary &&
-            //                     boundaryEdges[i2].Adjacents.Contains(i1));
-            //    isBoundary[2] = (pointStatuses[i2] == PointStatus.Boundary &&
-            //                     boundaryEdges[i2].Adjacents.Contains(i0)) ||
-            //                    (pointStatuses[i0] == PointStatus.Boundary &&
-            //                     boundaryEdges[i0].Adjacents.Contains(i2));
-            //}
-
-            //Link(triangleIndex, a, isBoundary[0]);
-            //Link(triangleIndex + 1, b, isBoundary[1]);
-            //Link(triangleIndex + 2, c, isBoundary[2]);
-
             Link(triangleIndex, a);
             Link(triangleIndex + 1, b);
             Link(triangleIndex + 2, c);
@@ -997,9 +973,7 @@ namespace TestDelaunayGenerator
             if (b != -1)
             {
                 HalfEdges[b] = EdgesID;
-                isBoundaryEdge[b] = isBoundary; // Устанавливаем для смежного ребра
             }
-            isBoundaryEdge[EdgesID] = isBoundary;
         }
 
         #region Хеширование
@@ -1439,8 +1413,6 @@ namespace TestDelaunayGenerator
                             infectValue = TriangleInfect.Internal;
                         else
                             infectValue = TriangleInfect.External;
-                        //разрываем связь между полуребрами треугольников
-                        UnLink(halfEdgeStart, halfEdgeEnd);
                     }
                     triangleInfectCnt++;
                     Triangles[triangleId].flag = (int)infectValue;
@@ -1498,36 +1470,6 @@ namespace TestDelaunayGenerator
 
             bool isInArea = IsInArea(ctri);
             return isInArea;
-        }
-
-        /// <summary>
-        /// Следующее ребро в текущем треугольнике
-        /// </summary>
-        /// <param name="curHalfEdge">текущее полуребро</param>
-        /// <returns></returns>
-        int NextHalfEdge(int curHalfEdge)
-        {
-            int nextHalfEdge = -1;
-            if (curHalfEdge % 3 == 2)
-                nextHalfEdge = curHalfEdge - 2;
-            else
-                nextHalfEdge = curHalfEdge + 1;
-            return nextHalfEdge;
-        }
-
-        /// <summary>
-        /// Предыдущее ребро в текущем треугольнике
-        /// </summary>
-        /// <param name="curHalfEdge">текущее полуребро</param>
-        /// <returns></returns>
-        int PrevHalfEdge(int curHalfEdge)
-        {
-            int prevHalfEdge = -1;
-            if (curHalfEdge % 3 == 0)
-                prevHalfEdge = curHalfEdge + 2;
-            else
-                prevHalfEdge = curHalfEdge - 1;
-            return prevHalfEdge;
         }
     }
 }
