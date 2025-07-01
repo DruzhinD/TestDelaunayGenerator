@@ -18,8 +18,12 @@ namespace TestDelaunayGenerator
         /// </summary>
         /// <param name="curHalfEdge">текущее полуребро</param>
         /// <returns></returns>
+        /// <exception cref="ArgumentException"></exception>
         public static int NextHalfEdge(int curHalfEdge)
         {
+            if (curHalfEdge == -1)
+                throw new ArgumentException("Полуребро не может быть -1", nameof(curHalfEdge));
+
             int nextHalfEdge = -1;
             if (curHalfEdge % 3 == 2)
                 nextHalfEdge = curHalfEdge - 2;
@@ -33,8 +37,12 @@ namespace TestDelaunayGenerator
         /// </summary>
         /// <param name="curHalfEdge">текущее полуребро</param>
         /// <returns></returns>
+        /// <exception cref="ArgumentException"></exception>
         public static int PrevHalfEdge(int curHalfEdge)
         {
+            if (curHalfEdge == -1)
+                throw new ArgumentException("Полуребро не может быть -1", nameof(curHalfEdge));
+
             int prevHalfEdge = -1;
             if (curHalfEdge % 3 == 0)
                 prevHalfEdge = curHalfEdge + 2;

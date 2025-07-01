@@ -58,6 +58,7 @@ namespace DelaunayUI
                         new HPoint(0.5, 0.5),
                         new HPoint(0.4, 0.5),
                         new HPoint(0.7, 0.85),
+                        //new HPoint(0.6, 0.83),
                         new HPoint(0.55, 0.54),
                         new HPoint(0.31, 0.58),
                         new HPoint(0.7, 0.3),
@@ -174,6 +175,41 @@ namespace DelaunayUI
                             points[i] = new HPoint(rnd.NextDouble(), rnd.NextDouble());
                     }
                     break;
+                case 7:
+                    {
+                        outerBoundary = new IHPoint[]
+                        {
+                            new HPoint(0.1, 0.1),
+                            //new HPoint(0.3, 0.61),
+                            new HPoint(0.1, 0.91),
+                            new HPoint(0.9, 0.91),
+                            new HPoint(0.9, 0.1),
+                        };
+                        innerBoundary = new IHPoint[]
+                        {
+                            new HPoint(0.3, 0.6),
+                            new HPoint(0.31, 0.8),
+                            new HPoint(0.7, 0.8),
+                            new HPoint(0.7, 0.6),
+                        };
+                        generator = new GeneratorFixed(0);
+                        points = new IHPoint[]
+                        {
+                            new HPoint(0, 0),
+                            new HPoint(1, 0),
+                            new HPoint(1, 1),
+                            new HPoint(0, 1),
+                            new HPoint(0.5, 0.5),
+                            new HPoint(0.4, 0.5),
+                            //new HPoint(0.7, 0.85),
+                            new HPoint(0.6, 0.83),
+                            new HPoint(0.55, 0.54),
+                            new HPoint(0.31, 0.58),
+                            new HPoint(0.7, 0.3),
+                            new HPoint(0.4, 0.83),
+                        };
+                    }
+                    break;
             }
         }
         public void Run()
@@ -187,11 +223,12 @@ namespace DelaunayUI
                 if (innerBoundary != null)
                     container.AddInnerBoundary(innerBoundary, generator);
             }
-            //преобразовать массив из HPoint В HNumbKnot
-            //HKnot[] newPoints = points.Select(p => new HKnot(p.X, p.Y, -1)).ToArray();
             Delaunator delaunator = new Delaunator(points, container);
+            Stopwatch sw = Stopwatch.StartNew();
             delaunator.Generate();
+            sw.Stop();
             var mesh = delaunator.ToMesh();
+            Console.WriteLine($"Оболочка задана: {container != null}; количество точек: {points.Length}; время выполнения: {sw.Elapsed.TotalSeconds}(c)");
 
             ShowMesh(mesh);
         }

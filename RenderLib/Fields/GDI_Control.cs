@@ -13,7 +13,7 @@ namespace RenderLib
     using GeometryLib;
     using GeometryLib.Vector;
     using RenderLib.Fields;
-
+    
     using System;
     using System.IO;
     using System.Drawing;
@@ -24,6 +24,7 @@ namespace RenderLib
     using MeshLib.Locators;
     using GeometryLib.Geometry;
     using TestDelaunayGenerator.Smoothing;
+    using System.Diagnostics;
 
     /// <summary>
     ///ОО: Компонент визуализации данных (сетки, и сеточных полей, кривых (устарело) ) 
@@ -1143,10 +1144,11 @@ namespace RenderLib
                 MessageBox.Show($"Неверное значение коэффициента! Установлено значение по умолчанию: {smoothRatio}");
                 tbSmoothRatio.Text = smoothRatio.ToString();
             }
+
+            Stopwatch sw = Stopwatch.StartNew();
             smoother.Smooth(mesh, smoothRatio);
-#if DEBUG
-            Console.WriteLine($"Выполнено сглаживание с коэффициентом {smoothRatio}");
-#endif
+            sw.Stop();
+            Console.WriteLine($"Выполнено сглаживание с коэффициентом {smoothRatio}. Время: {sw.Elapsed.TotalSeconds} (с)");
         }
     }
 }

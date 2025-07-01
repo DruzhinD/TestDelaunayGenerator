@@ -493,10 +493,10 @@ namespace TestDelaunayGenerator
             {
                 Triangles[triangleId].flag = (int)TriangleInfect.Internal;
             }
-                #endregion
+            #endregion
 
-                //выделение памяти для массива стека перестроения
-                MEM.Alloc((int)Math.Sqrt(points.Length), ref EdgeStack);
+            //выделение памяти для массива стека перестроения
+            MEM.Alloc((int)Math.Sqrt(points.Length), ref EdgeStack);
             #region Поиск выпуклой оболочки и триангуляции
 
             //проход по всем узлам оболочки, за исключением тех, что уже в ней,
@@ -644,11 +644,11 @@ namespace TestDelaunayGenerator
             HalfEdges = HalfEdges.Take(triangleVertexCounter).ToArray();
             Triangles = Triangles.Take(triangleVertexCounter / 3).ToArray();
 
-            //отсечение треугольников
-            //ClippingTriangles();
             //если множество оболочек не задано, то полученную выпуклую оболочку помечаем граничной
             if (this.boundaryContainer is null)
                 Array.ForEach(Hull, x => pointStatuses[x] = PointStatus.Boundary);
+            //удаление связей с внешними треугольниками в полуребрах
+            ErraseExternalTriangles();
             #endregion
         }
 
@@ -710,14 +710,13 @@ namespace TestDelaunayGenerator
                     // конец ребра
                     localVertex = EdgeB_ID % 3;
                     int edgeIdEnd = Triangles[idxElemB][localVertex];
-                    
+
                     //смежное ребро между треугольниками является граничным
                     if (pointStatuses[edgeIdStart] == PointStatus.Boundary &&
                          pointStatuses[edgeIdEnd] == PointStatus.Boundary &&
                          boundaryEdges[edgeIdStart].Adjacents.Contains(edgeIdEnd))
                     {
 #if DEBUG
-
                         Console.WriteLine($"Легализация пропущена для треугольников {idxElemA}(новый) {idxElemB}(в оболочке), " +
                             $"ребро ({edgeIdStart}-{edgeIdEnd}) является граничным");
 #endif
@@ -747,7 +746,7 @@ namespace TestDelaunayGenerator
                     Triangles[idxElemA].flag = (int)TriangleInfect.Internal;
                 }
 
-                    bool illegal = InCircle(p0, pr, pl, p1);
+                bool illegal = InCircle(p0, pr, pl, p1);
                 if (illegal)
                 {
                     // Если пара треугольников не удовлетворяет условию Делоне
@@ -1470,6 +1469,18 @@ namespace TestDelaunayGenerator
 
             bool isInArea = IsInArea(ctri);
             return isInArea;
+        }
+
+        /// <summary>
+        /// Разорвать связи в полуребрах с внешними треугольниками
+        /// </summary>
+        void ErraseExternalTriangles()
+        {
+            for (int i = 0; i < Triangles.Length; i++)
+            {
+                if (Triangles[i].flag == (int)TriangleInfect.External)
+                    UnLinkTriangle(i);
+            }
         }
     }
 }

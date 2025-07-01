@@ -25,32 +25,32 @@ namespace TestDelaunayGenerator
         /// <summary>
         /// Вхождение треугольника в область
         /// </summary>
-        TriangleInfect AreaStatus { get; set; }
+        public TriangleInfect AreaStatus { get; set; }
 
         /// <summary>
         /// ID треугольника
         /// </summary>
-        int TriangleId { get; set; }
+        public int TriangleId { get; set; }
 
         /// <summary>
         /// индекс в разрезе троек вершин всех треугольников
         /// </summary>
-        int Index { get; set; }
+        public int Index { get; set; }
 
         /// <summary>
         /// Полуребро
         /// </summary>
-        int HalfEdge { get; set; }
+        public int HalfEdge { get; set; }
 
 
         /// <summary>
         /// ID вершины
         /// </summary>
-        int TriangleVertex { get; set; }
+        public int TriangleVertex { get; set; }
 
         /// <summary>
         /// Вхождение точки в область
         /// </summary>
-        PointStatus PointStatus { get; set; }
+        public PointStatus PointStatus { get; set; }
     }
 }

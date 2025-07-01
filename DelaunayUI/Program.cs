@@ -64,6 +64,10 @@ namespace DelaunayUI
                             test.CreateRestArea(6);
                             test.Run();
                             break;
+                        case ConsoleKey.D8:
+                            test.CreateRestArea(7);
+                            test.Run();
+                            break;
                     }
                     Console.Clear();
                 }
