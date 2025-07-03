@@ -13,7 +13,7 @@ namespace RenderLib
     using GeometryLib;
     using GeometryLib.Vector;
     using RenderLib.Fields;
-    
+
     using System;
     using System.IO;
     using System.Drawing;
@@ -1145,10 +1145,14 @@ namespace RenderLib
                 tbSmoothRatio.Text = smoothRatio.ToString();
             }
 
-            Stopwatch sw = Stopwatch.StartNew();
-            smoother.Smooth(mesh, smoothRatio);
-            sw.Stop();
-            Console.WriteLine($"Выполнено сглаживание с коэффициентом {smoothRatio}. Время: {sw.Elapsed.TotalSeconds} (с)");
+            //5 итераций
+            for (int i = 0; i < 5; i++)
+            {
+                Stopwatch sw = Stopwatch.StartNew();
+                smoother.Smooth(mesh, smoothRatio);
+                sw.Stop();
+                Console.WriteLine($"Выполнено сглаживание с коэффициентом {smoothRatio}. Время: {sw.Elapsed.TotalSeconds} (с)");
+            }
         }
     }
 }

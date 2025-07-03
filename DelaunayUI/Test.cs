@@ -18,17 +18,17 @@ namespace DelaunayUI
 {
     public class Test
     {
-        IHPoint[] points = null;
+        public IHPoint[] points = null;
         //внешняя оболочка
-        IHPoint[] outerBoundary = null;
+        public IHPoint[] outerBoundary = null;
         //внутренняя оболочка
-        IHPoint[] innerBoundary = null;
+        public IHPoint[] innerBoundary = null;
         //генератор для граничных точек
-        IGeneratorBase generator = new GeneratorFixed();
+        public IGeneratorBase generator = new GeneratorFixed();
         public Test() { }
         public void CreateRestArea(int idx)
         {
-            const int N = 100;
+            const int N = 70;
             double h = 3.0 / (N - 1);
             switch (idx)
             {
@@ -102,6 +102,7 @@ namespace DelaunayUI
                         };
 
                     break;
+                //трапеция
                 case 2:
 
                     points = new IHPoint[N * N];
@@ -212,7 +213,7 @@ namespace DelaunayUI
                     break;
             }
         }
-        public void Run()
+        public Delaunator Run(bool showForm = true)
         {
             BoundaryContainer container = null;
             //инициализация границы, если заданы контура
@@ -230,7 +231,10 @@ namespace DelaunayUI
             var mesh = delaunator.ToMesh();
             Console.WriteLine($"Оболочка задана: {container != null}; количество точек: {points.Length}; время выполнения: {sw.Elapsed.TotalSeconds}(c)");
 
-            ShowMesh(mesh);
+            if (showForm)
+                ShowMesh(mesh);
+
+            return delaunator;
         }
 
         protected void ShowMesh(IMesh mesh)

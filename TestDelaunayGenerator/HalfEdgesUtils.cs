@@ -1,5 +1,7 @@
-﻿using System;
+﻿using MemLogLib;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -64,6 +66,10 @@ namespace TestDelaunayGenerator
         /// Все полуребра (индексы, которые они хранят) указывают на общую вершину/returns>
         public static int[] EdgesAroundVertex(int[] halfEdges, Troika[] triangles, int edgeId)
         {
+//#if DEBUG
+//            Console.WriteLine($"Стартовое ребро: {triangles[edgeId / 3][edgeId % 3]}-{triangles[halfEdges[edgeId] / 3][halfEdges[edgeId] % 3]}");
+//#endif
+            int vertexId = triangles[edgeId / 3][edgeId % 3];
             //если нет смежного полуребра, то ищем другое полуребро, которое связано с такой же вершиной
             if (halfEdges[edgeId] == -1)
             {
@@ -90,15 +96,34 @@ namespace TestDelaunayGenerator
             List<int> segmentHalfEdges = new List<int>();
             int incoming, outgoing;
 
+            //incoming (start), outgoing, incoming
+            List<(int, int, int)> debug = new List<(int, int, int)>();
             //обход по следующим ребрам
             for (incoming = adjacentEdgeId; ;)
             {
+                int startIncoming = incoming;
                 //помещаем текущее ребро в список ребер
                 segmentHalfEdges.Add(incoming);
 
-                outgoing = NextHalfEdge(incoming);
-                incoming = halfEdges[outgoing];
+                //одно ребро
+                outgoing = NextHalfEdge(incoming); //указывает на общую вершину
+                incoming = halfEdges[outgoing]; //указывает на смежную с ней
 
+                debug.Add((startIncoming, outgoing, incoming));
+#if DEBUG
+                if (triangles[outgoing / 3][outgoing % 3] != vertexId)
+                {
+                    string log = $"общая вершина ({nameof(outgoing)}) != {vertexId} " +
+                        $"({triangles[startIncoming / 3][startIncoming % 3]}," +
+                        $"{triangles[outgoing / 3][outgoing % 3]}," +
+                        $"{triangles[incoming / 3][incoming % 3]})";
+
+                    Utils.ConsoleWriteLineColored(
+                        ConsoleColor.Magenta,
+                        log
+                        );
+                }
+#endif
                 //достигли вершины, с которой начался цикл
                 //поэтому сегмент замкнут
                 if (incoming == adjacentEdgeId)
@@ -116,9 +141,12 @@ namespace TestDelaunayGenerator
             if (isSegmentClosed)
                 return segmentHalfEdges.ToArray();
 
+            //TODO System out of memory если выход закомментирован. Первое проверяемое ребро
+            var debug2 = new List<(int, int, int)>();
             //обход по предыдущим ребрам (если сегмент не замкнут)
             for (incoming = adjacentEdgeId; ;)
             {
+                int startIncoming = incoming;
                 outgoing = halfEdges[incoming];
 
                 //если нет смежного полуребра, то выходим
@@ -130,6 +158,7 @@ namespace TestDelaunayGenerator
 
                 incoming = PrevHalfEdge(outgoing);
 
+                debug2.Add((startIncoming, outgoing, incoming));
                 segmentHalfEdges.Add(incoming);
             }
 
@@ -137,16 +166,15 @@ namespace TestDelaunayGenerator
         }
 
         /// <summary>
-        /// Треугольники, смежные с вершиной, на которую указывает <paramref name="startEdge"/>
+        /// Треугольники, смежные с вершиной, на которую указывает <paramref name="edgeId"/>
         /// </summary>
         /// <param name="halfEdges"></param>
-        /// <param name="startEdge"></param>
+        /// <param name="edgeId"></param>
         /// <returns></returns>
-        public static int[] AdjacentTrianglesWithEdge(int[] halfEdges, int startEdge)
+        public static int[] AdjacentTrianglesWithEdge(int[] halfEdges, Troika[] triangles, int edgeId)
         {
-            //int[] edgesAroundVertex = EdgesAroundVertex(halfEdges, startEdge);
-            //return edgesAroundVertex.Select(x => x / 3).ToArray();
-            return null;
+            int[] edgesAroundVertex = EdgesAroundVertex(halfEdges, triangles, edgeId);
+            return edgesAroundVertex.Select(x => x / 3).ToArray();
         }
     }
 }

@@ -22,29 +22,29 @@ namespace TestDelaunayGenerator
         /// <summary>
         /// вхождение треугольника в область,
         /// </summary>
-        TriangleInfect[] TriangleInfects { get; set; }
+        public TriangleInfect[] TriangleInfects { get; set; }
 
         /// <summary>
         /// id треугольника (одинаковые значения идут тройками)
         /// </summary>
-        int[] TriangleIds { get; set; }
+        public int[] TriangleIds { get; set; }
 
         /// <summary>
         /// index в разрезе троек вершин
         /// </summary>
-        int[] Indexes { get; set; }
+        public int[] Indexes { get; set; }
 
-        int[] HalfEdges { get; set; }
+        public int[] HalfEdges { get; set; }
 
         /// <summary>
         /// triangles (тройки вершин, образующие треугольники)
         /// </summary>
-        int[] TriangleVertexes { get; set; }
+        public int[] TriangleVertexes { get; set; }
 
         /// <summary>
         /// point_status (принадлежность области)
         /// </summary>
-        PointStatus[] PointStatuses { get; set; }
+        public PointStatus[] PointStatuses { get; set; }
 
         public DebugDelaunayRecord[] Records
         {

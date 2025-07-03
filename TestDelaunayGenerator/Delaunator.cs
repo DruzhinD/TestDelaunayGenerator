@@ -144,7 +144,7 @@ namespace TestDelaunayGenerator
         /// Ссылки индексов ребер треугольника на ребра сопряженных треугольников
         /// (или -1 для ребер на выпуклой оболочке). (Ребра диаграмы Вронского)
         /// </summary>
-        int[] HalfEdges;
+        public int[] HalfEdges;
 
         /// <summary>
         /// Размер стека для перестройки треугольников по Делоне.
@@ -164,13 +164,13 @@ namespace TestDelaunayGenerator
         /// Обход вершин всех треугольников направлен против ч.с. <br/>
         /// flag = 20 - принадлежит области, 10 - не принадлежит области
         /// </summary>
-        Troika[] Triangles;
+        public Troika[] Triangles;
 
         /// <summary>
         /// Принадлежность точки области.
         /// Индексация совпадает с <see cref="points"/>
         /// </summary>
-        PointStatus[] pointStatuses;
+        public PointStatus[] pointStatuses;
 
         /// <summary>
         /// Граничные ребра.
@@ -648,7 +648,7 @@ namespace TestDelaunayGenerator
             if (this.boundaryContainer is null)
                 Array.ForEach(Hull, x => pointStatuses[x] = PointStatus.Boundary);
             //удаление связей с внешними треугольниками в полуребрах
-            ErraseExternalTriangles();
+            //ErraseExternalTriangles();
             #endregion
         }
 
