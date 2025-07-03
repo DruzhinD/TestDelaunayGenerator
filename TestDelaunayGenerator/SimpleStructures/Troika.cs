@@ -53,5 +53,11 @@ namespace TestDelaunayGenerator.SimpleStructures
         {
             return $"{i},{j},{k};flag:{flag}";
         }
+        public Troika(int i, int j, int k) : this()
+        {
+            this.i = i;
+            this.j = j;
+            this.k = k;
+        }
     }
 }

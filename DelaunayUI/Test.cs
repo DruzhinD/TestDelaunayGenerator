@@ -24,7 +24,7 @@ namespace DelaunayUI
         //внутренняя оболочка
         IHPoint[] innerBoundary = null;
         //генератор для граничных точек
-        IGeneratorBase generator = new GeneratorFixed();
+        IGeneratorBase generator = new GeneratorFixed(3);
         public Test() { }
         public void CreateRestArea(int idx)
         {
@@ -48,7 +48,7 @@ namespace DelaunayUI
                         new HPoint(0.7, 0.8),
                         new HPoint(0.7, 0.6),
                     };
-                    generator = new GeneratorFixed(1);
+                    generator = new GeneratorFixed(0);
                     points = new IHPoint[]
                     {
                         new HPoint(0, 0),
@@ -57,7 +57,10 @@ namespace DelaunayUI
                         new HPoint(0, 1),
                         new HPoint(0.5, 0.5),
                         new HPoint(0.4, 0.5),
-                        new HPoint(0.7, 0.85),
+                        new HPoint(0.6, 0.82),
+                        new HPoint(0.4, 0.82),
+                        new HPoint(0.15, 0.7),
+                        new HPoint(0.2, 0.7),
                         new HPoint(0.55, 0.54),
                         new HPoint(0.31, 0.58),
                         new HPoint(0.7, 0.3),
@@ -114,7 +117,7 @@ namespace DelaunayUI
                     outerBoundary = new IHPoint[5]
                     {
                             new HPoint(-0.1,-0.1),
-                            new HPoint(0.5,0.25),
+                            new HPoint(0.5,0.65),
                             new HPoint(1.1,-0.1),
                             new HPoint(1.1,0.7),
                             new HPoint(-0.1,0.7),
@@ -191,8 +194,75 @@ namespace DelaunayUI
             //HKnot[] newPoints = points.Select(p => new HKnot(p.X, p.Y, -1)).ToArray();
             Delaunator delaunator = new Delaunator(points, container);
             delaunator.Generate();
-            var mesh = delaunator.ToMesh();
+            int n = 0;
+            // Цикл обработки отсутствующих граничных ребер
+            do
+            {
+                //break;
+                // Находим первое отсутствующее граничное ребро
+                var missingEdge = delaunator.FindMissingBoundaryEdges();
+                if (missingEdge == null)
+                {
+                    Console.WriteLine("Все граничные ребра обработаны.");
+                    break;
+                }
 
+                var (start, end) = missingEdge.Value;
+                Console.WriteLine($"Обработка пропущенного граничного ребра: ({start}, {end})");
+
+                // Обрабатываем отсутствующее ребро
+                var (intersectedEdges, intersectionPoints) = delaunator.ProcessMissingBoundaryEdge(missingEdge.Value);
+
+                // Выводим результаты
+                Console.WriteLine("Пересеченные ребра:");
+                foreach (int edgeIndex in intersectedEdges)
+                {
+                    Console.WriteLine($"Полуребро с индексом: {edgeIndex}");
+                }
+
+                Console.WriteLine("Точки пересечения на граничном ребре:");
+                foreach (IHPoint point in intersectionPoints)
+                {
+                    Console.WriteLine($"Точка: ({point.X}, {point.Y})");
+                }
+                n = n + 1;
+                //break;
+            } while (n < 1);
+
+
+
+
+
+            //var missingEdges = delaunator.FindMissingBoundaryEdges();
+            //Console.WriteLine("Пропущенные граничные ребра (индексы вершин):");      
+            //foreach (var (start, end) in missingEdges)
+            //{
+            //    Console.WriteLine($"Ребро: ({start}, {end})");
+            //}
+
+            //foreach (var edge in missingEdges)
+            //{
+            //    var (intersectedEdges, intersectionPoints) = delaunator.ProcessMissingBoundaryEdge(edge);
+
+            //    // Выводим результаты
+            //    Console.WriteLine("Пересеченные ребра:");
+            //    foreach (int edgeIndex in intersectedEdges)
+            //    {
+            //        Console.WriteLine($"Полуребро с индексом: {edgeIndex}");
+            //    }
+
+            //    //Console.WriteLine("Точки пересечения на граничном ребре:");
+            //    //foreach (IHPoint point in intersectionPoints)
+            //    //{
+            //    //    Console.WriteLine($"Точка: ({point.X}, {point.Y})");
+            //    //}
+
+            //    //break;
+            //}
+
+
+            var mesh = delaunator.ToMesh();
+            
             ShowMesh(mesh);
         }
 
