@@ -141,25 +141,19 @@ namespace TestDelaunayGenerator
             if (isSegmentClosed)
                 return segmentHalfEdges.ToArray();
 
-            //TODO System out of memory если выход закомментирован. Первое проверяемое ребро
-            var debug2 = new List<(int, int, int)>();
             //обход по предыдущим ребрам (если сегмент не замкнут)
-            for (incoming = adjacentEdgeId; ;)
+
+            for (outgoing = edgeId; ;)
             {
-                int startIncoming = incoming;
+                incoming = PrevHalfEdge(outgoing);
+                segmentHalfEdges.Add(incoming);
                 outgoing = halfEdges[incoming];
 
-                //если нет смежного полуребра, то выходим
                 if (outgoing == -1)
                     break;
-                //до исключения дойти не должно. Поднимается для анализа аномалии обхода
-                if (outgoing == adjacentEdgeId)
+
+                if (outgoing == edgeId)
                     throw new ArgumentException($"Достигнута исходная вершина {adjacentEdgeId} при обратном обходе!");
-
-                incoming = PrevHalfEdge(outgoing);
-
-                debug2.Add((startIncoming, outgoing, incoming));
-                segmentHalfEdges.Add(incoming);
             }
 
             return segmentHalfEdges.ToHashSet().ToArray();

@@ -16,6 +16,7 @@ namespace TestDelaunayGenerator.Smoothing
         /// </summary>
         protected ExtendedTriMesh mesh;
 
+        //TODO не робит с количестовом > 1
         /// <summary>
         /// количество попыток перемещения точки в новые координаты
         /// с уменьшем степени сглаживания
@@ -94,7 +95,10 @@ namespace TestDelaunayGenerator.Smoothing
                 //проход по всем треугольникам, которые содержат вершину
                 for (int i = 0; i < edgesAroundVId.Length; i++)
                 {
-                    #region Второй способ
+                    //id треугольника
+                    int edgeId = mesh.HalfEdges[edgesAroundVId[i]];
+                    int trid = edgeId / 3;
+
                     double currentSmoothRatio = smoothRatio;
                     //выполняем перемещение вершины до тех пор,
                     //пока перемещение не станет приемлемым
@@ -103,12 +107,7 @@ namespace TestDelaunayGenerator.Smoothing
                         //новые координаты точки
                         (newX, newY) = UseSmoothRatio(vertexId, avgX, avgY, currentSmoothRatio);
 
-                        //id полуребра
-                        int edgeId = mesh.HalfEdges[edgesAroundVId[i]];
-                        int trid = edgeId / 3;
-
                         isNotDestroyed = this.IsTriangleNotDestroyed(trid, vertexId, newX, newY);
-
                         //треугольник не вывернут, идем дальше
                         if (isNotDestroyed)
                             break;
@@ -132,56 +131,13 @@ namespace TestDelaunayGenerator.Smoothing
                         //устанавливаем изначальные координаты
                         (newX, newY) = (mesh.CoordsX[vertexId], mesh.CoordsY[vertexId]);
                     }
+
+                    //треугольник вывернут, поэтому нет смысла проверять оставшиеся,
+                    //вершина не перемещается в новые координаты
                     if (!isNotDestroyed)
+                    {
                         break;
-                    #endregion
-
-                    #region Первый способ
-                    //                    //новые координаты точки
-                    //                    (newX, newY) = UseSmoothRatio(vertexId, avgX, avgY, smoothRatio);
-                    //                    int edgeId = mesh.HalfEdges[edgesAroundVId[i]];
-                    //                    //id вершин
-                    //                    List<int> vertexIds = new List<int>(3);
-                    //                    vertexIds.Add(mesh.Triangles[edgeId / 3].i);
-                    //                    vertexIds.Add(mesh.Triangles[edgeId / 3].j);
-                    //                    vertexIds.Add(mesh.Triangles[edgeId / 3].k);
-                    //                    //удаляем из списка общую вершину
-                    //                    vertexIds.Remove(vertexId);
-
-                    //                    double areaOld = OrientArea(new HPoint(mesh.CoordsX[vertexId], mesh.CoordsY[vertexId]),
-                    //                        new HPoint(mesh.CoordsX[vertexIds[0]], mesh.CoordsY[vertexIds[0]]),
-                    //                        new HPoint(mesh.CoordsX[vertexIds[1]], mesh.CoordsY[vertexIds[1]])
-                    //                        );
-
-                    //                    double areaNew = OrientArea(new HPoint(newX, newY),
-                    //                        new HPoint(mesh.CoordsX[vertexIds[0]], mesh.CoordsY[vertexIds[0]]),
-                    //                        new HPoint(mesh.CoordsX[vertexIds[1]], mesh.CoordsY[vertexIds[1]])
-                    //                        );
-
-                    //                    //произведение должно быть положительным, т.е. знаки должны быть равны
-                    //                    if (areaOld * areaNew > 0)
-                    //                    {
-                    //                        //break;
-                    //                        continue;
-                    //                    }
-                    //                    //если произведение неположительное, то не перемещаем точку
-                    //                    else
-                    //                    {
-                    //#if DEBUG
-                    //                        Utils.ConsoleWriteLineColored(
-                    //                            ConsoleColor.Red,
-                    //                            $"Пропуск перемещения для точки {vertexId}({mesh.CoordsX[vertexId]},{mesh.CoordsY[vertexId]}) " +
-                    //                            $"({vertexId},{vertexIds[0]},{vertexIds[1]}). " +
-                    //                            $"Причина: выворот области"
-                    //                            );
-                    //#endif
-                    //                        newX = mesh.CoordsX[vertexId];
-                    //                        newY = mesh.CoordsY[vertexId];
-                    //                        //TODO убрать 
-                    //                        break;
-                    //                    }
-                    #endregion
-
+                    }
                 }
 #if DEBUG
                 if (isNotDestroyed)
