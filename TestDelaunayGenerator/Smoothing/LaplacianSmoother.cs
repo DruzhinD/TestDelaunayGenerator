@@ -21,7 +21,7 @@ namespace TestDelaunayGenerator.Smoothing
         /// количество попыток перемещения точки в новые координаты
         /// с уменьшем степени сглаживания
         /// </summary>
-        const int attemptCount = 1;
+        const int attemptCount = 3;
 
         public void Smooth(ExtendedTriMesh mesh, double smoothRatio = 1)
         {
@@ -91,6 +91,8 @@ namespace TestDelaunayGenerator.Smoothing
                 double newY = mesh.CoordsY[vertexId];
 
                 bool isNotDestroyed = true;
+                //коэффииент сглаживания, мб уменьшен из-за выворота треугольников
+                double currentSmoothRatio = smoothRatio;
                 //проверка выворота треугольников
                 //проход по всем треугольникам, которые содержат вершину
                 for (int i = 0; i < edgesAroundVId.Length; i++)
@@ -99,7 +101,6 @@ namespace TestDelaunayGenerator.Smoothing
                     int edgeId = mesh.HalfEdges[edgesAroundVId[i]];
                     int trid = edgeId / 3;
 
-                    double currentSmoothRatio = smoothRatio;
                     //выполняем перемещение вершины до тех пор,
                     //пока перемещение не станет приемлемым
                     for (int attempt = 0; attempt < attemptCount; attempt++)
