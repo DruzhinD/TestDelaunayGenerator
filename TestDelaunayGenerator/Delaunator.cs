@@ -493,10 +493,10 @@ namespace TestDelaunayGenerator
             {
                 Triangles[triangleId].flag = (int)TriangleInfect.Internal;
             }
-                #endregion
+            #endregion
 
-                //выделение памяти для массива стека перестроения
-                MEM.Alloc((int)Math.Sqrt(points.Length), ref EdgeStack);
+            //выделение памяти для массива стека перестроения
+            MEM.Alloc((int)Math.Sqrt(points.Length), ref EdgeStack);
             #region Поиск выпуклой оболочки и триангуляции
 
             //проход по всем узлам оболочки, за исключением тех, что уже в ней,
@@ -653,30 +653,37 @@ namespace TestDelaunayGenerator
         }
 
 
+
         /// <summary>
-        /// Идентифицирует граничные ребра, отсутствующие в HalfEdges, и возвращает их индексы вершин.
+        /// Идентифицирует первое граничное ребро, отсутствующее в HalfEdges, и возвращает его индексы вершин.
         /// </summary>
-        /// <returns>Массив кортежей, содержащих индексы вершин пропущенных граничных рёбер.</returns>
-        //public (int, int)[] FindMissingBoundaryEdges()
+        /// <returns>Кортеж с индексами вершин первого пропущенного граничного ребра или null, если все ребра присутствуют.</returns>
+        //public (int, int)? FindMissingBoundaryEdges()
         //{
-        //    // Список для хранения пропущенных рёбер (кортежи индексов вершин)
-        //    var missingEdges = new List<(int, int)>(); 
+        //    // Проверка на наличие данных
+        //    if (boundaryEdges == null || HalfEdges == null || Triangles == null)
+        //        return null;
 
-        //    if (boundaryEdges == null || HalfEdges == null) 
-        //        return missingEdges.ToArray(); // Возвращаем пустой массив, если данные отсутствуют
-
-        //    // Цикл по всем граничным рёбрам
-        //    for (int i = 0; i < boundaryEdges.Length; i++) 
+        //    // Цикл по всем граничным ребрам
+        //    for (int i = 0; i < boundaryEdges.Length; i++)
         //    {
-        //        // Индекс начальной вершины текущего граничного ребра
+        //        // Индекс начальной и конечной вершины текущего граничного ребра
         //        int endIdx = boundaryEdges[i].PointID;
-        //        // Индекс конечной вершины текущего граничного ребра 
         //        int startIdx = boundaryEdges[i].adjacent1;
+
+        //        // Пропускаем, если вершины не граничные
+        //        if (pointStatuses[startIdx] != PointStatus.Boundary || pointStatuses[endIdx] != PointStatus.Boundary)
+        //            continue;
+
+        //        // Проверяем, что ребро указано в boundaryEdges
+        //        if (!boundaryEdges[startIdx].Adjacents.Contains(endIdx))
+        //            continue;
+
         //        // Флаг, указывающий, найдено ли ребро в HalfEdges
         //        bool edgeFound = false;
 
         //        // Цикл по всем полуребрам в HalfEdges
-        //        for (int j = 0; j < HalfEdges.Length; j++) 
+        //        for (int j = 0; j < HalfEdges.Length; j++)
         //        {
         //            // Индекс треугольника, к которому относится текущее полуребро
         //            int halfEdgeTriIdx = j / 3;
@@ -685,37 +692,40 @@ namespace TestDelaunayGenerator
         //            // Первая вершина текущего ребра треугольника
         //            int v0 = Triangles[halfEdgeTriIdx][localVertex];
         //            // Вторая вершина текущего ребра треугольника
-        //            int v1 = Triangles[halfEdgeTriIdx][(localVertex + 1) % 3]; 
+        //            int v1 = Triangles[halfEdgeTriIdx][(localVertex + 1) % 3];
 
         //            // Проверка совпадения ребра в любом направлении
         //            if ((v0 == startIdx && v1 == endIdx) || (v0 == endIdx && v1 == startIdx))
         //            {
-        //                edgeFound = true; // Ребро найдено, устанавливаем флаг
-        //                break; // Выходим из внутреннего цикла
+        //                edgeFound = true; // Ребро найдено
+        //                break;
         //            }
         //        }
 
-        //        if (!edgeFound &&
-        //            pointStatuses[startIdx] == PointStatus.Boundary &&
-        //                 pointStatuses[endIdx] == PointStatus.Boundary &&
-        //                 boundaryEdges[startIdx].Adjacents.Contains(endIdx)) // Если ребро не найдено в HalfEdges
+        //        // Если ребро не найдено, возвращаем его
+        //        if (!edgeFound)
         //        {
-        //            missingEdges.Add((startIdx, endIdx)); // Добавляем кортеж индексов пропущенного ребра в список
-        //            //return missingEdges.ToArray();
+        //            return (startIdx, endIdx);
         //        }
         //    }
 
-        //    return missingEdges.ToArray(); // Возвращаем массив всех найденных пропущенных рёбер
+        //    // Все граничные ребра присутствуют
+        //    return null;
         //}
+
+
+
         /// <summary>
-        /// Идентифицирует первое граничное ребро, отсутствующее в HalfEdges, и возвращает его индексы вершин.
+        /// Идентифицирует все граничные ребра, отсутствующие в HalfEdges, и возвращает их индексы вершин.
         /// </summary>
-        /// <returns>Кортеж с индексами вершин первого пропущенного граничного ребра или null, если все ребра присутствуют.</returns>
-        public (int, int)? FindMissingBoundaryEdges()
+        /// <returns>Список кортежей с индексами вершин пропущенных граничных ребер.</returns>
+        public List<(int, int)> FindMissingBoundaryEdges()
         {
+            var missingEdges = new List<(int, int)>();
+
             // Проверка на наличие данных
             if (boundaryEdges == null || HalfEdges == null || Triangles == null)
-                return null;
+                return missingEdges;
 
             // Цикл по всем граничным ребрам
             for (int i = 0; i < boundaryEdges.Length; i++)
@@ -755,596 +765,182 @@ namespace TestDelaunayGenerator
                     }
                 }
 
-                // Если ребро не найдено, возвращаем его
+                // Если ребро не найдено, добавляем его в список
                 if (!edgeFound)
                 {
-                    return (startIdx, endIdx);
+                    missingEdges.Add((startIdx, endIdx));
                 }
             }
 
-            // Все граничные ребра присутствуют
-            return null;
+            return missingEdges;
         }
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         /// <summary>
-        /// Обрабатывает отсутствующее граничное ребро, находя пересечения с ребрами треугольников,
-        /// собирая индексы пересеченных ребер и координаты точек пересечения на границе,
-        /// удаляет пересеченные ребра и перестраивает триангуляцию в затронутой области.
+        /// Обрабатывает отсутствующее граничное ребро, находя все пересечения с ребрами треугольников,
+        /// собирая индексы пересеченных ребер, точки пересечения и затронутые точки.
+        /// Использует подход поиска в ширину (BFS) для обхода всех связанных треугольников.
         /// </summary>
         /// <param name="boundaryEdge">Отсутствующее граничное ребро в виде кортежа индексов вершин (начало, конец).</param>
-        /// <returns>Кортеж, содержащий массив индексов пересеченных полуребер и список точек пересечения.</returns>
-        //public (int[] intersectedEdges, List<IHPoint> intersectionPoints) ProcessMissingBoundaryEdge((int start, int end) boundaryEdge)
-        //{
-        //    // Инициализация списка для хранения индексов пересеченных полуребер
-        //    var intersectedEdges = new List<int>();
-        //    // Инициализация списка для хранения точек пересечения
-        //    var intersectionPoints = new List<IHPoint>();
-        //    // Начальная и конечная вершины граничного ребра
-        //    int v0 = boundaryEdge.start;
-        //    int v1 = boundaryEdge.end;
-
-        //    // Текущая вершина для обработки
-        //    int currentVertex = v0;
-        //    // Идентификатор текущего треугольника
-        //    int currentTriangleId = -1;
-
-        //    // Множество затронутых треугольников для удаления
-        //    var affectedTriangles = new HashSet<int>();
-        //    // Множество затронутых точек для локальной триангуляции
-        //    var affectedPoints = new HashSet<int> { v0, v1 };
-
-        //    // Проверка, что Triangles инициализирован
-        //    if (Triangles == null)
-        //    {
-        //        return (intersectedEdges.ToArray(), intersectionPoints);
-        //    }
-
-        //    // Поиск начального треугольника, содержащего v0
-        //    for (int i = 0; i < Triangles.Length; i++)
-        //    {
-        //        if (Triangles[i].i == v0 || Triangles[i].j == v0 || Triangles[i].k == v0)
-        //        {
-        //            currentTriangleId = i;
-        //            break;
-        //        }
-        //    }
-
-        //    // Если треугольник не найден, возвращаем пустой результат
-        //    if (currentTriangleId == -1)
-        //    {
-        //        return (intersectedEdges.ToArray(), intersectionPoints);
-        //    }
-
-        //    // Продолжаем обработку, пока не достигнем треугольника с v1
-        //    while (currentTriangleId != -1 && currentVertex != v1)
-        //    {
-        //        // Получаем текущий треугольник
-        //        var triangle = Triangles[currentTriangleId];
-        //        int localVertexIndex = -1;
-
-        //        // Определяем локальный индекс текущей вершины в треугольнике
-        //        if (triangle.i == currentVertex)
-        //            localVertexIndex = 0;
-        //        else if (triangle.j == currentVertex)
-        //            localVertexIndex = 1;
-        //        else if (triangle.k == currentVertex)
-        //            localVertexIndex = 2;
-
-        //        // Если вершина не найдена, прерываем цикл (защита от ошибок)
-        //        if (localVertexIndex == -1)
-        //            break;
-
-        //        // Получаем противоположное ребро (ребро напротив currentVertex)
-        //        int e1Index = currentTriangleId * 3 + (localVertexIndex + 1) % 3;
-        //        int v2 = Triangles[currentTriangleId][(localVertexIndex + 1) % 3];
-        //        int v3 = Triangles[currentTriangleId][(localVertexIndex + 2) % 3];
-
-        //        // Определяем точки противоположного ребра и граничного ребра
-        //        HPoint p2 = (HPoint)points[v2];
-        //        HPoint p3 = (HPoint)points[v3];
-        //        HPoint boundaryStart = (HPoint)points[v0];
-        //        HPoint boundaryEnd = (HPoint)points[v1];
-
-        //        // Проверяем пересечение противоположного ребра с граничным
-        //        IHPoint intersection = new HPoint();
-        //        bool hasIntersection = CrossLineUtils.IsCrossing(p2, p3, boundaryStart, boundaryEnd, ref intersection);
-
-        //        if (hasIntersection)
-        //        {
-        //            // Проверяем, что точка пересечения не совпадает с конечными точками ребра
-        //            if (!HPoint.Equals(intersection, p2) && !HPoint.Equals(intersection, p3))
-        //            {
-        //                // Добавляем точку пересечения в список
-        //                intersectionPoints.Add(intersection);
-        //                // Добавляем индекс пересеченного ребра в список
-        //                intersectedEdges.Add(e1Index);
-        //                // Добавляем треугольник и его вершины в затронутые множества
-        //                affectedTriangles.Add(currentTriangleId);
-        //                affectedPoints.Add(v2);
-        //                affectedPoints.Add(v3);
-
-        //                // Находим смежный треугольник через пересеченное ребро
-        //                int oppositeEdgeIndex = HalfEdges[e1Index];
-        //                if (oppositeEdgeIndex != -1)
-        //                {
-        //                    affectedTriangles.Add(oppositeEdgeIndex / 3);
-        //                }
-
-        //                // Переходим к смежному треугольнику
-        //                if (oppositeEdgeIndex == -1)
-        //                {
-        //                    // Нет смежного треугольника, прерываем обработку
-        //                    break;
-        //                }
-
-        //                currentTriangleId = oppositeEdgeIndex / 3;
-        //                currentVertex = v2; // Переходим к следующей вершине пересеченного ребра
-        //            }
-        //            else
-        //            {
-        //                // Пересечение в конечной точке, переходим к следующему ребру
-        //                int nextEdgeIndex = currentTriangleId * 3 + (localVertexIndex + 2) % 3;
-        //                currentTriangleId = HalfEdges[nextEdgeIndex] == -1 ? -1 : HalfEdges[nextEdgeIndex] / 3;
-        //            }
-        //        }
-        //        else
-        //        {
-        //            // Нет пересечения, переходим к следующему ребру в треугольнике
-        //            int nextEdgeIndex = currentTriangleId * 3 + (localVertexIndex + 2) % 3;
-        //            currentTriangleId = HalfEdges[nextEdgeIndex] == -1 ? -1 : HalfEdges[nextEdgeIndex] / 3;
-        //        }
-
-        //        // Проверяем, достиг ли треугольник конечной вершины v1
-        //        if (currentTriangleId != -1 && (Triangles[currentTriangleId].i == v1 || Triangles[currentTriangleId].j == v1 || Triangles[currentTriangleId].k == v1))
-        //        {
-        //            currentVertex = v1; // Достигли конечной вершины
-        //            affectedTriangles.Add(currentTriangleId);
-        //        }
-        //    }
-
-        //    // Удаляем пересеченные ребра и затронутые треугольники
-        //    foreach (int edgeIndex in intersectedEdges)
-        //    {
-        //        int oppositeEdgeIndex = HalfEdges[edgeIndex];
-        //        UnLink(edgeIndex, oppositeEdgeIndex);
-        //    }
-
-        //    foreach (int triangleId in affectedTriangles)
-        //    {
-        //        if (triangleId < Triangles.Length)
-        //        {
-        //            Triangles[triangleId] = new Troika(-1, -1, -1);
-        //            HalfEdges[triangleId * 3] = -1;
-        //            HalfEdges[triangleId * 3 + 1] = -1;
-        //            HalfEdges[triangleId * 3 + 2] = -1;
-        //        }
-        //    }
-
-        //    // Формируем массив точек для локальной триангуляции
-        //    var localPoints = new List<IHPoint>();
-        //    var localPointIndices = new List<int>();
-        //    foreach (int pointIndex in affectedPoints)
-        //    {
-        //        if (pointIndex < points.Length)
-        //        {
-        //            localPoints.Add(points[pointIndex]);
-        //            localPointIndices.Add(pointIndex);
-        //        }
-        //    }
-
-        //    // Добавляем точки пересечения в конец массива точек
-        //    int basePointIndex = points.Length;
-        //    Array.Resize(ref points, points.Length + intersectionPoints.Count);
-        //    Array.Resize(ref pointStatuses, pointStatuses.Length + intersectionPoints.Count);
-        //    Array.Resize(ref coordsX, coordsX.Length + intersectionPoints.Count);
-        //    Array.Resize(ref coordsY, coordsY.Length + intersectionPoints.Count);
-        //    Array.Resize(ref boundaryEdges, boundaryEdges.Length + intersectionPoints.Count);
-
-        //    for (int i = 0; i < intersectionPoints.Count; i++)
-        //    {
-        //        int newPointIndex = basePointIndex + i;
-        //        points[newPointIndex] = intersectionPoints[i];
-        //        pointStatuses[newPointIndex] = PointStatus.Boundary;
-        //        coordsX[newPointIndex] = intersectionPoints[i].X;
-        //        coordsY[newPointIndex] = intersectionPoints[i].Y;
-        //        boundaryEdges[newPointIndex] = new EdgeIndex(
-        //            pointID: newPointIndex,
-        //            adjacent1: v0,
-        //            adjacent2: v1,
-        //            boundaryId: boundaryEdges[v0].BoundaryID
-        //        );
-        //        localPoints.Add(intersectionPoints[i]);
-        //        localPointIndices.Add(newPointIndex);
-        //    }
-
-        //    // Создаем локальную триангуляцию
-        //    if (localPoints.Count >= 3)
-        //    {
-        //        try
-        //        {
-        //            var localDelaunator = new Delaunator(localPoints.ToArray());
-        //            localDelaunator.Generate(); // Явно вызываем генерацию триангуляции
-
-        //            // Проверяем, что локальная триангуляция создана
-        //            if (localDelaunator.Triangles == null)
-        //            {
-        //                Console.WriteLine("Локальная триангуляция не создана: Triangles равен null");
-        //                return (intersectedEdges.ToArray(), intersectionPoints);
-        //            }
-
-        //            // Обновляем глобальную триангуляцию
-        //            int baseTriangleIndex = Triangles.Length;
-        //            Array.Resize(ref Triangles, Triangles.Length + localDelaunator.Triangles.Length);
-        //            Array.Resize(ref HalfEdges, HalfEdges.Length + localDelaunator.HalfEdges.Length);
-
-        //            for (int i = 0; i < localDelaunator.Triangles.Length; i++)
-        //            {
-        //                // Преобразуем локальные индексы точек в глобальные
-        //                int globalI = localPointIndices[localDelaunator.Triangles[i].i];
-        //                int globalJ = localPointIndices[localDelaunator.Triangles[i].j];
-        //                int globalK = localPointIndices[localDelaunator.Triangles[i].k];
-
-        //                Triangles[baseTriangleIndex + i] = new Troika(globalI, globalJ, globalK);
-
-        //                // Устанавливаем флаг принадлежности области
-        //                bool isInArea = IsTriangleInArea(baseTriangleIndex + i);
-        //                Triangles[baseTriangleIndex + i].flag = isInArea ? (int)TriangleInfect.Internal : (int)TriangleInfect.External;
-
-        //                // Обновляем HalfEdges с учетом глобальных индексов
-        //                HalfEdges[(baseTriangleIndex + i) * 3] = localDelaunator.HalfEdges[i * 3] == -1 ? -1 : baseTriangleIndex * 3 + localDelaunator.HalfEdges[i * 3];
-        //                HalfEdges[(baseTriangleIndex + i) * 3 + 1] = localDelaunator.HalfEdges[i * 3 + 1] == -1 ? -1 : baseTriangleIndex * 3 + localDelaunator.HalfEdges[i * 3 + 1];
-        //                HalfEdges[(baseTriangleIndex + i) * 3 + 2] = localDelaunator.HalfEdges[i * 3 + 2] == -1 ? -1 : baseTriangleIndex * 3 + localDelaunator.HalfEdges[i * 3 + 2];
-        //            }
-
-        //            // Удаляем пустые треугольники из глобальной структуры
-        //            var validTriangles = new List<Troika>();
-        //            var validHalfEdges = new List<int>();
-        //            for (int i = 0; i < Triangles.Length; i++)
-        //            {
-        //                if (Triangles[i].i != -1 && Triangles[i].j != -1 && Triangles[i].k != -1)
-        //                {
-        //                    validTriangles.Add(Triangles[i]);
-        //                    validHalfEdges.Add(HalfEdges[i * 3]);
-        //                    validHalfEdges.Add(HalfEdges[i * 3 + 1]);
-        //                    validHalfEdges.Add(HalfEdges[i * 3 + 2]);
-        //                }
-        //            }
-
-        //            Triangles = validTriangles.ToArray();
-        //            HalfEdges = validHalfEdges.ToArray();
-
-        //            // Проверяем и исправляем связи HalfEdges
-        //            for (int i = 0; i < HalfEdges.Length; i++)
-        //            {
-        //                if (HalfEdges[i] != -1)
-        //                {
-        //                    int opposite = HalfEdges[i];
-        //                    if (opposite >= HalfEdges.Length || HalfEdges[opposite] != i)
-        //                    {
-        //                        HalfEdges[i] = -1; // Удаляем некорректные связи
-        //                    }
-        //                }
-        //            }
-        //        }
-        //        catch (ArgumentException ex)
-        //        {
-        //            Console.WriteLine($"Ошибка при создании локальной триангуляции: {ex.Message}");
-        //            return (intersectedEdges.ToArray(), intersectionPoints);
-        //        }
-        //    }
-
-        //    // Возвращаем кортеж с индексами пересеченных ребер и точками пересечения
-        //    return (intersectedEdges.ToArray(), intersectionPoints);
-        //}
-        public (int[] intersectedEdges, List<IHPoint> intersectionPoints) ProcessMissingBoundaryEdge((int start, int end) boundaryEdge)
+        /// <returns>Кортеж, содержащий массив индексов пересеченных полуребер, список точек пересечения и множество затронутых точек.</returns>
+        public (int[] intersectedEdges, List<IHPoint> intersectionPoints, HashSet<int> affectedPoints) ProcessMissingBoundaryEdge((int start, int end) boundaryEdge)
         {
-            // Инициализация списка для хранения индексов пересеченных полуребер
+            // Список индексов полуребер, пересекающих граничное ребро
             var intersectedEdges = new List<int>();
-            // Инициализация списка для хранения точек пересечения
+            // Список точек пересечения граничного ребра с треугольниками
             var intersectionPoints = new List<IHPoint>();
-            // Начальная и конечная вершины граничного ребра
+            // Начальная вершина граничного ребра
             int v0 = boundaryEdge.start;
+            // Конечная вершина граничного ребра
             int v1 = boundaryEdge.end;
 
-            // Текущая вершина для обработки
-            int currentVertex = v0;
-            // Идентификатор текущего треугольника
+            // Идентификатор текущего обрабатываемого треугольника, изначально не определен
             int currentTriangleId = -1;
-
-            // Множество затронутых треугольников для удаления
+            // Множество идентификаторов треугольников, затронутых пересечением
             var affectedTriangles = new HashSet<int>();
-            // Множество затронутых точек для локальной триангуляции
-            var affectedPoints = new HashSet<int> { v0, v1 };
+            // Множество индексов точек, участвующих в пересечениях, включая v0 и v1
+            var affectedPoints = new HashSet<int> { v0, v1 }; 
 
-            // Проверка, что Triangles инициализирован
             if (Triangles == null)
             {
-                return (intersectedEdges.ToArray(), intersectionPoints);
+                return (intersectedEdges.ToArray(), intersectionPoints, affectedPoints); // Возвращаем пустые данные, если треугольники не инициализированы
             }
 
-            // Поиск начального треугольника, содержащего v0
+            // Поиск начального треугольника, содержащего v0 и имеющего пересечение с граничным ребром
             for (int i = 0; i < Triangles.Length; i++)
             {
+                // Проверяем, содержит ли треугольник v0 и является ли он внутренним (Internal)
                 if ((Triangles[i].i == v0 || Triangles[i].j == v0 || Triangles[i].k == v0) && Triangles[i].flag == (int)TriangleInfect.Internal)
                 {
-                    currentTriangleId = i;
-                    break;
+                    // Текущий треугольник
+                    var triangle = Triangles[i];
+                    // Локальный индекс вершины v0 в треугольнике
+                    int localVertexIndex = -1; 
+
+                    // Определяем позицию v0 в треугольнике
+                    if (triangle.i == v0) localVertexIndex = 0;
+                    else if (triangle.j == v0) localVertexIndex = 1;
+                    else if (triangle.k == v0) localVertexIndex = 2;
+
+                    // Пропускаем, если v0 не найдена
+                    if (localVertexIndex == -1) continue; 
+
+                    // Извлекаем вершины, образующие ребро, противоположное v0
+                    int v2 = triangle[(localVertexIndex + 1) % 3]; // Вторая вершина ребра
+                    int v3 = triangle[(localVertexIndex + 2) % 3]; // Третья вершина ребра
+                    HPoint p2 = (HPoint)points[v2]; // Координаты второй вершины
+                    HPoint p3 = (HPoint)points[v3]; // Координаты третьей вершины
+                    HPoint boundaryStart = (HPoint)points[v0]; // Начальная точка граничного ребра
+                    HPoint boundaryEnd = (HPoint)points[v1]; // Конечная точка граничного ребра
+
+                    // Проверяем пересечение ребра (v2, v3) с граничным ребром
+                    IHPoint intersection = new HPoint(); // Точка пересечения
+                    if (CrossLineUtils.IsCrossing(p2, p3, boundaryStart, boundaryEnd, ref intersection) &&
+                        !HPoint.Equals(intersection, p2) && !HPoint.Equals(intersection, p3))
+                    {
+                        // Флаг уникальности точки пересечения
+                        bool isUnique = true; 
+                        foreach (var existingPoint in points) // Проверка на дубликаты
+                        {
+                            if (HPoint.Equals(intersection, existingPoint))
+                            {
+                                isUnique = false;
+                                break;
+                            }
+                        }
+                        if (isUnique)
+                        {
+                            currentTriangleId = i; // Устанавливаем начальный треугольник
+                            intersectionPoints.Add(intersection); // Добавляем точку пересечения
+                            intersectedEdges.Add(i * 3 + (localVertexIndex + 1) % 3); // Добавляем индекс пересеченного ребра
+                            affectedPoints.Add(v2); // Добавляем вершины ребра в затронутые точки
+                            affectedPoints.Add(v3);
+                            affectedTriangles.Add(currentTriangleId); // Отмечаем треугольник как затронутый
+                            break; // Прерываем поиск после нахождения первого пересечения
+                        }
+                    }
                 }
             }
-            Console.WriteLine(currentTriangleId);
-            // Если треугольник не найден, возвращаем пустой результат
+
+            Console.WriteLine($"Начальный треугольник: {currentTriangleId}");
+
             if (currentTriangleId == -1)
             {
-                return (intersectedEdges.ToArray(), intersectionPoints);
+                // Возвращаем данные, если начальный треугольник не найден
+                return (intersectedEdges.ToArray(), intersectionPoints, affectedPoints); 
             }
 
-            // Продолжаем обработку, пока не достигнем треугольника с v1
-            while (currentTriangleId != -1 && currentVertex != v1)
+            // Множество обработанных треугольников для предотвращения зацикливания
+            var processedTriangles = new HashSet<int> { currentTriangleId };
+            var triangleQueue = new Queue<int>(); // Очередь для обхода треугольников
+            triangleQueue.Enqueue(currentTriangleId); // Начинаем с начального треугольника
+
+            // Обход всех связанных треугольников с использованием
+            while (triangleQueue.Count > 0)
             {
-                // Получаем текущий треугольник
-                var triangle = Triangles[currentTriangleId];
-                int localVertexIndex = -1;
+                // Извлекаем следующий треугольник
+                currentTriangleId = triangleQueue.Dequeue();
+                // Текущий треугольник
+                var triangle = Triangles[currentTriangleId]; 
 
-                // Определяем локальный индекс текущей вершины в треугольнике
-                if (triangle.i == currentVertex)
-                    localVertexIndex = 0;
-                else if (triangle.j == currentVertex)
-                    localVertexIndex = 1;
-                else if (triangle.k == currentVertex)
-                    localVertexIndex = 2;
-
-                // Если вершина не найдена, прерываем цикл 
-                if (localVertexIndex == -1)
-                    break;
-
-                // Получаем противоположное ребро (ребро напротив currentVertex)
-                int e1Index = currentTriangleId * 3 + (localVertexIndex + 1) % 3;
-                int v2 = Triangles[currentTriangleId][(localVertexIndex + 1) % 3];
-                int v3 = Triangles[currentTriangleId][(localVertexIndex + 2) % 3];
-
-                // Определяем точки противоположного ребра и граничного ребра
-                HPoint p2 = (HPoint)points[v2];
-                HPoint p3 = (HPoint)points[v3];
-                HPoint boundaryStart = (HPoint)points[v0];
-                HPoint boundaryEnd = (HPoint)points[v1];
-
-                // Проверяем пересечение противоположного ребра с граничным
-                IHPoint intersection = new HPoint();
-                bool hasIntersection = CrossLineUtils.IsCrossing(p2, p3, boundaryStart, boundaryEnd, ref intersection);
-
-                if (hasIntersection)
+                // Проверяем, содержит ли треугольник конечную вершину v1
+                if (triangle.i == v1 || triangle.j == v1 || triangle.k == v1)
                 {
-                    // Проверяем, что точка пересечения не совпадает с конечными точками ребра
-                    if (!HPoint.Equals(intersection, p2) && !HPoint.Equals(intersection, p3))
-                    {
-                        // Добавляем точку пересечения в список
-                        intersectionPoints.Add(intersection);
-                        // Добавляем индекс пересеченного ребра в список
-                        intersectedEdges.Add(e1Index);
-                        // Добавляем треугольник и его вершины в затронутые множества
-                        affectedTriangles.Add(currentTriangleId);
-                        affectedPoints.Add(v2);
-                        affectedPoints.Add(v3);
+                    affectedPoints.Add(v1); // Добавляем v1 в затронутые точки
+                    affectedTriangles.Add(currentTriangleId); // Отмечаем треугольник
+                    break; // Завершаем обработку
+                }
 
-                        // Находим смежный треугольник через пересеченное ребро
-                        int oppositeEdgeIndex = HalfEdges[e1Index];
-                        if (oppositeEdgeIndex != -1)
+                // Проверяем все три ребра треугольника на пересечение с граничным ребром
+                for (int k = 0; k < 3; k++)
+                {
+                    int v2 = triangle[k]; // Первая вершина текущего ребра
+                    int v3 = triangle[(k + 1) % 3]; // Вторая вершина текущего ребра
+                    HPoint p2 = (HPoint)points[v2]; // Координаты первой вершины
+                    HPoint p3 = (HPoint)points[v3]; // Координаты второй вершины
+                    HPoint boundaryStart = (HPoint)points[v0]; // Начало граничного ребра
+                    HPoint boundaryEnd = (HPoint)points[v1]; // Конец граничного ребра
+
+                    IHPoint intersection = new HPoint(); // Точка пересечения
+                    if (CrossLineUtils.IsCrossing(p2, p3, boundaryStart, boundaryEnd, ref intersection) &&
+                        !HPoint.Equals(intersection, p2) && !HPoint.Equals(intersection, p3))
+                    {
+                        bool isUnique = true; // Проверка уникальности точки
+                        foreach (var existingPoint in points)
                         {
-                            affectedTriangles.Add(oppositeEdgeIndex / 3);
-                        }
-
-                        // Переходим к смежному треугольнику
-                        if (oppositeEdgeIndex == -1)
-                        {
-                            // Нет смежного треугольника, прерываем обработку
-                            break;
-                        }
-
-                        currentTriangleId = oppositeEdgeIndex / 3;
-                        currentVertex = v2; // Переходим к следующей вершине пересеченного ребра
-                    }
-                    else
-                    {
-                        // Пересечение в конечной точке, переходим к следующему ребру
-                        int nextEdgeIndex = currentTriangleId * 3 + (localVertexIndex + 2) % 3;
-                        currentTriangleId = HalfEdges[nextEdgeIndex] == -1 ? -1 : HalfEdges[nextEdgeIndex] / 3;
-                    }
-                }
-                else
-                {
-                    // Нет пересечения, переходим к следующему ребру в треугольнике
-                    int nextEdgeIndex = currentTriangleId * 3 + (localVertexIndex + 2) % 3;
-                    currentTriangleId = HalfEdges[nextEdgeIndex] == -1 ? -1 : HalfEdges[nextEdgeIndex] / 3;
-                }
-
-                // Проверяем, достиг ли треугольник конечной вершины v1
-                if (currentTriangleId != -1 && (Triangles[currentTriangleId].i == v1 || Triangles[currentTriangleId].j == v1 || Triangles[currentTriangleId].k == v1))
-                {
-                    currentVertex = v1; // Достигли конечной вершины
-                    affectedTriangles.Add(currentTriangleId);
-                }
-            }
-
-            // Удаляем пересеченные ребра и затронутые треугольники
-            foreach (int edgeIndex in intersectedEdges)
-            {
-                int oppositeEdgeIndex = HalfEdges[edgeIndex];
-                UnLink(edgeIndex, oppositeEdgeIndex);
-            }
-
-            foreach (int triangleId in affectedTriangles)
-            {
-                if (triangleId < Triangles.Length)
-                {
-                    Triangles[triangleId] = new Troika(-1, -1, -1);
-                    HalfEdges[triangleId * 3] = -1;
-                    HalfEdges[triangleId * 3 + 1] = -1;
-                    HalfEdges[triangleId * 3 + 2] = -1;
-                }
-            }
-
-            // Формируем массив точек для локальной триангуляции
-            var localPoints = new List<IHPoint>();
-            var localPointIndices = new List<int>();
-            foreach (int pointIndex in affectedPoints)
-            {
-                if (pointIndex < points.Length)
-                {
-                    localPoints.Add(points[pointIndex]);
-                    localPointIndices.Add(pointIndex);
-                }
-            }
-
-            // Добавляем точки пересечения в конец массива точек и обновляем связи boundaryEdges
-            int basePointIndex = points.Length;
-            Array.Resize(ref points, points.Length + intersectionPoints.Count);
-            Array.Resize(ref pointStatuses, pointStatuses.Length + intersectionPoints.Count);
-            Array.Resize(ref coordsX, coordsX.Length + intersectionPoints.Count);
-            Array.Resize(ref coordsY, coordsY.Length + intersectionPoints.Count);
-            Array.Resize(ref boundaryEdges, boundaryEdges.Length + intersectionPoints.Count);
-
-            // Храним индексы новых точек для обновления boundaryEdges
-            var newPointIndices = new List<int>();
-            for (int i = 0; i < intersectionPoints.Count; i++)
-            {
-                int newPointIndex = basePointIndex + i;
-                points[newPointIndex] = intersectionPoints[i];
-                pointStatuses[newPointIndex] = PointStatus.Boundary;
-                coordsX[newPointIndex] = intersectionPoints[i].X;
-                coordsY[newPointIndex] = intersectionPoints[i].Y;
-
-                // Создаем связи для новой точки
-                int prevPoint = i == 0 ? v0 : (basePointIndex + i - 1);
-                int nextPoint = i == intersectionPoints.Count - 1 ? v1 : (basePointIndex + i + 1);
-                boundaryEdges[newPointIndex] = new EdgeIndex(
-                    pointID: newPointIndex,
-                    adjacent1: prevPoint,
-                    adjacent2: nextPoint,
-                    boundaryId: boundaryEdges[v0].BoundaryID
-                );
-
-                newPointIndices.Add(newPointIndex);
-                localPoints.Add(intersectionPoints[i]);
-                localPointIndices.Add(newPointIndex);
-            }
-
-            // Обновляем boundaryEdges для исходных вершин v0 и v1
-            if (intersectionPoints.Count > 0)
-            {
-                // Обновляем связи для v0
-                int firstNewPoint = newPointIndices[0];
-                boundaryEdges[v0] = new EdgeIndex(
-                    pointID: v0,
-                    adjacent1: boundaryEdges[v0].adjacent1 == v1 ? firstNewPoint : boundaryEdges[v0].adjacent1,
-                    adjacent2: boundaryEdges[v0].adjacent2 == v1 ? firstNewPoint : boundaryEdges[v0].adjacent2,
-                    boundaryId: boundaryEdges[v0].BoundaryID
-                );
-
-                // Обновляем связи для v1
-                int lastNewPoint = newPointIndices[newPointIndices.Count - 1];
-                boundaryEdges[v1] = new EdgeIndex(
-                    pointID: v1,
-                    adjacent1: boundaryEdges[v1].adjacent1 == v0 ? lastNewPoint : boundaryEdges[v1].adjacent1,
-                    adjacent2: boundaryEdges[v1].adjacent2 == v0 ? lastNewPoint : boundaryEdges[v1].adjacent2,
-                    boundaryId: boundaryEdges[v1].BoundaryID
-                );
-            }
-
-            // Создаем локальную триангуляцию
-            if (localPoints.Count >= 3)
-            {
-                try
-                {
-                    var localDelaunator = new Delaunator(localPoints.ToArray());
-                    localDelaunator.Generate(); // Явно вызываем генерацию триангуляции
-
-                    // Проверяем, что локальная триангуляция создана
-                    if (localDelaunator.Triangles == null)
-                    {
-                        Console.WriteLine("Локальная триангуляция не создана: Triangles равен null");
-                        return (intersectedEdges.ToArray(), intersectionPoints);
-                    }
-
-                    // Обновляем глобальную триангуляцию
-                    int baseTriangleIndex = Triangles.Length;
-                    Array.Resize(ref Triangles, Triangles.Length + localDelaunator.Triangles.Length);
-                    Array.Resize(ref HalfEdges, HalfEdges.Length + localDelaunator.HalfEdges.Length);
-
-                    for (int i = 0; i < localDelaunator.Triangles.Length; i++)
-                    {
-                        // Преобразуем локальные индексы точек в глобальные
-                        int globalI = localPointIndices[localDelaunator.Triangles[i].i];
-                        int globalJ = localPointIndices[localDelaunator.Triangles[i].j];
-                        int globalK = localPointIndices[localDelaunator.Triangles[i].k];
-
-                        Triangles[baseTriangleIndex + i] = new Troika(globalI, globalJ, globalK);
-
-                        // Устанавливаем флаг принадлежности области
-                        bool isInArea = IsTriangleInArea(baseTriangleIndex + i);
-                        Triangles[baseTriangleIndex + i].flag = isInArea ? (int)TriangleInfect.Internal : (int)TriangleInfect.External;
-
-                        // Обновляем HalfEdges с учетом глобальных индексов
-                        HalfEdges[(baseTriangleIndex + i) * 3] = localDelaunator.HalfEdges[i * 3] == -1 ? -1 : baseTriangleIndex * 3 + localDelaunator.HalfEdges[i * 3];
-                        HalfEdges[(baseTriangleIndex + i) * 3 + 1] = localDelaunator.HalfEdges[i * 3 + 1] == -1 ? -1 : baseTriangleIndex * 3 + localDelaunator.HalfEdges[i * 3 + 1];
-                        HalfEdges[(baseTriangleIndex + i) * 3 + 2] = localDelaunator.HalfEdges[i * 3 + 2] == -1 ? -1 : baseTriangleIndex * 3 + localDelaunator.HalfEdges[i * 3 + 2];
-                    }
-
-                    // Удаляем пустые треугольники из глобальной структуры
-                    var validTriangles = new List<Troika>();
-                    var validHalfEdges = new List<int>();
-                    for (int i = 0; i < Triangles.Length; i++)
-                    {
-                        if (Triangles[i].i != -1 && Triangles[i].j != -1 && Triangles[i].k != -1)
-                        {
-                            validTriangles.Add(Triangles[i]);
-                            validHalfEdges.Add(HalfEdges[i * 3]);
-                            validHalfEdges.Add(HalfEdges[i * 3 + 1]);
-                            validHalfEdges.Add(HalfEdges[i * 3 + 2]);
-                        }
-                    }
-
-                    Triangles = validTriangles.ToArray();
-                    HalfEdges = validHalfEdges.ToArray();
-
-                    // Проверяем и исправляем связи HalfEdges
-                    for (int i = 0; i < HalfEdges.Length; i++)
-                    {
-                        if (HalfEdges[i] != -1)
-                        {
-                            int opposite = HalfEdges[i];
-                            if (opposite >= HalfEdges.Length || HalfEdges[opposite] != i)
+                            if (HPoint.Equals(intersection, existingPoint))
                             {
-                                HalfEdges[i] = -1; // Удаляем некорректные связи
+                                isUnique = false;
+                                break;
+                            }
+                        }
+                        if (isUnique)
+                        {
+                            intersectionPoints.Add(intersection); // Добавляем точку пересечения
+                            int edgeIndex = currentTriangleId * 3 + k; // Индекс пересеченного ребра
+                            intersectedEdges.Add(edgeIndex); // Добавляем индекс ребра
+                            affectedPoints.Add(v2); // Добавляем вершины в затронутые точки
+                            affectedPoints.Add(v3);
+                            affectedTriangles.Add(currentTriangleId); // Отмечаем треугольник
+
+                            // Проверяем смежный треугольник через пересеченное ребро
+                            int oppositeEdgeIndex = HalfEdges[edgeIndex];
+                            if (oppositeEdgeIndex != -1) // Если существует смежный треугольник
+                            {
+                                int nextTriangleId = oppositeEdgeIndex / 3; // Идентификатор следующего треугольника
+                                if (!processedTriangles.Contains(nextTriangleId))
+                                {
+                                    processedTriangles.Add(nextTriangleId);
+                                    triangleQueue.Enqueue(nextTriangleId); // Добавляем в очередь для обработки
+                                }
                             }
                         }
                     }
                 }
-                catch (ArgumentException ex)
-                {
-                    Console.WriteLine($"Ошибка при создании локальной триангуляции: {ex.Message}");
-                    return (intersectedEdges.ToArray(), intersectionPoints);
-                }
             }
 
-            // Возвращаем кортеж с индексами пересеченных ребер и точками пересечения
-            return (intersectedEdges.ToArray(), intersectionPoints);
+            return (intersectedEdges.ToArray(), intersectionPoints, affectedPoints); // Возвращаем собранные данные
         }
 
 
@@ -1352,152 +948,249 @@ namespace TestDelaunayGenerator
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
         /// <summary>
-        /// Обрабатывает отсутствующее граничное ребро, находя пересечения с ребрами треугольников,
-        /// добавляя точки пересечения в массив точек и собирая индексы пересеченных ребер.
+        /// Обрабатывает все отсутствующие граничные ребра, собирает данные о пересечениях,
+        /// добавляет точки пересечения, удаляет пересеченные ребра и треугольники,
+        /// выполняет локальную триангуляцию.
         /// </summary>
-        /// <param name="boundaryEdge">Отсутствующее граничное ребро в виде кортежа индексов вершин (начало, конец).</param>
-        /// <returns>Массив индексов полуребер, пересекающихся с граничным ребром.</returns>
-        //public int[] ProcessMissingBoundaryEdge((int start, int end) boundaryEdge)
-        //{
-        //    // Инициализация списка для хранения индексов пересеченных полуребер
-        //    var intersectedEdges = new List<int>();
-        //    // Начальная и конечная вершины граничного ребра
-        //    int v0 = boundaryEdge.start;
-        //    int v1 = boundaryEdge.end;
+        /// <param name="delaunator">Экземпляр Delaunator для обработки.</param>
+        public void Startc(Delaunator delaunator)
+        {
+            // Собираем все отсутствующие граничные ребра из текущей структуры триангуляции
+            var missingEdges = delaunator.FindMissingBoundaryEdges();
+            Console.WriteLine($"Найдено отсутствующих граничных ребер: {missingEdges.Count}");
 
-        //    // Текущая вершина для обработки
-        //    int currentVertex = v0;
-        //    // Идентификатор текущего треугольника
-        //    int currentTriangleId = -1;
+            // Структуры для хранения собранных данных о пересечениях
+            var allIntersectedEdges = new HashSet<int>(); // Глобальный набор индексов пересеченных ребер
+            var allIntersectionPoints = new List<IHPoint>(); // Глобальный список точек пересечения
+            var allAffectedPoints = new HashSet<int>(); // Глобальный набор затронутых точек
+            var allAffectedTriangles = new HashSet<int>(); // Глобальный набор затронутых треугольников
+            var edgeIntersectionData = new List<(int start, int end, int[] intersectedEdges, List<IHPoint> intersectionPoints, HashSet<int> affectedPoints)>(); // Данные по каждому ребру
 
-        //    // Поиск начального треугольника, содержащего v0
-        //    for (int i = 0; i < Triangles.Length; i++)
-        //    {
-        //        if (Triangles[i].i == v0 || Triangles[i].j == v0 || Triangles[i].k == v0)
-        //        {
-        //            currentTriangleId = i;
-        //            break;
-        //        }
-        //    }
+            // Шаг 1: Сбор данных о пересечениях для каждого отсутствующего граничного ребра
+            foreach (var missingEdge in missingEdges)
+            {
+                var (start, end) = missingEdge; // Разбираем кортеж ребра
+                Console.WriteLine($"Обработка пропущенного граничного ребра: ({start}, {end})"); // Вывод для отладки
 
-        //    // Если треугольник не найден, возвращаем пустой массив
-        //    if (currentTriangleId == -1)
-        //    {
-        //        return intersectedEdges.ToArray();
-        //    }
+                // Выполняем обработку текущего ребра
+                var (intersectedEdges, intersectionPoints, affectedPoints) = delaunator.ProcessMissingBoundaryEdge(missingEdge);
 
-        //    // Продолжаем обработку, пока не достигнем треугольника с v1
-        //    while (currentTriangleId != -1 && currentVertex != v1)
-        //    {
-        //        // Получаем текущий треугольник
-        //        var triangle = Triangles[currentTriangleId];
-        //        int localVertexIndex = -1;
+                // Сохраняем данные для текущего ребра
+                edgeIntersectionData.Add((start, end, intersectedEdges, intersectionPoints, affectedPoints));
 
-        //        // Определяем локальный индекс текущей вершины в треугольнике
-        //        if (triangle.i == currentVertex)
-        //            localVertexIndex = 0;
-        //        else if (triangle.j == currentVertex)
-        //            localVertexIndex = 1;
-        //        else if (triangle.k == currentVertex)
-        //            localVertexIndex = 2;
+                // Обновляем глобальные множества данными из текущего ребра
+                foreach (var edgeIndex in intersectedEdges)
+                {
+                    allIntersectedEdges.Add(edgeIndex); // Добавляем индекс ребра
+                    int triangleId = edgeIndex / 3; // Вычисляем идентификатор треугольника
+                    allAffectedTriangles.Add(triangleId); // Добавляем треугольник
+                    if (delaunator.HalfEdges[edgeIndex] != -1) // Проверяем наличие противоположного ребра
+                    {
+                        allAffectedTriangles.Add(delaunator.HalfEdges[edgeIndex] / 3); // Добавляем смежный треугольник
+                    }
+                }
 
-        //        // Если вершина не найдена, прерываем цикл (защита от ошибок)
-        //        if (localVertexIndex == -1)
-        //            break;
+                allIntersectionPoints.AddRange(intersectionPoints); // Добавляем все точки пересечения
+                allAffectedPoints.UnionWith(affectedPoints); // Объединяем затронутые точки
 
-        //        // Получаем противоположное ребро (ребро напротив currentVertex)
-        //        int e1Index = currentTriangleId * 3 + (localVertexIndex + 1) % 3;
-        //        int v2 = Triangles[currentTriangleId][(localVertexIndex + 1) % 3];
-        //        int v3 = Triangles[currentTriangleId][(localVertexIndex + 2) % 3];
+                Console.WriteLine("Пересеченные ребра:");
+                foreach (int edgeIndex in intersectedEdges)
+                {
+                    Console.WriteLine($"Полуребро с индексом: {edgeIndex}");
+                }
 
-        //        // Определяем точки противоположного ребра и граничного ребра
-        //        HPoint p2 = (HPoint)points[v2];
-        //        HPoint p3 = (HPoint)points[v3];
-        //        HPoint boundaryStart = (HPoint)points[v0];
-        //        HPoint boundaryEnd = (HPoint)points[v1];
+                Console.WriteLine("Точки пересечения на граничном ребре:");
+                foreach (IHPoint point in intersectionPoints)
+                {
+                    Console.WriteLine($"Точка: ({point.X}, {point.Y})");
+                }
+            }
 
-        //        // Проверяем пересечение противоположного ребра с граничным
-        //        IHPoint intersection = new HPoint();
-        //        bool hasIntersection = CrossLineUtils.IsCrossing(p2, p3, boundaryStart, boundaryEnd, ref intersection);
+            // Шаг 2: Добавление всех точек пересечения в глобальные массивы Delaunator
+            int basePointIndex = delaunator.points.Length; // Начальный индекс для новых точек
+            Array.Resize(ref delaunator.points, delaunator.points.Length + allIntersectionPoints.Count); // Увеличиваем массив точек
+            Array.Resize(ref delaunator.pointStatuses, delaunator.pointStatuses.Length + allIntersectionPoints.Count); // Увеличиваем статусы точек
+            Array.Resize(ref delaunator.coordsX, delaunator.coordsX.Length + allIntersectionPoints.Count); // Увеличиваем координаты X
+            Array.Resize(ref delaunator.coordsY, delaunator.coordsY.Length + allIntersectionPoints.Count); // Увеличиваем координаты Y
+            Array.Resize(ref delaunator.boundaryEdges, delaunator.boundaryEdges.Length + allIntersectionPoints.Count); // Увеличиваем граничные ребра
 
-        //        if (hasIntersection)
-        //        {
-        //            // Проверяем, что точка пересечения не совпадает с конечными точками ребра
-        //            if (!HPoint.Equals(intersection, p2) && !HPoint.Equals(intersection, p3))
-        //            {
-        //                //Console.WriteLine($"X = {intersection.X}; Y = {intersection.Y}");
-        //                // Добавляем точку пересечения в массив точек
-        //                int newPointIndex = points.Length;
-        //                Array.Resize(ref points, points.Length + 1);
-        //                points[newPointIndex] = intersection;
+            var allNewPointIndices = new List<int>(); // Список индексов новых точек
+            int currentPointIndex = basePointIndex;
+            for (int i = 0; i < allIntersectionPoints.Count; i++)
+            {
+                delaunator.points[currentPointIndex] = allIntersectionPoints[i]; // Добавляем точку
+                delaunator.pointStatuses[currentPointIndex] = PointStatus.Boundary; // Устанавливаем статус
+                delaunator.coordsX[currentPointIndex] = allIntersectionPoints[i].X; // Устанавливаем координату X
+                delaunator.coordsY[currentPointIndex] = allIntersectionPoints[i].Y; // Устанавливаем координату Y
+                allNewPointIndices.Add(currentPointIndex); // Сохраняем индекс
+                currentPointIndex++; // Переходим к следующему индексу
+            }
 
-        //                // Помечаем новую точку как граничную
-        //                Array.Resize(ref pointStatuses, pointStatuses.Length + 1);
-        //                pointStatuses[newPointIndex] = PointStatus.Boundary;
+            // Шаг 3: Обновление связей boundaryEdges для новых точек и исходных вершин
+            int currentIntersectionIndex = 0; // Счетчик для отслеживания текущей позиции точек пересечения
+            foreach (var (start, end, _, intersectionPoints, _) in edgeIntersectionData)
+            {
+                if (intersectionPoints.Count > 0)
+                {
+                    // Устанавливаем связи для новых точек пересечения
+                    for (int i = 0; i < intersectionPoints.Count; i++)
+                    {
+                        int newPointIndex = basePointIndex + currentIntersectionIndex + i; // Индекс новой точки
+                        int prevPoint = i == 0 ? start : (basePointIndex + currentIntersectionIndex + i - 1); // Предыдущая точка
+                        int nextPoint = i == intersectionPoints.Count - 1 ? end : (basePointIndex + currentIntersectionIndex + i + 1); // Следующая точка
+                        delaunator.boundaryEdges[newPointIndex] = new EdgeIndex(
+                            pointID: newPointIndex,
+                            adjacent1: prevPoint,
+                            adjacent2: nextPoint,
+                            boundaryId: delaunator.boundaryEdges[start].BoundaryID // Копируем идентификатор границы
+                        );
+                    }
 
-        //                // Обновляем массивы координат
-        //                Array.Resize(ref coordsX, coordsX.Length + 1);
-        //                Array.Resize(ref coordsY, coordsY.Length + 1);
-        //                coordsX[newPointIndex] = intersection.X;
-        //                coordsY[newPointIndex] = intersection.Y;
+                    // Обновляем связи для начальной вершины start
+                    int firstNewPoint = basePointIndex + currentIntersectionIndex;
+                    delaunator.boundaryEdges[start] = new EdgeIndex(
+                        pointID: start,
+                        adjacent1: delaunator.boundaryEdges[start].adjacent1 == end ? firstNewPoint : delaunator.boundaryEdges[start].adjacent1,
+                        adjacent2: delaunator.boundaryEdges[start].adjacent2 == end ? firstNewPoint : delaunator.boundaryEdges[start].adjacent2,
+                        boundaryId: delaunator.boundaryEdges[start].BoundaryID
+                    );
 
-        //                // Обновляем boundaryEdges для новой точки
-        //                Array.Resize(ref boundaryEdges, boundaryEdges.Length + 1);
-        //                boundaryEdges[newPointIndex] = new EdgeIndex(
-        //                    pointID: newPointIndex,
-        //                    adjacent1: v0, // Соединяем с началом граничного ребра
-        //                    adjacent2: v1, // Соединяем с концом граничного ребра
-        //                    boundaryId: boundaryEdges[v0].BoundaryID
-        //                );
+                    // Обновляем связи для конечной вершины end
+                    int lastNewPoint = basePointIndex + currentIntersectionIndex + intersectionPoints.Count - 1;
+                    delaunator.boundaryEdges[end] = new EdgeIndex(
+                        pointID: end,
+                        adjacent1: delaunator.boundaryEdges[end].adjacent1 == start ? lastNewPoint : delaunator.boundaryEdges[end].adjacent1,
+                        adjacent2: delaunator.boundaryEdges[end].adjacent2 == start ? lastNewPoint : delaunator.boundaryEdges[end].adjacent2,
+                        boundaryId: delaunator.boundaryEdges[end].BoundaryID
+                    );
 
-        //                // Добавляем индекс пересеченного ребра в список
-        //                intersectedEdges.Add(e1Index);
+                    currentIntersectionIndex += intersectionPoints.Count; // Обновляем счетчик
+                }
+            }
 
-        //                // Находим смежный треугольник через пересеченное ребро
-        //                int oppositeEdgeIndex = HalfEdges[e1Index];
-        //                if (oppositeEdgeIndex == -1)
-        //                {
-        //                    // Нет смежного треугольника, прерываем обработку
-        //                    break;
-        //                }
+            // Шаг 4: Удаление пересеченных ребер из структуры триангуляции
+            foreach (var edgeIndex in allIntersectedEdges)
+            {
+                int oppositeEdgeIndex = delaunator.HalfEdges[edgeIndex]; // Индекс противоположного ребра
+                delaunator.UnLink(edgeIndex, oppositeEdgeIndex); // Разрываем связь
+            }
 
-        //                // Переходим к смежному треугольнику
-        //                currentTriangleId = oppositeEdgeIndex / 3;
-        //                currentVertex = v2; // Переходим к следующей вершине пересеченного ребра
-        //            }
-        //            else
-        //            {
-        //                // Пересечение в конечной точке, переходим к следующему ребру
-        //                int nextEdgeIndex = currentTriangleId * 3 + (localVertexIndex + 2) % 3;
-        //                currentTriangleId = HalfEdges[nextEdgeIndex] == -1 ? -1 : HalfEdges[nextEdgeIndex] / 3;
-        //            }
-        //        }
-        //        else
-        //        {
-        //            // Нет пересечения, переходим к следующему ребру в треугольнике
-        //            int nextEdgeIndex = currentTriangleId * 3 + (localVertexIndex + 2) % 3;
-        //            currentTriangleId = HalfEdges[nextEdgeIndex] == -1 ? -1 : HalfEdges[nextEdgeIndex] / 3;
-        //        }
+            // Шаг 5: Удаление затронутых треугольников, помечая их как невалидные
+            foreach (int triangleId in allAffectedTriangles)
+            {
+                if (triangleId < delaunator.Triangles.Length) // Проверка на валидность индекса
+                {
+                    delaunator.Triangles[triangleId] = new Troika(-1, -1, -1); // Обнуляем треугольник
+                    delaunator.HalfEdges[triangleId * 3] = -1; // Обнуляем все ребра
+                    delaunator.HalfEdges[triangleId * 3 + 1] = -1;
+                    delaunator.HalfEdges[triangleId * 3 + 2] = -1;
+                }
+            }
 
-        //        // Проверяем, достиг ли треугольник конечной вершины v1
-        //        if (currentTriangleId != -1 && (Triangles[currentTriangleId].i == v1 || Triangles[currentTriangleId].j == v1 || Triangles[currentTriangleId].k == v1))
-        //        {
-        //            currentVertex = v1; // Достигли конечной вершины
-        //        }
-        //    }
+            // Шаг 6: Формирование списка точек для локальной триангуляции
+            var localPoints = new List<IHPoint>(); // Список координат точек
+            var localPointIndices = new List<int>(); // Список глобальных индексов точек
+            foreach (int pointIndex in allAffectedPoints)
+            {
+                if (pointIndex < delaunator.points.Length) // Проверка на валидность
+                {
+                    localPoints.Add(delaunator.points[pointIndex]); // Добавляем точку
+                    localPointIndices.Add(pointIndex); // Добавляем индекс
+                }
+            }
 
-        //    // Возвращаем массив индексов пересеченных ребер
-        //    return intersectedEdges.ToArray();
-        //}
+            for (int i = 0; i < allIntersectionPoints.Count; i++)
+            {
+                localPoints.Add(allIntersectionPoints[i]); // Добавляем точки пересечения
+                localPointIndices.Add(allNewPointIndices[i]); // Добавляем их индексы
+            }
 
+            // Шаг 7: Выполнение локальной триангуляции
+            if (localPoints.Count >= 3) // Минимальное количество точек для триангуляции
+            {
+                try
+                {
+                    var localDelaunator = new Delaunator(localPoints.ToArray()); // Создаем новый экземпляр для локальной триангуляции
+                    localDelaunator.Generate(); // Генерируем триангуляцию
 
-        
+                    if (localDelaunator.Triangles == null)
+                    {
+                        Console.WriteLine("Локальная триангуляция не создана: Triangles равен null");
+                        return;
+                    }
 
+                    int baseTriangleIndex = delaunator.Triangles.Length; // Базовый индекс для новых треугольников
+                    Array.Resize(ref delaunator.Triangles, delaunator.Triangles.Length + localDelaunator.Triangles.Length); // Увеличиваем массив
+                    Array.Resize(ref delaunator.HalfEdges, delaunator.HalfEdges.Length + localDelaunator.HalfEdges.Length);
 
+                    // Копируем результаты локальной триангуляции в глобальные структуры
+                    for (int i = 0; i < localDelaunator.Triangles.Length; i++)
+                    {
+                        int globalI = localPointIndices[localDelaunator.Triangles[i].i]; // Преобразуем локальный индекс в глобальный
+                        int globalJ = localPointIndices[localDelaunator.Triangles[i].j];
+                        int globalK = localPointIndices[localDelaunator.Triangles[i].k];
 
+                        delaunator.Triangles[baseTriangleIndex + i] = new Troika(globalI, globalJ, globalK); // Добавляем треугольник
 
+                        bool isInArea = delaunator.IsTriangleInArea(baseTriangleIndex + i); // Проверяем принадлежность области
+                        delaunator.Triangles[baseTriangleIndex + i].flag = isInArea ? (int)TriangleInfect.Internal : (int)TriangleInfect.External;
 
+                        // Копируем связи полуребер
+                        delaunator.HalfEdges[(baseTriangleIndex + i) * 3] = localDelaunator.HalfEdges[i * 3] == -1 ? -1 : baseTriangleIndex * 3 + localDelaunator.HalfEdges[i * 3];
+                        delaunator.HalfEdges[(baseTriangleIndex + i) * 3 + 1] = localDelaunator.HalfEdges[i * 3 + 1] == -1 ? -1 : baseTriangleIndex * 3 + localDelaunator.HalfEdges[i * 3 + 1];
+                        delaunator.HalfEdges[(baseTriangleIndex + i) * 3 + 2] = localDelaunator.HalfEdges[i * 3 + 2] == -1 ? -1 : baseTriangleIndex * 3 + localDelaunator.HalfEdges[i * 3 + 2];
+                    }
+
+                    // Фильтрация валидных треугольников и ребер
+                    var validTriangles = new List<Troika>();
+                    var validHalfEdges = new List<int>();
+                    for (int i = 0; i < delaunator.Triangles.Length; i++)
+                    {
+                        if (delaunator.Triangles[i].i != -1 && delaunator.Triangles[i].j != -1 && delaunator.Triangles[i].k != -1)
+                        {
+                            validTriangles.Add(delaunator.Triangles[i]); // Сохраняем валидный треугольник
+                            validHalfEdges.Add(delaunator.HalfEdges[i * 3]); // Сохраняем ребра
+                            validHalfEdges.Add(delaunator.HalfEdges[i * 3 + 1]);
+                            validHalfEdges.Add(delaunator.HalfEdges[i * 3 + 2]);
+                        }
+                    }
+
+                    delaunator.Triangles = validTriangles.ToArray(); // Обновляем массив треугольников
+                    delaunator.HalfEdges = validHalfEdges.ToArray(); // Обновляем массив ребер
+
+                    // Корректировка ссылок в HalfEdges
+                    for (int i = 0; i < delaunator.HalfEdges.Length; i++)
+                    {
+                        if (delaunator.HalfEdges[i] != -1)
+                        {
+                            int opposite = delaunator.HalfEdges[i];
+                            if (opposite >= delaunator.HalfEdges.Length || delaunator.HalfEdges[opposite] != i)
+                            {
+                                delaunator.HalfEdges[i] = -1; // Исправляем некорректные ссылки
+                            }
+                        }
+                    }
+                }
+                catch (ArgumentException ex) // Обработка ошибок триангуляции
+                {
+                    Console.WriteLine($"Ошибка при создании локальной триангуляции: {ex.Message}");
+                    return;
+                }
+            }
+        }
 
 
 
@@ -2336,5 +2029,10 @@ namespace TestDelaunayGenerator
             bool isInArea = IsInArea(ctri);
             return isInArea;
         }
+
+
+
+
+
     }
 }
