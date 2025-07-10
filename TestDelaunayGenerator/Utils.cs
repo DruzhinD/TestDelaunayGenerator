@@ -6,6 +6,10 @@ using System.Threading.Tasks;
 
 namespace TestDelaunayGenerator
 {
+    /// <summary>
+    /// Содержит вспомогательный функционал,
+    /// не относящийся к конкретной задаче
+    /// </summary>
     public static class Utils
     {
 

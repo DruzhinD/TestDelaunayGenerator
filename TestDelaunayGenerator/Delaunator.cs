@@ -13,6 +13,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using TestDelaunayGenerator.Boundary;
+using TestDelaunayGenerator.DCELMesh;
 using TestDelaunayGenerator.SimpleStructures;
 using TestDelaunayGenerator.Smoothing;
 
@@ -197,6 +198,25 @@ namespace TestDelaunayGenerator
             }
         }
 
+        #region Экспорт в объекты данных (сетка, DCEL, прочее)
+
+        /// <summary>
+        /// Экспорт в объект DCEL с ограничениями
+        /// </summary>
+        /// <returns></returns>
+        public IRestrictedDCEL ToRestrictedDCEL()
+        {
+
+            IRestrictedDCEL dcel = new RestrictedDCEL(
+                points,
+                this.HalfEdges,
+                this.pointStatuses,
+                this.Triangles,
+                this.boundaryEdges
+                );
+            return dcel;
+        }
+
         /// <summary>
         /// Выводит массивы размером 3 * количество треугольников. <br/>
         /// Поля:
@@ -242,9 +262,13 @@ namespace TestDelaunayGenerator
 
         public TriMesh ToMesh(bool debug = false)
         {
-
             //инициализация объекта сетки и выделение памяти
-            TriMesh mesh = new ExtendedTriMesh(this.HalfEdges, this.pointStatuses, this.Triangles);
+            TriMesh mesh = new DcelTriMesh(
+                this.HalfEdges,
+                this.pointStatuses,
+                this.Triangles,
+                this.boundaryEdges,
+                this.points);
 
             var triangles = new List<Troika>(Triangles.Length);
             for (int i = 0; i < Triangles.Length; i++)
@@ -308,6 +332,7 @@ namespace TestDelaunayGenerator
                 mesh.Print();
             return mesh;
         }
+        #endregion
 
 
         /// <summary>
@@ -640,16 +665,38 @@ namespace TestDelaunayGenerator
             }
             //удаление ссылок на временные массивы
             hullPrev = hullNext = hullTri = null;
+            #endregion
+
             //обрезка триангуляционных массивов
             HalfEdges = HalfEdges.Take(triangleVertexCounter).ToArray();
             Triangles = Triangles.Take(triangleVertexCounter / 3).ToArray();
+
+            //граничная оболочка не задана
+            if (this.boundaryContainer is null)
+            {
+                //TODO выделять память только под граничные вершины
+                this.boundaryEdges = new EdgeIndex[points.Length];
+
+                //отмечаем граничные ребра
+                //отмечаем точки, формирующие оболочку граничными
+                for (int i = 0; i < Hull.Length; i++)
+                {
+                    //id вершины
+                    int vid = Hull[i % Hull.Length];
+                    pointStatuses[vid] = PointStatus.Boundary;
+
+                    //id соседних вершин
+                    int prevVid = Hull[(Hull.Length - 1 + i) % Hull.Length];
+                    int nextVid = Hull[(i + 1) % Hull.Length];
+                    this.boundaryEdges[vid] = new EdgeIndex(vid, prevVid, nextVid, 0);
+                }
+            }
 
             //если множество оболочек не задано, то полученную выпуклую оболочку помечаем граничной
             if (this.boundaryContainer is null)
                 Array.ForEach(Hull, x => pointStatuses[x] = PointStatus.Boundary);
             //удаление связей с внешними треугольниками в полуребрах
-            //ErraseExternalTriangles();
-            #endregion
+            ErraseExternalTriangles();
         }
 
         #region Логика генерации триангуляции делоне по S-hull
@@ -1471,11 +1518,14 @@ namespace TestDelaunayGenerator
             return isInArea;
         }
 
+        //TODO добавить очистку внешних треугольников
         /// <summary>
         /// Разорвать связи в полуребрах с внешними треугольниками
         /// </summary>
-        void ErraseExternalTriangles()
+        /// <param name="removeExternalTriangles">true - очистка внешних треугольников</param>
+        void ErraseExternalTriangles(bool removeExternalTriangles = false)
         {
+            //удаление связей с внешними треугольниками
             for (int i = 0; i < Triangles.Length; i++)
             {
                 if (Triangles[i].flag == (int)TriangleInfect.External)

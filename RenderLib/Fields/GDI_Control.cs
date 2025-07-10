@@ -13,7 +13,6 @@ namespace RenderLib
     using GeometryLib;
     using GeometryLib.Vector;
     using RenderLib.Fields;
-
     using System;
     using System.IO;
     using System.Drawing;
@@ -25,6 +24,7 @@ namespace RenderLib
     using GeometryLib.Geometry;
     using TestDelaunayGenerator.Smoothing;
     using System.Diagnostics;
+    using TestDelaunayGenerator.DCELMesh;
 
     /// <summary>
     ///ОО: Компонент визуализации данных (сетки, и сеточных полей, кривых (устарело) ) 
@@ -1119,20 +1119,23 @@ namespace RenderLib
 
         }
 
-        ISmoother smoother = new LaplacianSmoother();
+        int totalIterations = 0;
+        SmootherBase smoother = new LaplacianSmoother(
+            new SmootherConfig()
+            );
         private void btSmooth_Click(object sender, EventArgs e)
         {
-            ExtendedTriMesh mesh;
+            DcelTriMesh mesh;
             //попытка преобразования
             try
             {
-                mesh = spData.mesh as ExtendedTriMesh;
+                mesh = spData.mesh as DcelTriMesh;
                 if (mesh is null)
                     throw new Exception();
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Сетка не является типом или не наследуется от {nameof(ExtendedTriMesh)}, " +
+                MessageBox.Show($"Сетка не является типом или не наследуется от {nameof(DcelTriMesh)}, " +
                     $"сглаживание невозможно!");
                 return;
             }
@@ -1144,14 +1147,24 @@ namespace RenderLib
                 MessageBox.Show($"Неверное значение коэффициента! Установлено значение по умолчанию: {smoothRatio}");
                 tbSmoothRatio.Text = smoothRatio.ToString();
             }
+            smoother.Config.SmoothRatio = smoothRatio;
 
             //5 итераций
-            for (int i = 0; i < 5; i++)
+            for (int i = 0; i < 10; i++)
             {
                 Stopwatch sw = Stopwatch.StartNew();
-                smoother.Smooth(mesh, smoothRatio);
+                smoother.Smooth(mesh);
                 sw.Stop();
-                Console.WriteLine($"Выполнено сглаживание с коэффициентом {smoothRatio}. Время: {sw.Elapsed.TotalSeconds} (с)");
+                totalIterations++;
+                Console.WriteLine($"Выполнено сглаживание #{totalIterations} " +
+                    $"с коэффициентом {smoothRatio}. Время: {sw.Elapsed.TotalSeconds} (с)");
+            }
+            //т.к. IHPoint[] не связано с double[] координатами
+            //заменяем значения вручную
+            for (int i = 0; i < mesh.Points.Length; i++)
+            {
+                mesh.CoordsX[i] = mesh.Points[i].X;
+                mesh.CoordsY[i] = mesh.Points[i].Y;
             }
         }
     }

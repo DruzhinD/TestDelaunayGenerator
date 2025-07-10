@@ -53,22 +53,26 @@ namespace TestDelaunayGenerator
             return prevHalfEdge;
         }
 
-        //TODO Troika заменить на TriElement (в делонаторе нужно убрать треугольники, находящиеся вне области)
         /// <summary>
-        /// Получить все ребра, окружающие конкретную вершину.
+        /// Получить все ребра, окружающие вершину, на которую указывает <paramref name="edgeId"/>.
         /// </summary>
-        /// <param name="halfEdges">массив полуребер</param>
-        /// <param name="edgeId">полуребро, указывающее на общую вершину.
-        /// Индекс полуребра, которое хранит индекс общей вершины в массиве треугольников.
-        /// Сами же полуребра указывают на вершины, смежные с указанной общей
+        /// <param name="halfEdges">полуребра</param>
+        /// <param name="triangles">треугольники, связанные с <paramref name="halfEdges"/></param>
+        /// <param name="edgeId">
+        /// Полуребро, указывающее на вершину, вокруг которой требуется найти смежные ребра
         /// </param>
-        /// <returns>индексы в массиве треугольников, которые содержат смежные вершины с искомой общей.
-        /// Все полуребра (индексы, которые они хранят) указывают на общую вершину/returns>
-        public static int[] EdgesAroundVertex(int[] halfEdges, Troika[] triangles, int edgeId)
+        /// <param name="include">
+        /// true - учитывать при обходе против ч.с. полуребро,
+        /// не являющееся смежным с общей вершиной,
+        /// но при этом это ребро указывает на вершину, смежную с общей вершиной. <br/>
+        /// Поэтому последнее <u>полуребро</u> не будет смежным с общей вершиной
+        /// </param>
+        /// <returns>полуребра, смежные с общей вершиной</returns>
+        /// <remarks>
+        /// Параметр <paramref name="include"/> уместен, если общая вершина является граничной.
+        /// </remarks>
+        public static int[] AdjacentEdgesVertex(int[] halfEdges, Troika[] triangles, int edgeId, bool include = false)
         {
-//#if DEBUG
-//            Console.WriteLine($"Стартовое ребро: {triangles[edgeId / 3][edgeId % 3]}-{triangles[halfEdges[edgeId] / 3][halfEdges[edgeId] % 3]}");
-//#endif
             int vertexId = triangles[edgeId / 3][edgeId % 3];
             //если нет смежного полуребра, то ищем другое полуребро, которое связано с такой же вершиной
             if (halfEdges[edgeId] == -1)
@@ -88,7 +92,6 @@ namespace TestDelaunayGenerator
                     }
                 }
             }
-            int adjacentEdgeId = halfEdges[edgeId];
 
             //true - сегмент замкнут, т.е. треугольники окружают точку вкруг
             bool isSegmentClosed = false;
@@ -96,9 +99,8 @@ namespace TestDelaunayGenerator
             List<int> segmentHalfEdges = new List<int>();
             int incoming, outgoing;
 
-            //incoming (start), outgoing, incoming
-            List<(int, int, int)> debug = new List<(int, int, int)>();
-            //обход по следующим ребрам
+            int adjacentEdgeId = halfEdges[edgeId];
+            //обход против ч.с.
             for (incoming = adjacentEdgeId; ;)
             {
                 int startIncoming = incoming;
@@ -108,9 +110,8 @@ namespace TestDelaunayGenerator
                 //одно ребро
                 outgoing = NextHalfEdge(incoming); //указывает на общую вершину
                 incoming = halfEdges[outgoing]; //указывает на смежную с ней
-
-                debug.Add((startIncoming, outgoing, incoming));
 #if DEBUG
+                //outgoing должна указывать на vid
                 if (triangles[outgoing / 3][outgoing % 3] != vertexId)
                 {
                     string log = $"общая вершина ({nameof(outgoing)}) != {vertexId} " +
@@ -133,31 +134,64 @@ namespace TestDelaunayGenerator
                 }
 
                 //нет смежного ребра
+                //попадание только если vid является граничной
                 if (incoming == -1)
+                {
+                    if (include)
+                    {
+                        //ребро указывает на вершину, смежную с vid
+                        //но полуребра этих вершин не связаны
+                        int nextBoundaryVid = NextHalfEdge(outgoing);
+                        segmentHalfEdges.Add(nextBoundaryVid);
+                    }
+
                     break;
+                }
             }
 
             //сегмент замкнут, поэтому возвращаем все треугольники с первого прохода
             if (isSegmentClosed)
                 return segmentHalfEdges.ToArray();
 
-            //обход по предыдущим ребрам (если сегмент не замкнут)
-
+            //количество полуребер, полученное при обходе против ч.с.
+            int firstRoundCnt = segmentHalfEdges.Count;
+            // обход по ч.с.
             for (outgoing = edgeId; ;)
             {
                 incoming = PrevHalfEdge(outgoing);
                 segmentHalfEdges.Add(incoming);
-                outgoing = halfEdges[incoming];
+                outgoing = halfEdges[incoming]; //указывает на vid
 
                 if (outgoing == -1)
                     break;
 
                 if (outgoing == edgeId)
-                    throw new ArgumentException($"Достигнута исходная вершина {adjacentEdgeId} при обратном обходе!");
+                    //throw new ArgumentException($"Достигнута исходная вершина {adjacentEdgeId} при обратном обходе!");
+                    break;
             }
 
-            return segmentHalfEdges.ToHashSet().ToArray();
+            //полуребра без повторов
+            segmentHalfEdges = segmentHalfEdges.ToHashSet().ToList();
+            int[] returnHalfEdges = new int[segmentHalfEdges.Count];
+
+            //заполняем начало массива полуребрами с прохода по ч.с. в обратном порядке
+            int arrayIndex = 0;
+            for (int i = segmentHalfEdges.Count - 1; i >= firstRoundCnt; i--)
+            {
+                returnHalfEdges[arrayIndex] = segmentHalfEdges[i];
+                arrayIndex++;
+            }
+
+            //заполняем массив обходом против ч.с.
+            for (int i = 0; i < firstRoundCnt; i++)
+            {
+                returnHalfEdges[arrayIndex] = segmentHalfEdges[i];
+                arrayIndex++;
+            }
+
+            return returnHalfEdges;
         }
+
 
         /// <summary>
         /// Треугольники, смежные с вершиной, на которую указывает <paramref name="edgeId"/>
@@ -167,8 +201,42 @@ namespace TestDelaunayGenerator
         /// <returns></returns>
         public static int[] AdjacentTrianglesWithEdge(int[] halfEdges, Troika[] triangles, int edgeId)
         {
-            int[] edgesAroundVertex = EdgesAroundVertex(halfEdges, triangles, edgeId);
+            int[] edgesAroundVertex = AdjacentEdgesVertex(halfEdges, triangles, edgeId, false);
             return edgesAroundVertex.Select(x => x / 3).ToArray();
+        }
+
+        /// <summary>
+        /// Получить все полуребра, смежные с вершиной <paramref name="vid"/>.
+        /// </summary>
+        /// <param name="halfEdges"></param>
+        /// <param name="triangles"></param>
+        /// <param name="vid"></param>
+        /// <returns></returns>
+        [Obsolete("Медленный, не рекомендуется к использованию, лучше использовать EdgesAroundVertex")]
+        public static int[] AdjacentVertexesWithVid(int[] halfEdges, Troika[] triangles, int vid)
+        {
+            //id треугольников, в которые входит вершина vid
+            var trIds = new HashSet<int>();
+            for (int edgeId = 0; edgeId < halfEdges.Length; edgeId++)
+            {
+                //if (triangles[edgeId / 3][edgeId % 3] == vid && halfEdges[edgeId] != -1)
+                if (triangles[edgeId / 3][edgeId % 3] == vid)
+                {
+                    trIds.Add(edgeId / 3);
+                    if (halfEdges[edgeId] != -1)
+                        trIds.Add(halfEdges[edgeId] / 3);
+                }
+            }
+
+            //вершины
+            var vids = new HashSet<int>();
+            foreach (int trid in trIds)
+            {
+                for (int i = 0; i < 3; i++)
+                    vids.Add(triangles[trid][i]);
+            }
+
+            return vids.ToArray();
         }
     }
 }

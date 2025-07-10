@@ -6,42 +6,46 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using TestDelaunayGenerator.SimpleStructures;
+using TestDelaunayGenerator.DCELMesh;
 
 namespace TestDelaunayGenerator.Smoothing
 {
-    public class LaplacianSmoother : ISmoother
+    public class LaplacianSmoother : SmootherBase
     {
+        public LaplacianSmoother(SmootherConfig config)
+            : base(config)
+        {
+        }
         /// <summary>
         /// Объект сетки
         /// </summary>
-        protected ExtendedTriMesh mesh;
+        protected IRestrictedDCEL mesh;
 
-        //TODO не робит с количестовом > 1
         /// <summary>
         /// количество попыток перемещения точки в новые координаты
         /// с уменьшем степени сглаживания
         /// </summary>
         const int attemptCount = 3;
 
-        public void Smooth(ExtendedTriMesh mesh, double smoothRatio = 1)
+        public override void Smooth(IRestrictedDCEL mesh)
         {
             this.mesh = mesh;
             //валидация
             if (mesh is null)
                 throw new ArgumentNullException($"{nameof(mesh)} не должна быть null!");
-            if (!(0 <= smoothRatio && smoothRatio <= 1))
+            if (!(0 <= Config.SmoothRatio && Config.SmoothRatio <= 1))
                 throw new ArgumentException($"Коэффициент сглаживания выходит за пределы [0,1]! " +
-                    $"(текущее значение - {smoothRatio})");
+                    $"(текущее значение - {Config.SmoothRatio})");
 
             //true - вершина уже обработана (пропущена или перемещена)
             bool[] isProcessed = null;
-            MEM.Alloc(mesh.CountKnots, ref isProcessed, false);
+            MEM.Alloc(mesh.Points.Length, ref isProcessed, false);
 
             //проход по всем полуребрам (поиск основан на полуребрах)
             for (int halfEdgeId = 0; halfEdgeId < mesh.HalfEdges.Length; halfEdgeId++)
             {
                 //id вершины
-                int vertexId = mesh.Triangles[halfEdgeId / 3][halfEdgeId % 3];
+                int vertexId = mesh.Faces[halfEdgeId / 3][halfEdgeId % 3];
 
                 //если вершина ранее была обработана, то пропускаем её
                 if (isProcessed[vertexId])
@@ -59,7 +63,7 @@ namespace TestDelaunayGenerator.Smoothing
                 }
 
                 //треугольники сегмента омега
-                int[] edgesAroundVId = HalfEdgesUtils.EdgesAroundVertex(mesh.HalfEdges, mesh.Triangles, halfEdgeId);
+                int[] edgesAroundVId = HalfEdgesUtils.AdjacentEdgesVertex(mesh.HalfEdges, mesh.Faces, halfEdgeId);
                 //нет соседей
                 if (edgesAroundVId.Length < 2)
                 {
@@ -78,8 +82,8 @@ namespace TestDelaunayGenerator.Smoothing
                 double sumX = 0, sumY = 0;
                 for (int i = 0; i < adjacentVertexes.Length; i++)
                 {
-                    sumX += mesh.CoordsX[adjacentVertexes[i]];
-                    sumY += mesh.CoordsY[adjacentVertexes[i]];
+                    sumX += mesh.Points[adjacentVertexes[i]].X;
+                    sumY += mesh.Points[adjacentVertexes[i]].Y;
                 }
 
                 //новая координата без коэф сглаживания
@@ -87,12 +91,12 @@ namespace TestDelaunayGenerator.Smoothing
                 double avgY = sumY / adjacentVertexes.Length;
 
                 //новые значения с учетом сглаживания
-                double newX = mesh.CoordsX[vertexId];
-                double newY = mesh.CoordsY[vertexId];
+                double newX = mesh.Points[vertexId].X;
+                double newY = mesh.Points[vertexId].Y;
 
                 bool isNotDestroyed = true;
                 //коэффииент сглаживания, мб уменьшен из-за выворота треугольников
-                double currentSmoothRatio = smoothRatio;
+                double currentSmoothRatio = Config.SmoothRatio;
                 //проверка выворота треугольников
                 //проход по всем треугольникам, которые содержат вершину
                 for (int i = 0; i < edgesAroundVId.Length; i++)
@@ -103,7 +107,7 @@ namespace TestDelaunayGenerator.Smoothing
 
                     //выполняем перемещение вершины до тех пор,
                     //пока перемещение не станет приемлемым
-                    for (int attempt = 0; attempt < attemptCount; attempt++)
+                    for (int attempt = 0; attempt < this.Config.AttemptCnt; attempt++)
                     {
                         //новые координаты точки
                         (newX, newY) = UseSmoothRatio(vertexId, avgX, avgY, currentSmoothRatio);
@@ -113,12 +117,12 @@ namespace TestDelaunayGenerator.Smoothing
                         if (isNotDestroyed)
                             break;
                         //уменьшаем коэффициент сглаживания
-                        currentSmoothRatio *= 0.5;
+                        currentSmoothRatio *= this.Config.ReductionRatio;
 #if DEBUG
                         Utils.ConsoleWriteLineColored(
                             ConsoleColor.Red,
-                            $"не удалось переместить вершину {vertexId} ({mesh.CoordsX[vertexId]},{mesh.CoordsY[vertexId]}) " +
-                            $"в новые координаты ({newX},{newY}) - выворот треугольника {trid}({mesh.Triangles[trid]})"
+                            $"не удалось переместить вершину {vertexId} ({mesh.Points[vertexId].X},{mesh.Points[vertexId].Y}) " +
+                            $"в новые координаты ({newX},{newY}) - выворот треугольника {trid}({mesh.Faces[trid]})"
                             );
                         Console.WriteLine($"Установка коэффициента сглаживания:{currentSmoothRatio}");
 
@@ -130,7 +134,7 @@ namespace TestDelaunayGenerator.Smoothing
                                 );
 #endif
                         //устанавливаем изначальные координаты
-                        (newX, newY) = (mesh.CoordsX[vertexId], mesh.CoordsY[vertexId]);
+                        (newX, newY) = (mesh.Points[vertexId].X, mesh.Points[vertexId].Y);
                     }
 
                     //треугольник вывернут, поэтому нет смысла проверять оставшиеся,
@@ -143,12 +147,12 @@ namespace TestDelaunayGenerator.Smoothing
 #if DEBUG
                 if (isNotDestroyed)
                     Console.WriteLine($"Перемещение вершины {vertexId} из " +
-                        $"({mesh.CoordsX[vertexId]}, {mesh.CoordsY[vertexId]}) " +
+                        $"({mesh.Points[vertexId].X}, {mesh.Points[vertexId].Y}) " +
                         $"в ({newX}, {newY})");
 #endif
                 //сохраняем новые координаты
-                mesh.CoordsX[vertexId] = newX;
-                mesh.CoordsY[vertexId] = newY;
+                mesh.Points[vertexId].X = newX;
+                mesh.Points[vertexId].Y = newY;
                 isProcessed[vertexId] = true;
             }
         }
@@ -178,18 +182,17 @@ namespace TestDelaunayGenerator.Smoothing
             }
             else if (smoothRatio == 0)
             {
-                return (mesh.CoordsX[vid], mesh.CoordsY[vid]);
+                return (mesh.Points[vid].X, mesh.Points[vid].Y);
             }
             //коэф в пределах (0,1)
             else
             {
-                double newX = mesh.CoordsX[vid] + (avgX - mesh.CoordsX[vid]) * smoothRatio;
-                double newY = mesh.CoordsY[vid] + (avgY - mesh.CoordsY[vid]) * smoothRatio;
+                double newX = mesh.Points[vid].X + (avgX - mesh.Points[vid].X) * smoothRatio;
+                double newY = mesh.Points[vid].Y + (avgY - mesh.Points[vid].Y) * smoothRatio;
                 return (newX, newY);
             }
         }
 
-        //TODO доделать выворот
         /// <summary>
         /// Проверка треугольника на разрушение/выворот.
         /// Основа - ориентировнная площадь,
@@ -205,21 +208,21 @@ namespace TestDelaunayGenerator.Smoothing
             //вершины треугольника
             List<int> vertexes = new List<int>(3)
             {
-                mesh.Triangles[trid].i,
-                mesh.Triangles[trid].j,
-                mesh.Triangles[trid].k,
+                mesh.Faces[trid].i,
+                mesh.Faces[trid].j,
+                mesh.Faces[trid].k,
             };
             //удаляем вершину vid из списка вершин
             vertexes.Remove(vid);
 
-            double areaOld = OrientArea(new HPoint(mesh.CoordsX[vid], mesh.CoordsY[vid]),
-                        new HPoint(mesh.CoordsX[vertexes[0]], mesh.CoordsY[vertexes[0]]),
-                        new HPoint(mesh.CoordsX[vertexes[1]], mesh.CoordsY[vertexes[1]])
-                        );
+            double areaOld = OrientArea(new HPoint(mesh.Points[vid].X, mesh.Points[vid].Y),
+                new HPoint(mesh.Points[vertexes[0]].X, mesh.Points[vertexes[0]].Y),
+                new HPoint(mesh.Points[vertexes[1]].X, mesh.Points[vertexes[1]].Y)
+                );
 
             double areaNew = OrientArea(new HPoint(newX, newY),
-                new HPoint(mesh.CoordsX[vertexes[0]], mesh.CoordsY[vertexes[0]]),
-                new HPoint(mesh.CoordsX[vertexes[1]], mesh.CoordsY[vertexes[1]])
+                new HPoint(mesh.Points[vertexes[0]].X, mesh.Points[vertexes[0]].Y),
+                new HPoint(mesh.Points[vertexes[1]].X, mesh.Points[vertexes[1]].Y)
                 );
 
             //знаки должны совпасть, также 0 не допускается
