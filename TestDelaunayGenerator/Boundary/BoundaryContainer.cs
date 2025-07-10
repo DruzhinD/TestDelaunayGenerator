@@ -17,22 +17,22 @@ namespace TestDelaunayGenerator.Boundary
         /// <summary>
         /// Внешняя оболочка
         /// </summary>
-        public BoundaryNew OuterBoundary { get => outerBoundary; }
+        public BoundaryHull OuterBoundary { get => outerBoundary; }
 
         /// <summary>
         /// Внешняя оболочка
         /// </summary>
-        protected BoundaryNew outerBoundary;
+        protected BoundaryHull outerBoundary;
 
         /// <summary>
         /// Внутренние оболочки
         /// </summary>
-        protected List<BoundaryNew> innerBoundaries = new List<BoundaryNew>();
+        protected List<BoundaryHull> innerBoundaries = new List<BoundaryHull>();
 
         /// <summary>
         /// Внутренние оболочки
         /// </summary>
-        public List<BoundaryNew> InnerBoundaries => innerBoundaries;
+        public List<BoundaryHull> InnerBoundaries => innerBoundaries;
 
 
         /// <summary>
@@ -83,9 +83,13 @@ namespace TestDelaunayGenerator.Boundary
             }
         }
 
-
-        //TODO поправить индексацию, а также индексацию в методе GetBoundaryOffset
-        public BoundaryNew this[int boundId]
+        /// <summary>
+        /// Индексатор по граничным оболочкам
+        /// </summary>
+        /// <param name="boundId">index=0 - внешняя оболочка, остальные - внутренние (при наличии)</param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentException">неверный index оболочки</exception>
+        public BoundaryHull this[int boundId]
         {
             get
             {
@@ -105,7 +109,7 @@ namespace TestDelaunayGenerator.Boundary
         /// </summary>
         /// <param name="boundary">внутренняя оболочка</param>
         /// <exception cref="ArgumentNullException">boundary null</exception>
-        public void AddInnerBoundary(BoundaryNew boundary)
+        public void AddInnerBoundary(BoundaryHull boundary)
         {
             if (boundary is null)
                 throw new ArgumentNullException($"{nameof(boundary)} не может быть null!");
@@ -128,7 +132,7 @@ namespace TestDelaunayGenerator.Boundary
 
 
             //создаем объект оболочки и добавляем в коллекцию через метод
-            var boundary = new BoundaryNew(baseVertexes, generator);
+            var boundary = new BoundaryHull(baseVertexes, generator);
             this.AddInnerBoundary(boundary);
         }
 
@@ -138,7 +142,7 @@ namespace TestDelaunayGenerator.Boundary
         /// </summary>
         /// <param name="boundary">внешняя оболочка</param>
         /// <exception cref="ArgumentNullException"></exception>
-        public void ReplaceOuterBoundary(BoundaryNew boundary)
+        public void ReplaceOuterBoundary(BoundaryHull boundary)
         {
             if (boundary is null)
                 throw new ArgumentNullException($"{nameof(boundary)} не может быть null!");
@@ -161,13 +165,13 @@ namespace TestDelaunayGenerator.Boundary
                 throw new ArgumentNullException($"{nameof(generator)} не может быть null");
 
             //создаем объект оболочки и заменяем через метод
-            var boundary = new BoundaryNew(baseVertexes, generator);
+            var boundary = new BoundaryHull(baseVertexes, generator);
             this.ReplaceOuterBoundary(boundary);
         }
         #endregion
 
         //генератор
-        public IEnumerator<BoundaryNew> GetEnumerator()
+        public IEnumerator<BoundaryHull> GetEnumerator()
         {
             yield return this.outerBoundary;
             for (int i = 0; i < this.innerBoundaries.Count; i++)
@@ -176,58 +180,9 @@ namespace TestDelaunayGenerator.Boundary
             }
         }
 
-        //TODO удалить/изменить
+        /// <summary>
+        /// Количество граничных оболочек, включая внешнюю и внутренние
+        /// </summary>
         public int Count => 1 + this.innerBoundaries.Count;
-
-
-        /// <summary>
-        /// Смещение по количеству узлов в общем массиве узлов для конкретной границы. <br/>
-        /// Для первой границы смещение будет 0, для 2-ой границы смещение будет 0 + количество узлов в первой границе и т.д.
-        /// </summary>
-        /// <param name="boundId"></param>
-        /// <returns></returns>
-        public int GetBoundaryOffset(int boundId)
-        {
-            //смещение по внешней оболочке
-            if (boundId == 0)
-                return 0;
-
-            //проверка на корректный индекс границы
-            //для внутренних границ индексация начинается с 1
-            if (1 + this.innerBoundaries.Count - 1 < boundId || boundId < 0)
-                throw new ArgumentException($"{nameof(boundId)} вышел за пределы индексации.");
-
-            //смещение по внешней оболочке
-            int offset = this.OuterBoundary.Points.Length;
-            //отсчитываем по внутренних оболочкам
-            for (int i = 0; i < boundId - 1; i++)
-            {
-                offset += this.innerBoundaries[i].Points.Length;
-            }
-            return offset;
-        }
-
-        /// <summary>
-        /// Проверяет, принадлежит ли ребро (start, end) какой-либо границе
-        /// </summary>
-        /// <param name="start">Индекс начальной точки ребра</param>
-        /// <param name="end">Индекс конечной точки ребра</param>
-        /// <param name="offset">Смещение индексов точек в общем массиве</param>
-        /// <returns>True, если ребро принадлежит границе</returns>
-        public bool IsBoundaryEdge(int start, int end, int offset)
-        {
-            foreach (var boundary in this)
-            {
-                foreach (var edge in boundary.BaseBoundaryEdges)
-                {
-                    int edgeStart = Array.IndexOf(boundary.Points, edge.A) + offset;
-                    int edgeEnd = Array.IndexOf(boundary.Points, edge.B) + offset;
-                    if ((start == edgeStart && end == edgeEnd) || (start == edgeEnd && end == edgeStart))
-                        return true;
-                }
-                offset += boundary.Points.Length;
-            }
-            return false;
-        }
     }
 }

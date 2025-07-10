@@ -1299,7 +1299,7 @@ namespace TestDelaunayGenerator
 
             //проверка нахождения ЗА пределами прямоугольников, описанных около
             // внутренних оболочек
-            foreach (BoundaryNew innerBoundary in boundaryContainer.InnerBoundaries)
+            foreach (BoundaryHull innerBoundary in boundaryContainer.InnerBoundaries)
             {
                 //пропускаем, если количество опорных вершин оболочки
                 //не больше, чем у прямоугольника (т.е. 4)
@@ -1313,7 +1313,7 @@ namespace TestDelaunayGenerator
             }
 
             //проверка нахождения ЗА пределами внутренних оболочек
-            foreach (BoundaryNew innerBoundary in boundaryContainer.InnerBoundaries)
+            foreach (BoundaryHull innerBoundary in boundaryContainer.InnerBoundaries)
             {
                 crossCount = CountIntersections(point, innerBoundary.BaseVertexes);
                 //нужно, чтобы точка не входила в оболочку, т.к. innerBoundary является дыркой

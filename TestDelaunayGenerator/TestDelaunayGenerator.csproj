@@ -49,7 +49,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Boundary\BoundaryNew.cs" />
+    <Compile Include="Boundary\BoundaryHull.cs" />
     <Compile Include="Boundary\BoundaryContainer.cs" />
     <Compile Include="Boundary\CounturHill.cs" />
     <Compile Include="DCELMesh\RestrictedDCEL.cs" />
