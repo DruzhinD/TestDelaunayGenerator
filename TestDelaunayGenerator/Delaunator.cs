@@ -840,7 +840,19 @@ namespace TestDelaunayGenerator
                         !HPoint.Equals(intersection, p2) && !HPoint.Equals(intersection, p3))
                     {
                         // Флаг уникальности точки пересечения
-                        bool isUnique = true; 
+                        //const double epsilon = 1e-10; // Погрешность для сравнения координат
+                        //bool isUnique = true;
+                        //foreach (var existingPoint in intersectionPoints)
+                        //{
+                        //    double dx = intersection.X - existingPoint.X;
+                        //    double dy = intersection.Y - existingPoint.Y;
+                        //    if (Math.Abs(dx) < epsilon && Math.Abs(dy) < epsilon)
+                        //    {
+                        //        isUnique = false;
+                        //        break;
+                        //    }
+                        //}
+                        bool isUnique = true;
                         foreach (var existingPoint in points) // Проверка на дубликаты
                         {
                             if (HPoint.Equals(intersection, existingPoint))
@@ -857,12 +869,13 @@ namespace TestDelaunayGenerator
                             affectedPoints.Add(v2); // Добавляем вершины ребра в затронутые точки
                             affectedPoints.Add(v3);
                             affectedTriangles.Add(currentTriangleId); // Отмечаем треугольник как затронутый
+                            //continue;
                             break; // Прерываем поиск после нахождения первого пересечения
                         }
                     }
                 }
             }
-
+            
             Console.WriteLine($"Начальный треугольник: {currentTriangleId}");
 
             if (currentTriangleId == -1)
@@ -879,6 +892,7 @@ namespace TestDelaunayGenerator
             // Обход всех связанных треугольников с использованием
             while (triangleQueue.Count > 0)
             {
+                //break;
                 // Извлекаем следующий треугольник
                 currentTriangleId = triangleQueue.Dequeue();
                 // Текущий треугольник
@@ -906,6 +920,18 @@ namespace TestDelaunayGenerator
                     if (CrossLineUtils.IsCrossing(p2, p3, boundaryStart, boundaryEnd, ref intersection) &&
                         !HPoint.Equals(intersection, p2) && !HPoint.Equals(intersection, p3))
                     {
+                        //const double epsilon = 1e-100; // Погрешность для сравнения координат
+                        //bool isUnique = true;
+                        //foreach (var existingPoint in intersectionPoints)
+                        //{
+                        //    double dx = intersection.X - existingPoint.X;
+                        //    double dy = intersection.Y - existingPoint.Y;
+                        //    if (Math.Abs(dx) < epsilon && Math.Abs(dy) < epsilon)
+                        //    {
+                        //        isUnique = false;
+                        //        break;
+                        //    }
+                        //}
                         bool isUnique = true; // Проверка уникальности точки
                         foreach (var existingPoint in points)
                         {
@@ -985,14 +1011,46 @@ namespace TestDelaunayGenerator
                 var (start, end) = missingEdge; // Разбираем кортеж ребра
                 Console.WriteLine($"Обработка пропущенного граничного ребра: ({start}, {end})"); // Вывод для отладки
 
+                //if (start == 19)
+                //     break;
+                
                 // Выполняем обработку текущего ребра
                 var (intersectedEdges, intersectionPoints, affectedPoints) = delaunator.ProcessMissingBoundaryEdge(missingEdge);
 
+                // Фильтрация дубликатов точек пересечения по координатам
+                var uniqueIntersectionPoints = new List<IHPoint>();
+                foreach (var point in intersectionPoints)
+                {
+                    bool isDuplicate = false;
+                    foreach (var existingPoint in allIntersectionPoints.Concat(uniqueIntersectionPoints))
+                    {
+                        if (point.X == existingPoint.X && point.Y == existingPoint.Y)
+                        {
+                            isDuplicate = true;
+                            break;
+                        }
+                    }
+                    if (!isDuplicate)
+                    {
+                        uniqueIntersectionPoints.Add(point);
+                    }
+                }
+                // Фильтрация дубликатов полуребер
+                var uniqueIntersectedEdges = new HashSet<int>();
+                foreach (var edgeIndex in intersectedEdges)
+                {
+                    if (!allIntersectedEdges.Contains(edgeIndex) && !uniqueIntersectedEdges.Contains(edgeIndex))
+                    {
+                        uniqueIntersectedEdges.Add(edgeIndex);
+                    }
+                }
+
+
                 // Сохраняем данные для текущего ребра
-                edgeIntersectionData.Add((start, end, intersectedEdges, intersectionPoints, affectedPoints));
+                edgeIntersectionData.Add((start, end, uniqueIntersectedEdges.ToArray(), uniqueIntersectionPoints, affectedPoints));
 
                 // Обновляем глобальные множества данными из текущего ребра
-                foreach (var edgeIndex in intersectedEdges)
+                foreach (var edgeIndex in uniqueIntersectedEdges)
                 {
                     allIntersectedEdges.Add(edgeIndex); // Добавляем индекс ребра
                     int triangleId = edgeIndex / 3; // Вычисляем идентификатор треугольника
@@ -1003,20 +1061,21 @@ namespace TestDelaunayGenerator
                     }
                 }
 
-                allIntersectionPoints.AddRange(intersectionPoints); // Добавляем все точки пересечения
+                allIntersectionPoints.AddRange(uniqueIntersectionPoints); // Добавляем все точки пересечения
                 allAffectedPoints.UnionWith(affectedPoints); // Объединяем затронутые точки
 
                 Console.WriteLine("Пересеченные ребра:");
-                foreach (int edgeIndex in intersectedEdges)
+                foreach (int edgeIndex in uniqueIntersectedEdges)
                 {
                     Console.WriteLine($"Полуребро с индексом: {edgeIndex}");
                 }
 
                 Console.WriteLine("Точки пересечения на граничном ребре:");
-                foreach (IHPoint point in intersectionPoints)
+                foreach (IHPoint point in uniqueIntersectionPoints)
                 {
                     Console.WriteLine($"Точка: ({point.X}, {point.Y})");
                 }
+                //break;
             }
 
             // Шаг 2: Добавление всех точек пересечения в глобальные массивы Delaunator
@@ -2032,6 +2091,11 @@ namespace TestDelaunayGenerator
 
 
 
+
+
+
+
+       
 
 
     }
