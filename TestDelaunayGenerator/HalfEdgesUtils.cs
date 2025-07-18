@@ -23,8 +23,7 @@ namespace TestDelaunayGenerator
         /// <exception cref="ArgumentException"></exception>
         public static int NextHalfEdge(int curHalfEdge)
         {
-            if (curHalfEdge == -1)
-                throw new ArgumentException("Полуребро не может быть -1", nameof(curHalfEdge));
+            ValidateParam(curHalfEdge, nameof(curHalfEdge));
 
             int nextHalfEdge = -1;
             if (curHalfEdge % 3 == 2)
@@ -42,8 +41,7 @@ namespace TestDelaunayGenerator
         /// <exception cref="ArgumentException"></exception>
         public static int PrevHalfEdge(int curHalfEdge)
         {
-            if (curHalfEdge == -1)
-                throw new ArgumentException("Полуребро не может быть -1", nameof(curHalfEdge));
+            ValidateParam(curHalfEdge, nameof(curHalfEdge));
 
             int prevHalfEdge = -1;
             if (curHalfEdge % 3 == 0)
@@ -53,6 +51,7 @@ namespace TestDelaunayGenerator
             return prevHalfEdge;
         }
 
+        //ПОРЯДОК против ч.с. ВАЖЕН!
         /// <summary>
         /// Получить все ребра, окружающие вершину, на которую указывает <paramref name="edgeId"/>.
         /// </summary>
@@ -67,9 +66,12 @@ namespace TestDelaunayGenerator
         /// но при этом это ребро указывает на вершину, смежную с общей вершиной. <br/>
         /// Поэтому последнее <u>полуребро</u> не будет смежным с общей вершиной
         /// </param>
-        /// <returns>полуребра, смежные с общей вершиной</returns>
+        /// <returns>полуребра, смежные с общей вершиной.
+        /// Порядок - против ч.с.
+        /// </returns>
         /// <remarks>
         /// Параметр <paramref name="include"/> уместен, если общая вершина является граничной.
+        /// Тогда последнее полуребро не будет смежным с полуребром, указывающим на общую вершину.
         /// </remarks>
         public static int[] AdjacentEdgesVertex(int[] halfEdges, Troika[] triangles, int edgeId, bool include = false)
         {
@@ -92,14 +94,26 @@ namespace TestDelaunayGenerator
                     }
                 }
             }
+            List<int> segmentHalfEdges = new List<int>();
+
+            int adjacentEdgeId = halfEdges[edgeId];
+            // если все также нет смежного полуребра, то вершина является граничной
+            // и находится в углу, т.е. входит всего в 1 треугольник =>
+            // смежные с ней вершины содержатся в одном треугольнике
+            if (adjacentEdgeId == -1)
+            {
+                int nextEdge = NextHalfEdge(edgeId);
+                segmentHalfEdges.Add(nextEdge);
+                nextEdge = NextHalfEdge(nextEdge);
+                segmentHalfEdges.Add(nextEdge);
+                return segmentHalfEdges.ToArray();
+            }
 
             //true - сегмент замкнут, т.е. треугольники окружают точку вкруг
             bool isSegmentClosed = false;
 
-            List<int> segmentHalfEdges = new List<int>();
             int incoming, outgoing;
 
-            int adjacentEdgeId = halfEdges[edgeId];
             //обход против ч.с.
             for (incoming = adjacentEdgeId; ;)
             {
@@ -237,6 +251,64 @@ namespace TestDelaunayGenerator
             }
 
             return vids.ToArray();
+        }
+
+
+        /// <summary>
+        /// Связать 2 полуребра
+        /// </summary>
+        /// <param name="halfEdges"></param>
+        /// <param name="edgeA">значение должно быть неотрицательным</param>
+        /// <param name="edgeB">может быть опущен</param>
+        public static void Link(IList<int> halfEdges, int edgeA, int edgeB = -1)
+        {
+            ValidateParam(edgeA, nameof(edgeA));
+            halfEdges[edgeA] = edgeB;
+            if (edgeB > 0)
+                halfEdges[edgeB] = edgeA;
+        }
+
+        /// <summary>
+        /// Удалить связи между парой полуребер
+        /// </summary>
+        /// <param name="halfEdges"></param>
+        /// <param name="edgeA"></param>
+        /// <param name="edgeB"></param>
+        public static void UnLink(IList<int> halfEdges, int edgeA, int edgeB)
+        {
+            if (edgeA != -1)
+                halfEdges[edgeA] = -1;
+            if (edgeB != -1)
+                halfEdges[edgeB] = -1;
+        }
+
+        /// <summary>
+        /// Удалить связи с треугольниками для треугольника <paramref name="trId"/>
+        /// </summary>
+        /// <param name="halfEdges"></param>
+        /// <param name="trId"></param>
+        public static void UnLinkTriangle(IList<int> halfEdges, int trId)
+        {
+            ValidateParam(trId, nameof(trId));
+
+            //проходим по его полуребрам
+            for (int he = trId * 3; he < trId * 3 + 3; he++)
+            {
+                //пара к этому полуребру
+                int secondHe = halfEdges[he];
+                UnLink(halfEdges, he, secondHe);
+            }
+        }
+
+        /// <summary>
+        /// Валидация полуребра/треугольника
+        /// или другого параметра, который должен быть неотрицательным
+        /// </summary>
+        /// <param name="param"></param>
+        private static void ValidateParam(int param, string paramName)
+        {
+            if (param < 0)
+                throw new ArgumentException($"Аргумент не может быть меньше нуля! {param})", paramName);
         }
     }
 }

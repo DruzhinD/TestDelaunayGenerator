@@ -24,7 +24,7 @@ namespace TestDelaunayGenerator.Smoothing
         }
 
         /// <summary>
-        /// Коэффициент сглаживания
+        /// Коэффициент сглаживания (КС)
         /// </summary>
         public double SmoothRatio { get; set; } = 1;
 

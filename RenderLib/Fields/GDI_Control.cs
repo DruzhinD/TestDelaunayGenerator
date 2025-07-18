@@ -1119,10 +1119,7 @@ namespace RenderLib
 
         }
 
-        int totalIterations = 0;
-        SmootherBase smoother = new LaplacianSmoother(
-            new SmootherConfig()
-            );
+        SmootherBase smoother = null;
         private void btSmooth_Click(object sender, EventArgs e)
         {
             DcelTriMesh mesh;
@@ -1132,6 +1129,12 @@ namespace RenderLib
                 mesh = spData.mesh as DcelTriMesh;
                 if (mesh is null)
                     throw new Exception();
+
+                //если объект сглаживания не инициализирован => инициализация
+                if (smoother is null)
+                {
+                    smoother = new LaplacianSmoother(new SmootherConfig(iterationsCount: 10), mesh);
+                }
             }
             catch (Exception ex)
             {
@@ -1148,17 +1151,12 @@ namespace RenderLib
                 tbSmoothRatio.Text = smoothRatio.ToString();
             }
             smoother.Config.SmoothRatio = smoothRatio;
+            
+            Stopwatch sw = Stopwatch.StartNew();
+            smoother.Smooth();
+            sw.Stop();
+            mesh = smoother.DcelMesh as DcelTriMesh;
 
-            //5 итераций
-            for (int i = 0; i < 10; i++)
-            {
-                Stopwatch sw = Stopwatch.StartNew();
-                smoother.Smooth(mesh);
-                sw.Stop();
-                totalIterations++;
-                Console.WriteLine($"Выполнено сглаживание #{totalIterations} " +
-                    $"с коэффициентом {smoothRatio}. Время: {sw.Elapsed.TotalSeconds} (с)");
-            }
             //т.к. IHPoint[] не связано с double[] координатами
             //заменяем значения вручную
             for (int i = 0; i < mesh.Points.Length; i++)
@@ -1166,6 +1164,7 @@ namespace RenderLib
                 mesh.CoordsX[i] = mesh.Points[i].X;
                 mesh.CoordsY[i] = mesh.Points[i].Y;
             }
+            //spData.mesh = mesh;
         }
     }
 }

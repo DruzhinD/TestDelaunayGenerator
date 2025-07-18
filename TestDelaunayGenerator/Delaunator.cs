@@ -262,6 +262,9 @@ namespace TestDelaunayGenerator
 
         public TriMesh ToMesh(bool debug = false)
         {
+            RestrictedDCEL restrictedDcel = ToRestrictedDCEL() as RestrictedDCEL;
+            return restrictedDcel.ToTriMesh();
+
             //инициализация объекта сетки и выделение памяти
             TriMesh mesh = new DcelTriMesh(
                 this.HalfEdges,
@@ -1013,7 +1016,7 @@ namespace TestDelaunayGenerator
         /// <param name="EdgesID"></param>
         /// <param name="b"></param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void Link(int EdgesID, int b, bool isBoundary = false)
+        void Link(int EdgesID, int b)
         {
             HalfEdges[EdgesID] = b;
             if (b != -1)
