@@ -263,7 +263,7 @@ namespace TestDelaunayGenerator
         public TriMesh ToMesh(bool debug = false)
         {
             RestrictedDCEL restrictedDcel = ToRestrictedDCEL() as RestrictedDCEL;
-            return restrictedDcel.ToTriMesh();
+            return restrictedDcel.ToDcelTriMesh();
 
             //инициализация объекта сетки и выделение памяти
             TriMesh mesh = new DcelTriMesh(

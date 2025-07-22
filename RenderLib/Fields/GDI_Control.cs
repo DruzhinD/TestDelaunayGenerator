@@ -1164,7 +1164,9 @@ namespace RenderLib
                 mesh.CoordsX[i] = mesh.Points[i].X;
                 mesh.CoordsY[i] = mesh.Points[i].Y;
             }
-            //spData.mesh = mesh;
+            var spd = new SavePoint();
+            spd.SetSavePoint(0, mesh);
+            SendSavePoint(spd);
         }
     }
 }

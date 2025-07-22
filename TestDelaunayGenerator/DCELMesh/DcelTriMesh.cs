@@ -64,13 +64,6 @@ namespace TestDelaunayGenerator.DCELMesh
         public EdgeIndex[] BoundaryEdges { get; set; }
         public IHPoint[] Points { get; set; }
 
-        public int GetVertex(int index)
-        {
-            int triangleId = index / 3;
-            var triangle = Faces[triangleId];
-            return (int)triangle[index % 3];
-        }
-
         public override IMesh Clone()
         {
             return new DcelTriMesh(this);

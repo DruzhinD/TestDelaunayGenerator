@@ -3,7 +3,6 @@ using CommonLib.Geometry;
 using MemLogLib;
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
 using TestDelaunayGenerator.SimpleStructures;
 using TestDelaunayGenerator.DCELMesh;
@@ -23,7 +22,7 @@ namespace TestDelaunayGenerator.Smoothing
         /// доступно для записи
         /// </summary>
         protected int totalIterations = 0;
-
+        bool firstIterFlag = false;
 
         /// <summary>
         /// Содержит массив треугольников, с которыми связаны вершины.
@@ -43,10 +42,6 @@ namespace TestDelaunayGenerator.Smoothing
 
         public override void Smooth()
         {
-            //выделение памяти под массив, если еще не было этого сделано
-            if (segments is null)
-                segments = new Segment[mesh.Points.Length];
-
             //валидация
             if (mesh is null)
                 throw new ArgumentNullException($"{nameof(mesh)} не должна быть null!");
@@ -55,7 +50,7 @@ namespace TestDelaunayGenerator.Smoothing
                     $"(текущее значение - {Config.SmoothRatio})");
 
             //итераций нет
-            if (TotalIterations == 0)
+            if (firstIterFlag is false)
             {
                 Stopwatch sw = Stopwatch.StartNew();
                 FirstSmoothIteration();
@@ -80,6 +75,10 @@ namespace TestDelaunayGenerator.Smoothing
                     ConsoleColor.Green,
                     $"Сглаживание #{totalIterations}. Время: {sw.Elapsed.TotalSeconds}(c)");
             }
+            //TODO поправить
+            mesh = new MeshRefiner().Refine(mesh, segments);
+            mesh = mesh.ToDcelTriMesh();
+            firstIterFlag = false;
         }
 
         /// <summary>
@@ -94,6 +93,9 @@ namespace TestDelaunayGenerator.Smoothing
             bool[] isProcessed = null;
             MEM.Alloc(mesh.Points.Length, ref isProcessed, false);
 
+            //TODO не перезаписывать, а модифицировать массив
+            //выделение памяти под массив
+            segments = new Segment[mesh.Points.Length];
             for (int halfEdgeId = 0; halfEdgeId < mesh.HalfEdges.Length; halfEdgeId++)
             {
                 //id вершины
@@ -104,7 +106,7 @@ namespace TestDelaunayGenerator.Smoothing
                     continue;
 
                 //определение полуребер, смежных с vid
-                int[] edgesAroundVId = HalfEdgesUtils.AdjacentEdgesVertex(mesh.HalfEdges, mesh.Faces, halfEdgeId);
+                int[] edgesAroundVId = HalfEdgesUtils.AdjacentEdgesVertex(mesh.HalfEdges, mesh.Faces, halfEdgeId, true);
                 segments[vertexId] = new Segment(vertexId, mesh.PointStatuses[vertexId], edgesAroundVId);
                 //определение выпуклости
                 segments[vertexId].isConvex = IsSegmentConvex(vertexId);
@@ -422,74 +424,5 @@ namespace TestDelaunayGenerator.Smoothing
             return cross;
         }
         #endregion
-
-
-        /// <summary>
-        /// Сегмент, образованный из множество треугольников,
-        /// в которые входит вершина <see cref="VertexID"/>,
-        /// по сути образует центр сегмента
-        /// </summary>
-        protected class Segment
-        {
-            /// <summary>
-            /// ID вершины
-            /// </summary>
-            public readonly int VertexID = -1;
-
-
-            /// <summary>
-            /// Принадлежность точки области триангуляции
-            /// </summary>
-            public PointStatus pointStatus;
-
-            /// <summary>
-            /// Полуребра, связанные с <see cref="VertexID"/>
-            /// </summary>
-            public int[] halfEdgeIds;
-
-
-            /// <summary>
-            /// true - сегмент, центром которого является <see cref="VertexID"/>, является выпуклым
-            /// </summary>
-            public bool isConvex = true;
-
-            public Segment(int vid, PointStatus pointStatus, int[] halfEdgeIds, bool isConvex = true)
-            {
-                this.VertexID = vid;
-                this.pointStatus = pointStatus;
-                this.halfEdgeIds = halfEdgeIds;
-                this.isConvex = isConvex;
-            }
-
-            /// <summary>
-            /// Получить треугольники, в которые входит вершина
-            /// <see cref="VertexID"/>
-            /// </summary>
-            public int[] TriangleIds
-            {
-                get
-                {
-                    IEnumerable<int> triangleIds;
-                    //если вершина граничная, то будет дубль одного треугольника
-                    //поэтому убираем этот дубль
-                    if (this.pointStatus == PointStatus.Boundary)
-                        triangleIds = halfEdgeIds.Select(x => x / 3).ToHashSet();
-                    else
-                        triangleIds = halfEdgeIds.Select(x => x / 3);
-                    return triangleIds.ToArray();
-                }
-            }
-
-            /// <summary>
-            /// Вершины, смежные с <see cref="VertexID"/>
-            /// </summary>
-            /// <param name="mesh"></param>
-            /// <returns></returns>
-            public int[] AdjacentVertexes(IRestrictedDCEL mesh)
-            {
-                return this.halfEdgeIds.Select(halfEdge => mesh.Faces[halfEdge / 3][halfEdge % 3]).ToArray();
-            }
-
-        }
     }
 }

@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 namespace TestDelaunayGenerator.Smoothing
 {
+    //TODO добавить валидацию параметров
     /// <summary>
     /// Конфигурация сглаживания
     /// </summary>
@@ -13,14 +14,10 @@ namespace TestDelaunayGenerator.Smoothing
     {
         public SmootherConfig(
             int smoothRatio = 1,
-            int iterationsCount = 10,
-            int attemtCnt = 3,
-            double reductionRatio = 0.5)
+            int iterationsCount = 10)
         {
             SmoothRatio = smoothRatio;
             IterationsCount = iterationsCount;
-            AttemptCnt = attemtCnt;
-            ReductionRatio = reductionRatio;
         }
 
         /// <summary>
@@ -43,5 +40,9 @@ namespace TestDelaunayGenerator.Smoothing
         /// в случае неуспешной попытки перемещения вершины
         /// </summary>
         public double ReductionRatio { get; set; } = 0.5;
+
+        /// <summary>
+        /// Минимально допустимый угол треугольника
+        /// </summary>
     }
 }

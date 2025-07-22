@@ -52,6 +52,7 @@
     <Compile Include="Boundary\BoundaryHull.cs" />
     <Compile Include="Boundary\BoundaryContainer.cs" />
     <Compile Include="Boundary\CounturHill.cs" />
+    <Compile Include="DCELMesh\MeshExtensions.cs" />
     <Compile Include="DCELMesh\RestrictedDCEL.cs" />
     <Compile Include="DCELMesh\SerializerDCEL.cs" />
     <Compile Include="DebugDelaunay.cs" />
@@ -65,6 +66,9 @@
     <Compile Include="SimpleStructures\HillEdgeDel.cs" />
     <Compile Include="DCELMesh\DcelTriMesh.cs" />
     <Compile Include="DCELMesh\IRestrictedDCEL.cs" />
+    <Compile Include="Smoothing\MeshRefiner.cs" />
+    <Compile Include="Smoothing\RefineConfig.cs" />
+    <Compile Include="SimpleStructures\Segment.cs" />
     <Compile Include="Smoothing\SmootherBase.cs" />
     <Compile Include="Smoothing\LaplacianSmoother.cs" />
     <Compile Include="Smoothing\MeshLegalizer.cs" />

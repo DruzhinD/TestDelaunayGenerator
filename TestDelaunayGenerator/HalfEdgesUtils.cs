@@ -21,7 +21,7 @@ namespace TestDelaunayGenerator
         /// <param name="curHalfEdge">текущее полуребро</param>
         /// <returns></returns>
         /// <exception cref="ArgumentException"></exception>
-        public static int NextHalfEdge(int curHalfEdge)
+        public static int Next(int curHalfEdge)
         {
             ValidateParam(curHalfEdge, nameof(curHalfEdge));
 
@@ -39,7 +39,7 @@ namespace TestDelaunayGenerator
         /// <param name="curHalfEdge">текущее полуребро</param>
         /// <returns></returns>
         /// <exception cref="ArgumentException"></exception>
-        public static int PrevHalfEdge(int curHalfEdge)
+        public static int Prev(int curHalfEdge)
         {
             ValidateParam(curHalfEdge, nameof(curHalfEdge));
 
@@ -102,9 +102,9 @@ namespace TestDelaunayGenerator
             // смежные с ней вершины содержатся в одном треугольнике
             if (adjacentEdgeId == -1)
             {
-                int nextEdge = NextHalfEdge(edgeId);
+                int nextEdge = Next(edgeId);
                 segmentHalfEdges.Add(nextEdge);
-                nextEdge = NextHalfEdge(nextEdge);
+                nextEdge = Next(nextEdge);
                 segmentHalfEdges.Add(nextEdge);
                 return segmentHalfEdges.ToArray();
             }
@@ -122,7 +122,7 @@ namespace TestDelaunayGenerator
                 segmentHalfEdges.Add(incoming);
 
                 //одно ребро
-                outgoing = NextHalfEdge(incoming); //указывает на общую вершину
+                outgoing = Next(incoming); //указывает на общую вершину
                 incoming = halfEdges[outgoing]; //указывает на смежную с ней
 #if DEBUG
                 //outgoing должна указывать на vid
@@ -155,7 +155,7 @@ namespace TestDelaunayGenerator
                     {
                         //ребро указывает на вершину, смежную с vid
                         //но полуребра этих вершин не связаны
-                        int nextBoundaryVid = NextHalfEdge(outgoing);
+                        int nextBoundaryVid = Next(outgoing);
                         segmentHalfEdges.Add(nextBoundaryVid);
                     }
 
@@ -172,7 +172,7 @@ namespace TestDelaunayGenerator
             // обход по ч.с.
             for (outgoing = edgeId; ;)
             {
-                incoming = PrevHalfEdge(outgoing);
+                incoming = Prev(outgoing);
                 segmentHalfEdges.Add(incoming);
                 outgoing = halfEdges[incoming]; //указывает на vid
 
@@ -298,6 +298,38 @@ namespace TestDelaunayGenerator
                 int secondHe = halfEdges[he];
                 UnLink(halfEdges, he, secondHe);
             }
+        }
+
+        /// <summary>
+        /// получить id вершины, на которую указывает полуребро
+        /// </summary>
+        /// <param name="faces"></param>
+        /// <param name="he"></param>
+        /// <returns></returns>
+        public static int Origin(IList<Troika> faces, int he)
+        {
+            return faces[he / 3][he % 3];
+        }
+
+        /// <summary>
+        /// Получить двойственное (смежное) полуребро для <paramref name="he"/>
+        /// </summary>
+        /// <param name="halfEdges"></param>
+        /// <param name="he"></param>
+        /// <returns></returns>
+        public static int Twin(IList<int> halfEdges, int he)
+        {
+            return halfEdges[he];
+        }
+
+        /// <summary>
+        /// Является ли ребро граничным
+        /// </summary>
+        /// <returns></returns>
+        public static bool IsBoundary(IList<int> halfEdges, int he)
+        {
+            int twin = Twin(halfEdges, he);
+            return twin == -1;
         }
 
         /// <summary>

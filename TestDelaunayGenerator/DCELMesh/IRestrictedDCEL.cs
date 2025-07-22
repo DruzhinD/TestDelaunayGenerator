@@ -45,13 +45,5 @@ namespace TestDelaunayGenerator.DCELMesh
         /// т.к. не являются граничными, но для индексации под них выделяется память
         /// </summary>
         EdgeIndex[] BoundaryEdges { get; set; }
-
-        /// <summary>
-        /// Получить индекс вершины, расположенной в по индексу <paramref name="index"/>
-        /// в массиве последовательных троек вершин треугольников
-        /// </summary>
-        /// <param name="index"></param>
-        /// <returns></returns>
-        int GetVertex(int index);
     }
 }
