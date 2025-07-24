@@ -74,15 +74,6 @@ namespace TestDelaunayGenerator.Smoothing
         IList<EdgeIndex> boundaryEdges;
         #endregion
 
-        string HalfedgeInfo(int he)
-        {
-            int trid = he / 3;
-            string log = $"he:{he}; trid:{trid} " +
-                $"{faces[trid].Get()} " +
-                $"he:{(trid * 3, trid * 3 + 1, trid * 3 + 2)}";
-            return log;
-        }
-
         //TODO выполнять перестроение здесь же
         public IRestrictedDCEL Refine(IRestrictedDCEL mesh)
         {
@@ -116,7 +107,7 @@ namespace TestDelaunayGenerator.Smoothing
                 {
                     halfEdgeStatus[he] = EdgeStatus.Skipped;
 #if DEBUG
-                    Log.Debug($"{HalfedgeInfo(he)}. trid внешний.");
+                    Log.Debug($"{HalfEdgesUtils.HeInfo(faces, halfEdges, he)}. trid внешний.");
 #endif
                     continue;
                 }
@@ -128,7 +119,7 @@ namespace TestDelaunayGenerator.Smoothing
                 {
                     halfEdgeStatus[he] = EdgeStatus.NotBoundary;
 #if DEBUG
-                    Log.Debug($"{HalfedgeInfo(he)}. Status:{halfEdgeStatus[he]}. SKIP");
+                    Log.Debug($"{HalfEdgesUtils.HeInfo(faces, halfEdges, he)}. Status:{halfEdgeStatus[he]}. SKIP");
 #endif
                     continue;
                 }
@@ -138,7 +129,7 @@ namespace TestDelaunayGenerator.Smoothing
                 {
                     halfEdgeStatus[he] = EdgeStatus.Skipped;
 #if DEBUG
-                    Log.Debug($"{HalfedgeInfo(he)}. Status:{halfEdgeStatus[he]}. SKIP");
+                    Log.Debug($"{HalfEdgesUtils.HeInfo(faces, halfEdges, he)}. Status:{halfEdgeStatus[he]}. SKIP");
 #endif
                     continue;
                 }
@@ -152,7 +143,7 @@ namespace TestDelaunayGenerator.Smoothing
                     {
                         halfEdgeStatus[he] = EdgeStatus.Skipped;
 #if DEBUG
-                        Log.Debug($"{HalfedgeInfo(he)}. Status:{halfEdgeStatus[he]}. SKIP");
+                        Log.Debug($"{HalfEdgesUtils.HeInfo(faces, halfEdges, he)}. Status:{halfEdgeStatus[he]}. SKIP");
 #endif
                         continue;
                     }
@@ -171,7 +162,7 @@ namespace TestDelaunayGenerator.Smoothing
                     halfEdgeSplit.Add(he);
 #if DEBUG
                     Log.Debug(
-                    $"{HalfedgeInfo(he)}. Status:{halfEdgeStatus[he]}. " +
+                    $"{HalfEdgesUtils.HeInfo(faces, halfEdges, he)}. Status:{halfEdgeStatus[he]}. " +
                     $"angle{(vid, nextVid, prevVid)}={ToDegrees(angle)}"
                     );
 #endif
@@ -213,7 +204,7 @@ namespace TestDelaunayGenerator.Smoothing
                     if (twinHe != -1)
                         halfEdgeStatus[twinHe] = EdgeStatus.Skipped;
 #if DEBUG
-                    Log.Debug($"{HalfedgeInfo(he)}. Status:{halfEdgeStatus[he]}. " +
+                    Log.Debug($"{HalfEdgesUtils.HeInfo(faces, halfEdges, he)}. Status:{halfEdgeStatus[he]}. " +
                         $"angle{(vid, nextVid, prevVid)}={ToDegrees(angle)}");
 #endif
                 }
@@ -221,7 +212,6 @@ namespace TestDelaunayGenerator.Smoothing
             return SplitTriangles(halfEdgeSplit, mesh);
         }
 
-        static double ToDegrees(double rad) => 180 / Math.PI * rad;
 
         /// <summary>
         /// Разделить ребро на 2 части.
@@ -253,8 +243,8 @@ namespace TestDelaunayGenerator.Smoothing
             (int startTr0, int startTr1) = AddTrianglePair(H0, vn);
             newTrHe = startTr1;
 #if DEBUG
-            Log.Debug($"Новый треугольник: {TriangleInfo(startTr0 / 3)}");
-            Log.Debug($"Новый треугольник: {TriangleInfo(startTr1 / 3)}");
+            Log.Debug($"Новый треугольник: {HalfEdgesUtils.TriangleInfo(faces, startTr0 / 3)}");
+            Log.Debug($"Новый треугольник: {HalfEdgesUtils.TriangleInfo(faces, startTr1 / 3)}");
 #endif
             int twinH0 = HalfEdgesUtils.Twin(halfEdges, H0);
             //если есть парное ребро у H0
@@ -263,8 +253,8 @@ namespace TestDelaunayGenerator.Smoothing
                 //добавляем пару новых треугольников (внутри смежного исходному)
                 (int startTr2, int startTr3) = AddTrianglePair(twinH0, vn);
 #if DEBUG
-                Log.Debug($"Новый треугольник: {TriangleInfo(startTr2 / 3)}");
-                Log.Debug($"Новый треугольник: {TriangleInfo(startTr3 / 3)}");
+                Log.Debug($"Новый треугольник: {HalfEdgesUtils.TriangleInfo(faces, startTr2 / 3)}");
+                Log.Debug($"Новый треугольник: {HalfEdgesUtils.TriangleInfo(faces, startTr3 / 3)}");
 #endif
                 //связываем t1 и t2
                 HalfEdgesUtils.Link(this.halfEdges, startTr1, startTr2);
@@ -305,15 +295,6 @@ namespace TestDelaunayGenerator.Smoothing
             if (twinH0 != -1)
                 HalfEdgesUtils.UnLinkTriangle(halfEdges, twinH0 / 3);
             return newTrHe;
-        }
-
-        public string TriangleInfo(int trid)
-        {
-            string log = $"trid:{trid} " +
-                $"{faces[trid].Get()} " +
-                $"he:{(trid * 3, trid * 3 + 1, trid * 3 + 2)}";
-
-            return log;
         }
 
         /// <summary>
@@ -368,7 +349,7 @@ namespace TestDelaunayGenerator.Smoothing
         /// <summary>
         /// Разбиение помеченных треугольников
         /// </summary>
-        protected IRestrictedDCEL SplitTriangles(List<int> halfEdgeRebuild, IRestrictedDCEL mesh)
+        protected IRestrictedDCEL SplitTriangles(IList<int> halfEdgeRebuild, IRestrictedDCEL mesh)
         {
             IRestrictedDCEL refinedMesh = null;
 
@@ -389,7 +370,7 @@ namespace TestDelaunayGenerator.Smoothing
             foreach (int H0 in halfEdgeRebuild)
             {
 #if DEBUG
-                Log.Debug($"Деление {TriangleInfo(H0 / 3)}(he:{H0}) на {Config.SplitTriangleParts} частей.");
+                Log.Debug($"Деление {HalfEdgesUtils.TriangleInfo(faces, H0 / 3)}(he:{H0}) на {Config.SplitTriangleParts} частей.");
 #endif
                 int trIdOld = H0 / 3;
 
@@ -495,5 +476,7 @@ namespace TestDelaunayGenerator.Smoothing
             // Угол в радианах (0 < θ < π)
             return Math.Acos(cosTheta);
         }
+
+        static double ToDegrees(double rad) => 180 / Math.PI * rad;
     }
 }

@@ -16,7 +16,7 @@ namespace TestDelaunayGenerator.Smoothing
         /// <summary>
         /// Максимально допустимый угол треугольника
         /// </summary>
-        public double MaxAngle { get; set; } = Math.PI * 3.5 / 6;
+        public double MaxAngle { get; set; } = Math.PI * 5 / 6;
 
 
         /// <summary>

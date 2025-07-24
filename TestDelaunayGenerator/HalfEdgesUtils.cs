@@ -1,4 +1,5 @@
 ﻿using MemLogLib;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -15,6 +16,8 @@ namespace TestDelaunayGenerator
     /// </summary>
     public static class HalfEdgesUtils
     {
+
+        #region Стандартные HalfEdge
         /// <summary>
         /// Следующее ребро в текущем треугольнике
         /// </summary>
@@ -51,6 +54,91 @@ namespace TestDelaunayGenerator
             return prevHe;
         }
 
+        /// <summary>
+        /// получить id вершины, на которую указывает полуребро
+        /// </summary>
+        /// <param name="faces"></param>
+        /// <param name="he"></param>
+        /// <returns></returns>
+        public static int Origin(IList<Troika> faces, int he)
+        {
+            return faces[he / 3][he % 3];
+        }
+
+        /// <summary>
+        /// Получить двойственное (смежное) полуребро для <paramref name="he"/>
+        /// </summary>
+        /// <param name="halfEdges"></param>
+        /// <param name="he"></param>
+        /// <returns></returns>
+        public static int Twin(IList<int> halfEdges, int he)
+        {
+            return halfEdges[he];
+        }
+
+        /// <summary>
+        /// Является ли ребро граничным
+        /// </summary>
+        /// <returns></returns>
+        public static bool IsBoundary(IList<int> halfEdges, int he)
+        {
+            int twin = Twin(halfEdges, he);
+            return twin == -1;
+        }
+
+        /// <summary>
+        /// Связать 2 полуребра
+        /// </summary>
+        /// <param name="halfEdges"></param>
+        /// <param name="edgeA">значение должно быть неотрицательным</param>
+        /// <param name="edgeB">может быть опущен</param>
+        public static void Link(IList<int> halfEdges, int edgeA, int edgeB = -1)
+        {
+            ValidateParam(edgeA, nameof(edgeA));
+            halfEdges[edgeA] = edgeB;
+            if (edgeB > 0)
+                halfEdges[edgeB] = edgeA;
+        }
+
+        /// <summary>
+        /// Удалить связи между парой полуребер
+        /// </summary>
+        /// <param name="halfEdges"></param>
+        /// <param name="edgeA"></param>
+        /// <param name="edgeB"></param>
+        public static void UnLink(IList<int> halfEdges, int edgeA, int edgeB)
+        {
+            if (edgeA != -1)
+                halfEdges[edgeA] = -1;
+            if (edgeB != -1)
+                halfEdges[edgeB] = -1;
+        }
+        #endregion
+
+
+        /// <summary>
+        /// Удалить связи в полуребрах для треугольник <paramref name="trId"/>
+        /// </summary>
+        /// <param name="halfEdges"></param>
+        /// <param name="trId"></param>
+        /// <param name="both">true - связи будут удалены и у смежного с <paramref name="trId"/> треугольника.
+        /// Может привести к неожиданным результатам!</param>
+        public static void UnLinkTriangle(IList<int> halfEdges, int trId, bool both = false)
+        {
+            ValidateParam(trId, nameof(trId));
+
+            //проходим по его полуребрам
+            for (int he = trId * 3; he < trId * 3 + 3; he++)
+            {
+                int secondHe = -1;
+                //пара к этому полуребру
+                if (both)
+                    secondHe = Twin(halfEdges, he); ;
+                UnLink(halfEdges, he, secondHe);
+            }
+        }
+
+
         //ПОРЯДОК против ч.с. ВАЖЕН!
         /// <summary>
         /// Получить все ребра, окружающие вершину, на которую указывает <paramref name="he"/>.
@@ -73,7 +161,7 @@ namespace TestDelaunayGenerator
         /// Параметр <paramref name="include"/> уместен, если общая вершина является граничной.
         /// Тогда последнее полуребро не будет смежным с полуребром, указывающим на общую вершину.
         /// </remarks>
-        public static int[] AdjacentEdgesVertex(int[] halfEdges, Troika[] triangles, int he, bool include = false)
+        public static int[] AdjacentEdgesVertex(IList<int> halfEdges, IList<Troika> triangles, int he, bool include = false)
         {
             int vid = triangles[he / 3][he % 3];
             int twinHe = Twin(halfEdges, he);
@@ -83,7 +171,7 @@ namespace TestDelaunayGenerator
                 //id треугольника и вершины в нем, переданные в качестве аргумента из edgeId
                 int currentTrid = he / 3;
                 int currentVertexId = he % 3;
-                for (int i = 0; i < triangles.Length; i++)
+                for (int i = 0; i < triangles.Count; i++)
                 {
                     for (int j = 0; j < 3; j++)
                     {
@@ -129,17 +217,13 @@ namespace TestDelaunayGenerator
                 incoming = Twin(halfEdges, outgoing); //указывает на смежную с ней
 #if DEBUG
                 //outgoing должна указывать на vid
-                if (triangles[outgoing / 3][outgoing % 3] != vertexId)
+                if (Origin(triangles, outgoing) != vid)
                 {
-                    string log = $"общая вершина ({nameof(outgoing)}) != {vertexId} " +
+                    string log = $"общая вершина ({nameof(outgoing)}) != {vid} " +
                         $"({triangles[startIncoming / 3][startIncoming % 3]}," +
                         $"{triangles[outgoing / 3][outgoing % 3]}," +
                         $"{triangles[incoming / 3][incoming % 3]})";
-
-                    Utils.ConsoleWriteLineColored(
-                        ConsoleColor.Magenta,
-                        log
-                        );
+                    Log.Error(log);
                 }
 #endif
                 //достигли вершины, с которой начался цикл
@@ -257,88 +341,7 @@ namespace TestDelaunayGenerator
         }
 
 
-        /// <summary>
-        /// Связать 2 полуребра
-        /// </summary>
-        /// <param name="halfEdges"></param>
-        /// <param name="edgeA">значение должно быть неотрицательным</param>
-        /// <param name="edgeB">может быть опущен</param>
-        public static void Link(IList<int> halfEdges, int edgeA, int edgeB = -1)
-        {
-            ValidateParam(edgeA, nameof(edgeA));
-            halfEdges[edgeA] = edgeB;
-            if (edgeB > 0)
-                halfEdges[edgeB] = edgeA;
-        }
-
-        /// <summary>
-        /// Удалить связи между парой полуребер
-        /// </summary>
-        /// <param name="halfEdges"></param>
-        /// <param name="edgeA"></param>
-        /// <param name="edgeB"></param>
-        public static void UnLink(IList<int> halfEdges, int edgeA, int edgeB)
-        {
-            if (edgeA != -1)
-                halfEdges[edgeA] = -1;
-            if (edgeB != -1)
-                halfEdges[edgeB] = -1;
-        }
-
-        /// <summary>
-        /// Удалить связи с треугольниками для треугольника <paramref name="trId"/>
-        /// </summary>
-        /// <param name="halfEdges"></param>
-        /// <param name="trId"></param>
-        /// <param name="both">true - связи будут удалены и у смежного с <paramref name="trId"/> треугольника.
-        /// Может привести к неожиданным результатам!</param>
-        public static void UnLinkTriangle(IList<int> halfEdges, int trId, bool both = false)
-        {
-            ValidateParam(trId, nameof(trId));
-
-            //проходим по его полуребрам
-            for (int he = trId * 3; he < trId * 3 + 3; he++)
-            {
-                int secondHe = -1;
-                //пара к этому полуребру
-                if (both)
-                    secondHe = Twin(halfEdges, he); ;
-                UnLink(halfEdges, he, secondHe);
-            }
-        }
-
-        /// <summary>
-        /// получить id вершины, на которую указывает полуребро
-        /// </summary>
-        /// <param name="faces"></param>
-        /// <param name="he"></param>
-        /// <returns></returns>
-        public static int Origin(IList<Troika> faces, int he)
-        {
-            return faces[he / 3][he % 3];
-        }
-
-        /// <summary>
-        /// Получить двойственное (смежное) полуребро для <paramref name="he"/>
-        /// </summary>
-        /// <param name="halfEdges"></param>
-        /// <param name="he"></param>
-        /// <returns></returns>
-        public static int Twin(IList<int> halfEdges, int he)
-        {
-            return halfEdges[he];
-        }
-
-        /// <summary>
-        /// Является ли ребро граничным
-        /// </summary>
-        /// <returns></returns>
-        public static bool IsBoundary(IList<int> halfEdges, int he)
-        {
-            int twin = Twin(halfEdges, he);
-            return twin == -1;
-        }
-
+        #region Валидация, вспомогательные функции
         /// <summary>
         /// Валидация полуребра/треугольника
         /// или другого параметра, который должен быть неотрицательным
@@ -350,10 +353,33 @@ namespace TestDelaunayGenerator
                 throw new ArgumentException($"Аргумент не может быть меньше нуля! {param})", paramName);
         }
 
-        public static string TriangleInfo(Troika[] faces, int trid)
+        /// <summary>
+        /// Сведения о треугольнике: id, вершины, полуребра
+        /// </summary>
+        /// <param name="faces"></param>
+        /// <param name="trid"></param>
+        /// <returns></returns>
+        public static string TriangleInfo(IList<Troika> faces, int trid)
         {
             string log = $"trid:{trid};vid:{faces[trid].Get()};he:({trid * 3},{trid * 3 + 1},{trid * 3 + 2})";
             return log;
         }
+
+
+        /// <summary>
+        /// Сведения о полуребре: id, twin, треугольник, вершины, другие полуребра
+        /// </summary>
+        /// <param name="faces"></param>
+        /// <param name="he"></param>
+        /// <returns></returns>
+        public static string HeInfo(IList<Troika> faces, IList<int> halfEdges, int he)
+        {
+            int trid = he / 3;
+            string log = $"he:{he};twin:{Twin(halfEdges, he)};trid:{trid} " +
+                $"{faces[trid].Get()} " +
+                $"he:{(trid * 3, trid * 3 + 1, trid * 3 + 2)}";
+            return log;
+        }
+        #endregion
     }
 }
