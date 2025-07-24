@@ -768,8 +768,8 @@ namespace TestDelaunayGenerator
                          boundaryEdges[edgeIdStart].Adjacents.Contains(edgeIdEnd))
                     {
 #if DEBUG
-                        Log.Debug($"Легализация пропущена для треугольников {idxElemA}(новый) {idxElemB}(в оболочке), " +
-                            $"ребро ({edgeIdStart}-{edgeIdEnd}) является граничным");
+                        //Log.Debug($"Легализация пропущена для треугольников {idxElemA}(новый) {idxElemB}(в оболочке), " +
+                        //    $"ребро ({edgeIdStart}-{edgeIdEnd}) является граничным");
 #endif
                         //инвертируем принадлежность области для нового треугольника (треуг A)
                         //относительно смежного с ним (треуг B)

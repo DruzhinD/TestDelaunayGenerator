@@ -18,46 +18,46 @@ namespace TestDelaunayGenerator
         /// <summary>
         /// Следующее ребро в текущем треугольнике
         /// </summary>
-        /// <param name="curHalfEdge">текущее полуребро</param>
+        /// <param name="he">текущее полуребро</param>
         /// <returns></returns>
         /// <exception cref="ArgumentException"></exception>
-        public static int Next(int curHalfEdge)
+        public static int Next(int he)
         {
-            ValidateParam(curHalfEdge, nameof(curHalfEdge));
+            ValidateParam(he, nameof(he));
 
-            int nextHalfEdge = -1;
-            if (curHalfEdge % 3 == 2)
-                nextHalfEdge = curHalfEdge - 2;
+            int nextHe = -1;
+            if (he % 3 == 2)
+                nextHe = he - 2;
             else
-                nextHalfEdge = curHalfEdge + 1;
-            return nextHalfEdge;
+                nextHe = he + 1;
+            return nextHe;
         }
 
         /// <summary>
         /// Предыдущее ребро в текущем треугольнике
         /// </summary>
-        /// <param name="curHalfEdge">текущее полуребро</param>
+        /// <param name="he">текущее полуребро</param>
         /// <returns></returns>
         /// <exception cref="ArgumentException"></exception>
-        public static int Prev(int curHalfEdge)
+        public static int Prev(int he)
         {
-            ValidateParam(curHalfEdge, nameof(curHalfEdge));
+            ValidateParam(he, nameof(he));
 
-            int prevHalfEdge = -1;
-            if (curHalfEdge % 3 == 0)
-                prevHalfEdge = curHalfEdge + 2;
+            int prevHe = -1;
+            if (he % 3 == 0)
+                prevHe = he + 2;
             else
-                prevHalfEdge = curHalfEdge - 1;
-            return prevHalfEdge;
+                prevHe = he - 1;
+            return prevHe;
         }
 
         //ПОРЯДОК против ч.с. ВАЖЕН!
         /// <summary>
-        /// Получить все ребра, окружающие вершину, на которую указывает <paramref name="edgeId"/>.
+        /// Получить все ребра, окружающие вершину, на которую указывает <paramref name="he"/>.
         /// </summary>
         /// <param name="halfEdges">полуребра</param>
         /// <param name="triangles">треугольники, связанные с <paramref name="halfEdges"/></param>
-        /// <param name="edgeId">
+        /// <param name="he">
         /// Полуребро, указывающее на вершину, вокруг которой требуется найти смежные ребра
         /// </param>
         /// <param name="include">
@@ -73,39 +73,42 @@ namespace TestDelaunayGenerator
         /// Параметр <paramref name="include"/> уместен, если общая вершина является граничной.
         /// Тогда последнее полуребро не будет смежным с полуребром, указывающим на общую вершину.
         /// </remarks>
-        public static int[] AdjacentEdgesVertex(int[] halfEdges, Troika[] triangles, int edgeId, bool include = false)
+        public static int[] AdjacentEdgesVertex(int[] halfEdges, Troika[] triangles, int he, bool include = false)
         {
-            int vertexId = triangles[edgeId / 3][edgeId % 3];
+            int vid = triangles[he / 3][he % 3];
+            int twinHe = Twin(halfEdges, he);
             //если нет смежного полуребра, то ищем другое полуребро, которое связано с такой же вершиной
-            if (halfEdges[edgeId] == -1)
+            if (halfEdges[he] == -1)
             {
                 //id треугольника и вершины в нем, переданные в качестве аргумента из edgeId
-                int currentTriangleId = edgeId / 3;
-                int currentVertexId = edgeId % 3;
+                int currentTrid = he / 3;
+                int currentVertexId = he % 3;
                 for (int i = 0; i < triangles.Length; i++)
                 {
                     for (int j = 0; j < 3; j++)
                     {
                         //если глобальный id вершины совпал и есть смежное полуребро
-                        if (triangles[i][j] == triangles[currentTriangleId][currentVertexId] &&
+                        if (triangles[i][j] == Origin(triangles, he) &&
                             halfEdges[i * 3 + j] != -1)
                             //то используем его как исходное полуребро
-                            edgeId = i * 3 + j;
+                            he = i * 3 + j;
                     }
                 }
             }
             List<int> segmentHalfEdges = new List<int>();
 
-            int adjacentEdgeId = halfEdges[edgeId];
+            //повторное читаем смежное ребро, т.к. исходное могло измениться
+            twinHe = Twin(halfEdges, he);
+
             // если все также нет смежного полуребра, то вершина является граничной
             // и находится в углу, т.е. входит всего в 1 треугольник =>
             // смежные с ней вершины содержатся в одном треугольнике
-            if (adjacentEdgeId == -1)
+            if (twinHe == -1)
             {
-                int nextEdge = Next(edgeId);
-                segmentHalfEdges.Add(nextEdge);
-                nextEdge = Next(nextEdge);
-                segmentHalfEdges.Add(nextEdge);
+                int nextHe = Next(he);
+                segmentHalfEdges.Add(nextHe);
+                nextHe = Next(nextHe);
+                segmentHalfEdges.Add(nextHe);
                 return segmentHalfEdges.ToArray();
             }
 
@@ -115,7 +118,7 @@ namespace TestDelaunayGenerator
             int incoming, outgoing;
 
             //обход против ч.с.
-            for (incoming = adjacentEdgeId; ;)
+            for (incoming = twinHe; ;)
             {
                 int startIncoming = incoming;
                 //помещаем текущее ребро в список ребер
@@ -123,7 +126,7 @@ namespace TestDelaunayGenerator
 
                 //одно ребро
                 outgoing = Next(incoming); //указывает на общую вершину
-                incoming = halfEdges[outgoing]; //указывает на смежную с ней
+                incoming = Twin(halfEdges, outgoing); //указывает на смежную с ней
 #if DEBUG
                 //outgoing должна указывать на vid
                 if (triangles[outgoing / 3][outgoing % 3] != vertexId)
@@ -141,7 +144,7 @@ namespace TestDelaunayGenerator
 #endif
                 //достигли вершины, с которой начался цикл
                 //поэтому сегмент замкнут
-                if (incoming == adjacentEdgeId)
+                if (incoming == twinHe)
                 {
                     isSegmentClosed = true;
                     break;
@@ -170,16 +173,16 @@ namespace TestDelaunayGenerator
             //количество полуребер, полученное при обходе против ч.с.
             int firstRoundCnt = segmentHalfEdges.Count;
             // обход по ч.с.
-            for (outgoing = edgeId; ;)
+            for (outgoing = he; ;)
             {
                 incoming = Prev(outgoing);
                 segmentHalfEdges.Add(incoming);
-                outgoing = halfEdges[incoming]; //указывает на vid
+                outgoing = Twin(halfEdges, incoming); //указывает на vid
 
                 if (outgoing == -1)
                     break;
 
-                if (outgoing == edgeId)
+                if (outgoing == he)
                     //throw new ArgumentException($"Достигнута исходная вершина {adjacentEdgeId} при обратном обходе!");
                     break;
             }
@@ -287,15 +290,19 @@ namespace TestDelaunayGenerator
         /// </summary>
         /// <param name="halfEdges"></param>
         /// <param name="trId"></param>
-        public static void UnLinkTriangle(IList<int> halfEdges, int trId)
+        /// <param name="both">true - связи будут удалены и у смежного с <paramref name="trId"/> треугольника.
+        /// Может привести к неожиданным результатам!</param>
+        public static void UnLinkTriangle(IList<int> halfEdges, int trId, bool both = false)
         {
             ValidateParam(trId, nameof(trId));
 
             //проходим по его полуребрам
             for (int he = trId * 3; he < trId * 3 + 3; he++)
             {
+                int secondHe = -1;
                 //пара к этому полуребру
-                int secondHe = halfEdges[he];
+                if (both)
+                    secondHe = Twin(halfEdges, he); ;
                 UnLink(halfEdges, he, secondHe);
             }
         }
@@ -341,6 +348,12 @@ namespace TestDelaunayGenerator
         {
             if (param < 0)
                 throw new ArgumentException($"Аргумент не может быть меньше нуля! {param})", paramName);
+        }
+
+        public static string TriangleInfo(Troika[] faces, int trid)
+        {
+            string log = $"trid:{trid};vid:{faces[trid].Get()};he:({trid * 3},{trid * 3 + 1},{trid * 3 + 2})";
+            return log;
         }
     }
 }

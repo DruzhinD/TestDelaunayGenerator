@@ -75,7 +75,7 @@ namespace TestDelaunayGenerator.Smoothing
                     $"Сглаживание #{totalIterations}. Время: {sw.Elapsed.TotalSeconds}(c)");
             }
             //TODO поправить
-            mesh = new QualityMesher(new QualityMesherConfig() { SplitTriangleParts = 2, RebuildOnlyBoundary = true}).Refine(mesh);
+            mesh = new QualityMesher(new QualityMesherConfig() { SplitTriangleParts = 2, RebuildOnlyBoundary = false}).Refine(mesh);
             mesh = mesh.ToDcelTriMesh();
             firstIterFlag = false;
         }
@@ -143,7 +143,7 @@ namespace TestDelaunayGenerator.Smoothing
             if (seg.pointStatus == PointStatus.Boundary)
             {
 #if DEBUG
-                Log.Debug($"{vid} пропущена, т.к. является граничной");
+                //Log.Debug($"{vid} пропущена, т.к. является граничной");
 #endif
                 return false;
             }
@@ -158,9 +158,9 @@ namespace TestDelaunayGenerator.Smoothing
             if (seg.isConvex is true)
             {
 #if DEBUG
-                Log.Debug($"Перемещение вершины {vid} из " +
-                    $"({mesh.Points[vid].X}, {mesh.Points[vid].Y}) " +
-                    $"в ({newX}, {newY})");
+                //Log.Debug($"Перемещение вершины {vid} из " +
+                //    $"({mesh.Points[vid].X}, {mesh.Points[vid].Y}) " +
+                //    $"в ({newX}, {newY})");
 #endif
                 (newX, newY) = UseSmoothRatio(vid, avgX, avgY, this.Config.SmoothRatio);
                 mesh.Points[vid] = new HPoint(newX, newY);
@@ -195,11 +195,11 @@ namespace TestDelaunayGenerator.Smoothing
                     currentSmoothRatio *= this.Config.ReductionRatio;
 
 #if DEBUG
-                    Log.Debug(
-                        $"не удалось переместить вершину {vid} ({mesh.Points[vid].X},{mesh.Points[vid].Y}) " +
-                        $"в новые координаты ({newX},{newY}) - выворот треугольника {trId}({mesh.Faces[trId]})"
-                        );
-                    Log.Debug($"Установка коэффициента сглаживания:{currentSmoothRatio}");
+                    //Log.Debug(
+                    //    $"не удалось переместить вершину {vid} ({mesh.Points[vid].X},{mesh.Points[vid].Y}) " +
+                    //    $"в новые координаты ({newX},{newY}) - выворот треугольника {trId}({mesh.Faces[trId]})"
+                    //    );
+                    //Log.Debug($"Установка коэффициента сглаживания:{currentSmoothRatio}");
 
 #endif
                     //устанавливаем изначальные координаты

@@ -52,7 +52,13 @@ namespace TestDelaunayGenerator.Smoothing
             /// полуребро не является граничным.
             /// Устанавливается, если есть <see cref="QualityMesherConfig.RebuildOnlyBoundary"/>
             /// </summary>
-            NotBoundary = 4
+            NotBoundary = 4,
+            /// <summary>
+            /// Полуребро заблокировано.
+            /// Назначается если в текущем треугольнике есть полуребро для разбиения
+            /// или в смежном треугольнике есть полуребро для разбиение
+            /// </summary>
+            Blocked = 5
 
         }
 
@@ -102,6 +108,9 @@ namespace TestDelaunayGenerator.Smoothing
             //проход по всем полуребрам
             for (int he = 0; he < halfEdges.Count; he++)
             {
+                if (halfEdgeStatus[he] != EdgeStatus.None)
+                    continue;
+
                 //пропуск ребра, входящего во внешний треугольник
                 if (faces[he / 3].flag == (int)TriangleInfect.External)
                 {
@@ -134,6 +143,21 @@ namespace TestDelaunayGenerator.Smoothing
                     continue;
                 }
 
+                //пропуск ребра, если в треугольнике, которому принадлежит смежное полуребро,
+                //уже есть полуребро для деления
+                if (twinHe != -1)
+                {
+                    if (halfEdgeStatus[HalfEdgesUtils.Next(twinHe)] == EdgeStatus.Split ||
+                        halfEdgeStatus[HalfEdgesUtils.Prev(twinHe)] == EdgeStatus.Split)
+                    {
+                        halfEdgeStatus[he] = EdgeStatus.Skipped;
+#if DEBUG
+                        Log.Debug($"{HalfedgeInfo(he)}. Status:{halfEdgeStatus[he]}. SKIP");
+#endif
+                        continue;
+                    }
+                }
+
                 int vid = HalfEdgesUtils.Origin(faces, he);
                 int nextVid = HalfEdgesUtils.Origin(faces, HalfEdgesUtils.Next(he));
                 int prevVid = HalfEdgesUtils.Origin(faces, HalfEdgesUtils.Prev(he));
@@ -150,15 +174,44 @@ namespace TestDelaunayGenerator.Smoothing
                     $"{HalfedgeInfo(he)}. Status:{halfEdgeStatus[he]}. " +
                     $"angle{(vid, nextVid, prevVid)}={ToDegrees(angle)}"
                     );
+#endif
+
                     //помечаем все ребра в этом треугольнике пропущенными,
                     //т.к. можно делить всего 1 ребро в треугольнике
-                    halfEdgeStatus[HalfEdgesUtils.Next(he)] = EdgeStatus.Skipped;
-                    halfEdgeStatus[HalfEdgesUtils.Prev(he)] = EdgeStatus.Skipped;
-#endif
+                    //смежный треугольник тоже блокируем
+                    int twinNextHe, twinPrevHe;
+                    if (twinHe != -1)
+                    {
+                        halfEdgeStatus[twinHe] = EdgeStatus.Skipped;
+                        twinNextHe = HalfEdgesUtils.Next(twinHe);
+                        halfEdgeStatus[twinNextHe] = EdgeStatus.Blocked;
+                        int twintwinNextHe = HalfEdgesUtils.Twin(halfEdges, twinNextHe);
+                        if (twintwinNextHe != -1)
+                            halfEdgeStatus[twintwinNextHe] = EdgeStatus.Blocked;
+
+                        twinPrevHe = HalfEdgesUtils.Prev(twinHe);
+                        halfEdgeStatus[twinPrevHe] = EdgeStatus.Blocked;
+                        int twintwinPrevHe = HalfEdgesUtils.Twin(halfEdges, twinPrevHe);
+                        if (twintwinPrevHe != -1)
+                            halfEdgeStatus[twintwinPrevHe] = EdgeStatus.Blocked;
+                    }
+                    int nextHe = HalfEdgesUtils.Next(he);
+                    halfEdgeStatus[nextHe] = EdgeStatus.Blocked;
+                    twinNextHe = HalfEdgesUtils.Twin(halfEdges, nextHe);
+                    if (twinNextHe != -1)
+                        halfEdgeStatus[twinNextHe] = EdgeStatus.Blocked;
+                    int prevHe = HalfEdgesUtils.Prev(he);
+                    halfEdgeStatus[prevHe] = EdgeStatus.Blocked;
+                    twinPrevHe = HalfEdgesUtils.Twin(halfEdges, prevHe);
+                    if (twinPrevHe != -1)
+                        halfEdgeStatus[twinPrevHe] = EdgeStatus.Blocked;
+
                 }
                 else
                 {
                     halfEdgeStatus[he] = EdgeStatus.Ok;
+                    if (twinHe != -1)
+                        halfEdgeStatus[twinHe] = EdgeStatus.Skipped;
 #if DEBUG
                     Log.Debug($"{HalfedgeInfo(he)}. Status:{halfEdgeStatus[he]}. " +
                         $"angle{(vid, nextVid, prevVid)}={ToDegrees(angle)}");
@@ -203,11 +256,10 @@ namespace TestDelaunayGenerator.Smoothing
             Log.Debug($"Новый треугольник: {TriangleInfo(startTr0 / 3)}");
             Log.Debug($"Новый треугольник: {TriangleInfo(startTr1 / 3)}");
 #endif
-
+            int twinH0 = HalfEdgesUtils.Twin(halfEdges, H0);
             //если есть парное ребро у H0
-            if (HalfEdgesUtils.IsBoundary(halfEdges, H0) is false)
+            if (twinH0 != -1)
             {
-                int twinH0 = HalfEdgesUtils.Twin(halfEdges, H0);
                 //добавляем пару новых треугольников (внутри смежного исходному)
                 (int startTr2, int startTr3) = AddTrianglePair(twinH0, vn);
 #if DEBUG
@@ -249,6 +301,9 @@ namespace TestDelaunayGenerator.Smoothing
                     edgeAdj2.adjacent2 = vn;
                 boundaryEdges[adj2] = edgeAdj2;
             }
+            HalfEdgesUtils.UnLinkTriangle(halfEdges, H0 / 3);
+            if (twinH0 != -1)
+                HalfEdgesUtils.UnLinkTriangle(halfEdges, twinH0 / 3);
             return newTrHe;
         }
 
@@ -272,15 +327,9 @@ namespace TestDelaunayGenerator.Smoothing
         protected (int, int) AddTrianglePair(int H0, int vidNew)
         {
             //инициализация указателей на начало троек новых полуребер/треугольников и 
-            //выделение памяти
             int startTr0 = halfEdges.Count;
             for (int i = 0; i < 3; i++)
                 halfEdges.Add(-1);
-
-            int startTr1 = halfEdges.Count;
-            for (int i = 0; i < 3; i++)
-                halfEdges.Add(-1);
-
             //инициализация треугольников на вершинах
             Troika tr0 = new Troika();
             tr0.flag = (int)TriangleInfect.Internal;
@@ -289,6 +338,9 @@ namespace TestDelaunayGenerator.Smoothing
             tr0[2] = HalfEdgesUtils.Origin(this.faces, HalfEdgesUtils.Prev(H0));
             this.faces.Add(tr0);
 
+            int startTr1 = halfEdges.Count;
+            for (int i = 0; i < 3; i++)
+                halfEdges.Add(-1);
             Troika tr1 = new Troika();
             tr1.flag = (int)TriangleInfect.Internal;
             tr1[0] = vidNew;
