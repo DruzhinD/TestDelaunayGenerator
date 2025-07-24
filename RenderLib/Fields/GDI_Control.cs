@@ -563,6 +563,14 @@ namespace RenderLib
                 SetData(spData);
                 // Передача данных в прокси/рендер контрол
                 proxyRendererControl.SetData(spData);
+                //TODO параметры отрисовки убрать
+#if DEBUG
+                cb_showMesh.Checked = true;
+                cb_showKnotNamber.Checked = false;
+                cb_opFillValues.Checked = false;
+                cb_showBoudary.Checked = false;
+#endif
+
                 SendOption();
                 // отрисовка в статус бар
                 tSSL_Time.Text = sp.time.ToString("F4");
@@ -579,6 +587,7 @@ namespace RenderLib
                     tLine = new LocatorTriMeshFacet(sp.mesh);
                 }
             }
+
         }
 
         private void cb_showMesh_CheckedChanged(object sender, EventArgs e)

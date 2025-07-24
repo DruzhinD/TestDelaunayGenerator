@@ -5,6 +5,7 @@ using GeometryLib.Geometry;
 using GeometryLib.Locators;
 using MemLogLib;
 using MeshLib;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -767,7 +768,7 @@ namespace TestDelaunayGenerator
                          boundaryEdges[edgeIdStart].Adjacents.Contains(edgeIdEnd))
                     {
 #if DEBUG
-                        Console.WriteLine($"Легализация пропущена для треугольников {idxElemA}(новый) {idxElemB}(в оболочке), " +
+                        Log.Debug($"Легализация пропущена для треугольников {idxElemA}(новый) {idxElemB}(в оболочке), " +
                             $"ребро ({edgeIdStart}-{edgeIdEnd}) является граничным");
 #endif
                         //инвертируем принадлежность области для нового треугольника (треуг A)
@@ -848,7 +849,7 @@ namespace TestDelaunayGenerator
                     }
                     else
                     {
-                        Console.WriteLine("Переполнение стека при проверке Делоне" +
+                        Log.Warning("Переполнение стека при проверке Делоне" +
                             " для добавленных треугольников!");
                         break;
                     }
@@ -1379,7 +1380,7 @@ namespace TestDelaunayGenerator
                     continue;
                 int triangleInfectCnt = InfectTriangles(triangleId, possibleValues);
 #if DEBUG
-                Console.WriteLine($"TriangleId:{triangleId};\tЗаражено: {triangleInfectCnt}");
+                Log.Debug($"TriangleId:{triangleId};\tЗаражено: {triangleInfectCnt}");
 #endif
             }
         }

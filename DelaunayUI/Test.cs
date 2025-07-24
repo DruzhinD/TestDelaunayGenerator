@@ -1,23 +1,30 @@
 ﻿using CommonLib;
 using CommonLib.Geometry;
-using GeometryLib;
-using GeometryLib.Aalgorithms;
 using GeometryLib.Vector;
 using MeshLib;
 using RenderLib;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
-using System.Reflection.Emit;
 using System.Windows.Forms;
 using TestDelaunayGenerator;
 using TestDelaunayGenerator.Boundary;
+using TestDelaunayGenerator.DCELMesh;
 
 namespace DelaunayUI
 {
     public class Test
     {
+        /// <summary>
+        /// Каталог data/ в решении
+        /// </summary>
+        string ProjectPath => Path.Combine(Directory.GetCurrentDirectory(), @"..\..\", @"data\");
+
+        public string Name = "н-д";
+
         public IHPoint[] points = null;
         //внешняя оболочка
         public IHPoint[] outerBoundary = null;
@@ -28,11 +35,12 @@ namespace DelaunayUI
         public Test() { }
         public void CreateRestArea(int idx)
         {
-            const int N = 70;
+            const int N = 50;
             double h = 3.0 / (N - 1);
             switch (idx)
             {
                 case 0:
+                    Name = "simple_square";
                     outerBoundary = new IHPoint[]
                     {
                         new HPoint(0.1, 0.1),
@@ -55,6 +63,10 @@ namespace DelaunayUI
                         new HPoint(1, 0),
                         new HPoint(1, 1),
                         new HPoint(0, 1),
+                        //new HPoint(0.2, 0.7),
+                        //new HPoint(0.25, 0.7),
+                        //new HPoint(0.7, 0.27),
+                        //new HPoint(0.7, 0.25),
                         new HPoint(0.5, 0.5),
                         new HPoint(0.4, 0.5),
                         new HPoint(0.7, 0.85),
@@ -65,6 +77,7 @@ namespace DelaunayUI
                     };
                     break;
                 case 1:
+                    Name = "bigger_square";
                     outerBoundary = null;
                     // массивы для псевдослучайного микро смещения координат узлов
                     double[] dxx = {0.0000001, 0.0000005, 0.0000002, 0.0000006, 0.0000002,
@@ -104,7 +117,7 @@ namespace DelaunayUI
                     break;
                 //трапеция
                 case 2:
-
+                    Name = "trapezoid";
                     points = new IHPoint[N * N];
                     for (int i = 0; i < N; i++)
                     {
@@ -125,6 +138,7 @@ namespace DelaunayUI
                     break;
                 case 3:
                     {
+                        Name = "circle";
                         outerBoundary = null;
                         var width = 100;
                         var height = 100;
@@ -136,6 +150,7 @@ namespace DelaunayUI
                     break;
                 case 4:
                     {
+                        Name = "circle2";
                         outerBoundary = null;
                         var width = 100;
                         var height = 100;
@@ -153,6 +168,7 @@ namespace DelaunayUI
                     break;
                 case 5:
                     {
+                        Name = "circle3";
                         var width = 100;
                         var height = 100;
                         outerBoundary = new IHPoint[4]
@@ -170,66 +186,48 @@ namespace DelaunayUI
                     break;
                 case 6:
                     {
+                        Name = "default";
                         points = new IHPoint[N * N];
                         var rnd = new Random();
                         for (int i = 0; i < points.Length; i++)
                             points[i] = new HPoint(rnd.NextDouble(), rnd.NextDouble());
                     }
                     break;
-                case 7:
-                    {
-                        outerBoundary = new IHPoint[]
-                        {
-                            new HPoint(0.1, 0.1),
-                            //new HPoint(0.3, 0.61),
-                            new HPoint(0.1, 0.91),
-                            new HPoint(0.9, 0.91),
-                            new HPoint(0.9, 0.1),
-                        };
-                        innerBoundary = new IHPoint[]
-                        {
-                            new HPoint(0.3, 0.6),
-                            new HPoint(0.31, 0.8),
-                            new HPoint(0.7, 0.8),
-                            new HPoint(0.7, 0.6),
-                        };
-                        generator = new GeneratorFixed(0);
-                        points = new IHPoint[]
-                        {
-                            new HPoint(0, 0),
-                            new HPoint(1, 0),
-                            new HPoint(1, 1),
-                            new HPoint(0, 1),
-                            new HPoint(0.5, 0.5),
-                            new HPoint(0.4, 0.5),
-                            //new HPoint(0.7, 0.85),
-                            new HPoint(0.6, 0.83),
-                            new HPoint(0.55, 0.54),
-                            new HPoint(0.31, 0.58),
-                            new HPoint(0.7, 0.3),
-                            new HPoint(0.4, 0.83),
-                        };
-                    }
-                    break;
             }
         }
         public Delaunator Run(bool showForm = true)
         {
+            LoggerConfig();
+            Log.Information($"Запуск {DateTime.Now}");
+            Log.Information($"Количество точек:{points.Length}");
+            Log.Information($"Внешняя граница:{outerBoundary != null}");
+            Log.Information($"Внутренняя граница:{innerBoundary != null}");
+
             BoundaryContainer container = null;
             //инициализация границы, если заданы контура
             if (outerBoundary != null)
             {
                 container = new BoundaryContainer();
                 container.ReplaceOuterBoundary(outerBoundary, generator);
+                Log.Information($"Внешняя граница. Количество точек:{container.OuterBoundary.Points.Length}");
                 if (innerBoundary != null)
+                {
                     container.AddInnerBoundary(innerBoundary, generator);
+                    Log.Information($"Внутрення граница. Количество точек:{container.InnerBoundaries.Sum(b => b.Points.Length)}");
+                }
             }
             Delaunator delaunator = new Delaunator(points, container);
             Stopwatch sw = Stopwatch.StartNew();
             delaunator.Generate();
             sw.Stop();
             var mesh = delaunator.ToMesh();
-            Console.WriteLine($"Оболочка задана: {container != null}; количество точек: {points.Length}; время выполнения: {sw.Elapsed.TotalSeconds}(c)");
+            Log.Information($"Общее количество точек:{delaunator.Points.Length}. Время выполнения:{sw.Elapsed.TotalSeconds}(c)");
+
+            IRestrictedDCEL dcel = delaunator.ToRestrictedDCEL();
+            //Console.WriteLine("Выполняется сериализация...");
+            //string path = Path.Combine(SolutionDataPath, Name + ".dcel");
+            //SerializerDCEL.SerializeXML((RestrictedDCEL)dcel, path);
+            //Console.WriteLine("Сериализация выполнена!");
 
             if (showForm)
                 ShowMesh(mesh);
@@ -251,6 +249,30 @@ namespace DelaunayUI
                 Form form = new ViForm(data);
                 form.ShowDialog();
             }
+        }
+
+        /// <summary>
+        /// Конфигурация логгера
+        /// </summary>
+        protected void LoggerConfig()
+        {
+            string filePath = Path.Combine(ProjectPath, "logs.log");
+            string logTemplate = "[{Timestamp:HH:mm:ss} {Level:u4}] {Message:lj}{NewLine}{Exception}";
+            Log.Logger = new LoggerConfiguration()
+                //уровень
+                .MinimumLevel.Debug()
+                //запись в консоль
+                .WriteTo.Console(
+                    outputTemplate: logTemplate,
+                    theme: Serilog.Sinks.SystemConsole.Themes.AnsiConsoleTheme.Code
+                )
+                //запись в файл
+                .WriteTo.File(
+                    outputTemplate: logTemplate,
+                    path: filePath,
+                    fileSizeLimitBytes: 1*1024*1024*10 //10MB
+                )
+                .CreateLogger();
         }
 
     }

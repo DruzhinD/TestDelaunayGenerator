@@ -1,5 +1,7 @@
 ﻿using CommonLib.Geometry;
 using MemLogLib;
+using MeshLib.Wrappers;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,122 +15,160 @@ namespace TestDelaunayGenerator.Smoothing
     /// <summary>
     /// Усовершенствование треугольной сетки, засчет новых точек
     /// </summary>
-    public class MeshRefiner
+    public class QualityMesher
     {
-        public RefineConfig Config { get; set; } = new RefineConfig();
+        public QualityMesherConfig Config { get; set; } = new QualityMesherConfig();
 
-        public MeshRefiner() { }
-        public MeshRefiner(RefineConfig config)
+        public QualityMesher() { }
+        public QualityMesher(QualityMesherConfig config)
         {
             this.Config = config;
         }
 
 
-        protected enum RefineEnum
+        /// <summary>
+        /// Статусы полуребер относительно соответствия условиям улучшения сетки в <see cref="Config"/>
+        /// </summary>
+        protected enum EdgeStatus
         {
             /// <summary>
-            /// треугольник пока не проверен
+            /// полуребро не проверено
             /// </summary>
             None = 0,
             /// <summary>
-            /// проверен
+            /// Полуребро соответствует условиям, поэтому не подлежит делению
             /// </summary>
-            Checked = 1,
+            Ok = 1,
             /// <summary>
-            /// Пропущен, т.к. смежный треугольник уже имеет статус <see cref="Split"/>
+            /// Полуребро пропущено, т.к. смежное с ним уже имеет статус,
+            /// отличный от <see cref="None"/>
             /// </summary>
             Skipped = 2,
             /// <summary>
-            /// будет разделен
+            /// Ребро будет разделено
             /// </summary>
             Split = 3,
+            /// <summary>
+            /// полуребро не является граничным.
+            /// Устанавливается, если есть <see cref="QualityMesherConfig.RebuildOnlyBoundary"/>
+            /// </summary>
+            NotBoundary = 4
 
         }
 
 
         #region Поля, необходимые для добавления новых треугольников и вершин
-        // инициализация после оценки количества потенциальных новых треугольников и точек
-        List<IHPoint> points;
-        List<int> halfEdges;
-        List<PointStatus> pointStatuses;
-        List<Troika> faces;
-        List<EdgeIndex> boundaryEdges;
+        //во время поиска треугольников для деления
+        //ссылаются на массивы из сетки
+        //после - являются типом List<T> для расширения коллекции
+        IList<IHPoint> points;
+        IList<int> halfEdges;
+        IList<PointStatus> pointStatuses;
+        IList<Troika> faces;
+        IList<EdgeIndex> boundaryEdges;
         #endregion
 
-        //TODO сделать segments опциональным
-        public IRestrictedDCEL Refine(IRestrictedDCEL mesh, Segment[] segments)
+        string HalfedgeInfo(int he)
         {
-            List<int> halfEdgeRebuild = new List<int>();
-            //сведения о проверке треугольников
-            RefineEnum[] triangleRebuilds = null;
-            MEM.Alloc(mesh.Faces.Length, ref triangleRebuilds, RefineEnum.None);
+            int trid = he / 3;
+            string log = $"he:{he}; trid:{trid} " +
+                $"{faces[trid].Get()} " +
+                $"he:{(trid * 3, trid * 3 + 1, trid * 3 + 2)}";
+            return log;
+        }
 
-            //проход по вершинам
-            for (int vid = 0; vid < mesh.Points.Length; vid++)
+        //TODO выполнять перестроение здесь же
+        public IRestrictedDCEL Refine(IRestrictedDCEL mesh)
+        {
+#if DEBUG
+            Log.Information($"Вызов {nameof(QualityMesher)}.{nameof(Refine)} " +
+                $"MinAngle:{Config.MinAngle}, " +
+                $"MaxAngle:{Config.MaxAngle}, " +
+                $"1 треугольник на {Config.SplitTriangleParts} части ");
+#endif
+            //копируем ссылки на массивы
+            points = mesh.Points;
+            halfEdges = mesh.HalfEdges;
+            pointStatuses = mesh.PointStatuses;
+            faces = mesh.Faces;
+            boundaryEdges = mesh.BoundaryEdges;
+
+            //индексация совпадает с halfEdges
+            EdgeStatus[] halfEdgeStatus = null;
+            MEM.Alloc(halfEdges.Count, ref halfEdgeStatus, EdgeStatus.None);
+
+            List<int> halfEdgeSplit = new List<int>((int)Math.Sqrt(halfEdges.Count));
+
+            //проход по всем полуребрам
+            for (int he = 0; he < halfEdges.Count; he++)
             {
-                //вершина неграничная
-                if (mesh.PointStatuses[vid] != PointStatus.Boundary)
-                    continue;
-
-                //проход по полуребрам, указывающим на смежную с vid вершину
-                //последний треугольник мб продублирован
-                List<int> vidHalfEdges = segments[vid].halfEdgeIds.ToList();
-                //выбрасываем последнее полуребро, т.к. оно дублирует крайний треугольник !!!только для граничных точек
-                vidHalfEdges.RemoveAt(vidHalfEdges.Count - 1);
-                foreach (int he in vidHalfEdges)
+                //пропуск ребра, входящего во внешний треугольник
+                if (faces[he / 3].flag == (int)TriangleInfect.External)
                 {
-                    int trId = he / 3;
-                    //проверенные треугольники пропускаем
-                    if (triangleRebuilds[trId] != RefineEnum.None)
-                        continue;
+                    halfEdgeStatus[he] = EdgeStatus.Skipped;
+#if DEBUG
+                    Log.Debug($"{HalfedgeInfo(he)}. trid внешний.");
+#endif
+                    continue;
+                }
 
-                    //если смежный треугольник будет разделен, то пропускаем текущий
-                    int prevHe = HalfEdgesUtils.Prev(he);
-                    int adjHe = mesh.HalfEdges[prevHe];
-                    if (adjHe != -1 && triangleRebuilds[adjHe / 3] == RefineEnum.Split)
-                    {
-                        triangleRebuilds[trId] = RefineEnum.Skipped;
-                        continue;
-                    }
+                int twinHe = HalfEdgesUtils.Twin(halfEdges, he);
+                //пропуск неграничных если установлено такое условие
+                if (Config.RebuildOnlyBoundary &&
+                    twinHe != -1)
+                {
+                    halfEdgeStatus[he] = EdgeStatus.NotBoundary;
+#if DEBUG
+                    Log.Debug($"{HalfedgeInfo(he)}. Status:{halfEdgeStatus[he]}. SKIP");
+#endif
+                    continue;
+                }
 
-                    int nextHe = HalfEdgesUtils.Next(he);
-                    //надо получить вершину, смежную с vid
-                    int adjVid = mesh.Faces[trId][prevHe % 3];
-                    int AdjVidHe = prevHe;
-                    int VidHe = nextHe;
-                    //проверка не получили ли vid
-                    if (adjVid == vid)
-                    {
-                        adjVid = mesh.Faces[trId][nextHe % 3];
-                        AdjVidHe = nextHe;
-                        VidHe = prevHe;
-                    }
-                    //если ребро, лежащее напротив he - неграничное, то пропускаем
-                    if (mesh.PointStatuses[vid] != PointStatus.Boundary ||
-                        mesh.PointStatuses[adjVid] != PointStatus.Boundary ||
-                        !mesh.BoundaryEdges[vid].Adjacents.Contains(adjVid)
-                        )
-                    {
-                        triangleRebuilds[trId] = RefineEnum.Checked;
-                        continue;
-                    }
+                //для неграничных полуребер. Если смежное полуребро уже проверено
+                if (twinHe != -1 && halfEdgeStatus[twinHe] != EdgeStatus.None)
+                {
+                    halfEdgeStatus[he] = EdgeStatus.Skipped;
+#if DEBUG
+                    Log.Debug($"{HalfedgeInfo(he)}. Status:{halfEdgeStatus[he]}. SKIP");
+#endif
+                    continue;
+                }
 
-                    int nonBoundVid = mesh.Faces[trId][he % 3];
-                    //если недопустимый угол, то помечаем для разделения
-                    double angle = CalcAngle(mesh.Points[vid], mesh.Points[nonBoundVid], mesh.Points[adjVid]);
-                    if (angle < Config.MinAngle || Config.MaxAngle < angle)
-                    {
-                        triangleRebuilds[trId] = RefineEnum.Split;
-                        //halfEdgeRebuild.Add(VidHe);
-                        halfEdgeRebuild.Add(HalfEdgesUtils.Next(he));
-                        continue;
-                    }
+                int vid = HalfEdgesUtils.Origin(faces, he);
+                int nextVid = HalfEdgesUtils.Origin(faces, HalfEdgesUtils.Next(he));
+                int prevVid = HalfEdgesUtils.Origin(faces, HalfEdgesUtils.Prev(he));
 
+                //угол напротив полуребра he
+                double angle = CalcAngle(points[vid], points[prevVid], points[nextVid]);
+                //TODO добавить проверку на минимальный угол
+                if (angle > Config.MaxAngle)
+                {
+                    halfEdgeStatus[he] = EdgeStatus.Split;
+                    halfEdgeSplit.Add(he);
+#if DEBUG
+                    Log.Debug(
+                    $"{HalfedgeInfo(he)}. Status:{halfEdgeStatus[he]}. " +
+                    $"angle{(vid, nextVid, prevVid)}={ToDegrees(angle)}"
+                    );
+                    //помечаем все ребра в этом треугольнике пропущенными,
+                    //т.к. можно делить всего 1 ребро в треугольнике
+                    halfEdgeStatus[HalfEdgesUtils.Next(he)] = EdgeStatus.Skipped;
+                    halfEdgeStatus[HalfEdgesUtils.Prev(he)] = EdgeStatus.Skipped;
+#endif
+                }
+                else
+                {
+                    halfEdgeStatus[he] = EdgeStatus.Ok;
+#if DEBUG
+                    Log.Debug($"{HalfedgeInfo(he)}. Status:{halfEdgeStatus[he]}. " +
+                        $"angle{(vid, nextVid, prevVid)}={ToDegrees(angle)}");
+#endif
                 }
             }
-            return SplitTriangles(halfEdgeRebuild, mesh);
-
+            return SplitTriangles(halfEdgeSplit, mesh);
         }
+
+        static double ToDegrees(double rad) => 180 / Math.PI * rad;
 
         /// <summary>
         /// Разделить ребро на 2 части.
@@ -141,8 +181,9 @@ namespace TestDelaunayGenerator.Smoothing
         /// <returns>Количество новых треугольников</returns>
         protected int SplitEdge(int H0, IHPoint vertex)
         {
-            //счетчик новых треугольников
-            int newTrCnt = 0;
+            //полуребро нового треугольника,
+            //которое также может быть разбито
+            int newTrHe = -1;
 
             //вставляем новую вершину
             points.Add(vertex);
@@ -151,10 +192,17 @@ namespace TestDelaunayGenerator.Smoothing
 
             //id новой вершины
             int vn = points.Count - 1;
+#if DEBUG
+            Log.Debug($"Новая вершина vid: {vn} {(vertex.X, vertex.Y)}");
+#endif
 
             //добавляем пару новых треугольников (внутри исходного)
             (int startTr0, int startTr1) = AddTrianglePair(H0, vn);
-            newTrCnt += 2;
+            newTrHe = startTr1;
+#if DEBUG
+            Log.Debug($"Новый треугольник: {TriangleInfo(startTr0 / 3)}");
+            Log.Debug($"Новый треугольник: {TriangleInfo(startTr1 / 3)}");
+#endif
 
             //если есть парное ребро у H0
             if (HalfEdgesUtils.IsBoundary(halfEdges, H0) is false)
@@ -162,8 +210,10 @@ namespace TestDelaunayGenerator.Smoothing
                 int twinH0 = HalfEdgesUtils.Twin(halfEdges, H0);
                 //добавляем пару новых треугольников (внутри смежного исходному)
                 (int startTr2, int startTr3) = AddTrianglePair(twinH0, vn);
-                newTrCnt += 2;
-
+#if DEBUG
+                Log.Debug($"Новый треугольник: {TriangleInfo(startTr2 / 3)}");
+                Log.Debug($"Новый треугольник: {TriangleInfo(startTr3 / 3)}");
+#endif
                 //связываем t1 и t2
                 HalfEdgesUtils.Link(this.halfEdges, startTr1, startTr2);
                 //связываем t0 и t3
@@ -199,7 +249,16 @@ namespace TestDelaunayGenerator.Smoothing
                     edgeAdj2.adjacent2 = vn;
                 boundaryEdges[adj2] = edgeAdj2;
             }
-                return newTrCnt;
+            return newTrHe;
+        }
+
+        public string TriangleInfo(int trid)
+        {
+            string log = $"trid:{trid} " +
+                $"{faces[trid].Get()} " +
+                $"he:{(trid * 3, trid * 3 + 1, trid * 3 + 2)}";
+
+            return log;
         }
 
         /// <summary>
@@ -215,10 +274,12 @@ namespace TestDelaunayGenerator.Smoothing
             //инициализация указателей на начало троек новых полуребер/треугольников и 
             //выделение памяти
             int startTr0 = halfEdges.Count;
-            halfEdges.AddRange(new int[] { -1, -1, -1 });
+            for (int i = 0; i < 3; i++)
+                halfEdges.Add(-1);
 
             int startTr1 = halfEdges.Count;
-            halfEdges.AddRange(new int[] { -1, -1, -1 });
+            for (int i = 0; i < 3; i++)
+                halfEdges.Add(-1);
 
             //инициализация треугольников на вершинах
             Troika tr0 = new Troika();
@@ -242,6 +303,11 @@ namespace TestDelaunayGenerator.Smoothing
             //связать пары полуребер из исходного треугольника
             HalfEdgesUtils.Link(this.halfEdges, HalfEdgesUtils.Prev(startTr0), halfEdges[HalfEdgesUtils.Prev(H0)]);
             HalfEdgesUtils.Link(this.halfEdges, HalfEdgesUtils.Next(startTr1), halfEdges[HalfEdgesUtils.Next(H0)]);
+
+            //помечаем исходный треугольник как внешний
+            var exTr = faces[H0 / 3];
+            exTr.flag = (int)TriangleInfect.External;
+            faces[H0 / 3] = exTr;
 
             return (startTr0, startTr1);
         }
@@ -270,6 +336,9 @@ namespace TestDelaunayGenerator.Smoothing
 
             foreach (int H0 in halfEdgeRebuild)
             {
+#if DEBUG
+                Log.Debug($"Деление {TriangleInfo(H0 / 3)}(he:{H0}) на {Config.SplitTriangleParts} частей.");
+#endif
                 int trIdOld = H0 / 3;
 
                 //рассчитать координаты для новых точек
@@ -277,11 +346,11 @@ namespace TestDelaunayGenerator.Smoothing
                 int vid2 = faces[trIdOld][H0 % 3];
                 IList<IHPoint> newPoints = SplitLine(points[vid1], points[vid2]);
 
+                int curH0 = H0;
                 //TODO H0 нужно переназначать
                 foreach (var p in newPoints)
                 {
-                    SplitEdge(H0, p);
-                    //HalfEdgesUtils.UnLinkTriangle(halfEdges, trIdOld);
+                    curH0 = SplitEdge(curH0, p);
                 }
 
             }

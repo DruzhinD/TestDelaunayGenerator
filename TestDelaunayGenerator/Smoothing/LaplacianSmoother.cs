@@ -8,6 +8,7 @@ using TestDelaunayGenerator.SimpleStructures;
 using TestDelaunayGenerator.DCELMesh;
 using System.Diagnostics;
 using System.Windows.Forms;
+using Serilog;
 
 namespace TestDelaunayGenerator.Smoothing
 {
@@ -53,12 +54,11 @@ namespace TestDelaunayGenerator.Smoothing
             if (firstIterFlag is false)
             {
                 Stopwatch sw = Stopwatch.StartNew();
-                FirstSmoothIteration();
+                SegmentsInitializeIteration();
                 sw.Stop();
                 int convexCnt = segments.Count(s => s.isConvex);
-                Utils.ConsoleWriteLineColored(
-                    ConsoleColor.DarkGreen,
-                    $"ПЕРВОЕ Сглаживание #{totalIterations}. " +
+                Log.Information(
+                    $"Сглаживание инициализации сегментов. #{totalIterations}. " +
                     $"Время: {sw.Elapsed.TotalSeconds}(c). " +
                     $"Выпуклых сегментов: {convexCnt}/{segments.Length}");
                 totalIterations += 1;
@@ -71,12 +71,11 @@ namespace TestDelaunayGenerator.Smoothing
                 CommonSmoothIteration();
                 sw.Stop();
                 totalIterations++;
-                Utils.ConsoleWriteLineColored(
-                    ConsoleColor.Green,
+                Log.Information(
                     $"Сглаживание #{totalIterations}. Время: {sw.Elapsed.TotalSeconds}(c)");
             }
             //TODO поправить
-            mesh = new MeshRefiner().Refine(mesh, segments);
+            mesh = new QualityMesher(new QualityMesherConfig() { SplitTriangleParts = 2, RebuildOnlyBoundary = true}).Refine(mesh);
             mesh = mesh.ToDcelTriMesh();
             firstIterFlag = false;
         }
@@ -87,7 +86,7 @@ namespace TestDelaunayGenerator.Smoothing
         /// в котором хранятся индексы на id треугольников, в которые входят вершины
         /// </summary>
         /// <remarks>Использует проход по полуребрам (значительно больше, чем вершин)</remarks>
-        protected void FirstSmoothIteration()
+        protected void SegmentsInitializeIteration()
         {
             //true - вершина уже обработана (пропущена или перемещена)
             bool[] isProcessed = null;
@@ -119,7 +118,7 @@ namespace TestDelaunayGenerator.Smoothing
 
         /// <summary>
         /// Обычная итерация сглаживания.
-        /// Требуется, чтобы <see cref="FirstSmoothIteration"/> был вызван
+        /// Требуется, чтобы <see cref="SegmentsInitializeIteration"/> был вызван
         /// как минимум 1 раз
         /// </summary>
         /// <remarks>Использует проход по вершинам</remarks>
@@ -144,7 +143,7 @@ namespace TestDelaunayGenerator.Smoothing
             if (seg.pointStatus == PointStatus.Boundary)
             {
 #if DEBUG
-                Console.WriteLine($"{vid} пропущена, т.к. является граничной");
+                Log.Debug($"{vid} пропущена, т.к. является граничной");
 #endif
                 return false;
             }
@@ -159,7 +158,7 @@ namespace TestDelaunayGenerator.Smoothing
             if (seg.isConvex is true)
             {
 #if DEBUG
-                Console.WriteLine($"Перемещение вершины {vid} из " +
+                Log.Debug($"Перемещение вершины {vid} из " +
                     $"({mesh.Points[vid].X}, {mesh.Points[vid].Y}) " +
                     $"в ({newX}, {newY})");
 #endif
@@ -196,12 +195,11 @@ namespace TestDelaunayGenerator.Smoothing
                     currentSmoothRatio *= this.Config.ReductionRatio;
 
 #if DEBUG
-                    Utils.ConsoleWriteLineColored(
-                        ConsoleColor.Red,
+                    Log.Debug(
                         $"не удалось переместить вершину {vid} ({mesh.Points[vid].X},{mesh.Points[vid].Y}) " +
                         $"в новые координаты ({newX},{newY}) - выворот треугольника {trId}({mesh.Faces[trId]})"
                         );
-                    Console.WriteLine($"Установка коэффициента сглаживания:{currentSmoothRatio}");
+                    Log.Debug($"Установка коэффициента сглаживания:{currentSmoothRatio}");
 
 #endif
                     //устанавливаем изначальные координаты
@@ -220,7 +218,7 @@ namespace TestDelaunayGenerator.Smoothing
             if (isNotDestroyed)
             {
 #if DEBUG
-                Console.WriteLine($"Перемещение вершины {vid} из " +
+                Log.Debug($"Перемещение вершины {vid} из " +
                     $"({mesh.Points[vid].X}, {mesh.Points[vid].Y}) " +
                     $"в ({newX}, {newY})");
 #endif
@@ -231,10 +229,9 @@ namespace TestDelaunayGenerator.Smoothing
             else
             {
 #if DEBUG
-                Utils.ConsoleWriteLineColored(
-                            ConsoleColor.DarkRed,
-                            $"Вершина {vid} не перемещена за {this.Config.AttemptCnt} попытки."
-                            );
+                Log.Warning(
+                    $"Вершина {vid} не перемещена за {this.Config.AttemptCnt} попытки."
+                );
 #endif
                 return false;
             }

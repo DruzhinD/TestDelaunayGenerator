@@ -9,7 +9,7 @@ namespace TestDelaunayGenerator.Smoothing
     /// <summary>
     /// Параметры улучшения сетки
     /// </summary>
-    public class RefineConfig
+    public class QualityMesherConfig
     {
         public double MinAngle { get; set; } = Math.PI / 6;
 
