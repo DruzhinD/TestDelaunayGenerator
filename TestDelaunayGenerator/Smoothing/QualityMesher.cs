@@ -166,7 +166,7 @@ namespace TestDelaunayGenerator.Smoothing
                     $"angle{(vid, nextVid, prevVid)}={ToDegrees(angle)}"
                     );
 #endif
-
+                    //TODO выполнить рефакторинг
                     //помечаем все ребра в этом треугольнике пропущенными,
                     //т.к. можно делить всего 1 ребро в треугольнике
                     //смежный треугольник тоже блокируем
@@ -212,7 +212,7 @@ namespace TestDelaunayGenerator.Smoothing
             return SplitTriangles(halfEdgeSplit, mesh);
         }
 
-
+        #region Вынесено в класс EdgeSplitter
         /// <summary>
         /// Разделить ребро на 2 части.
         /// Таким образом треугольник с полуребром <paramref name="H0"/>,
@@ -344,7 +344,7 @@ namespace TestDelaunayGenerator.Smoothing
 
             return (startTr0, startTr1);
         }
-
+        #endregion
 
         /// <summary>
         /// Разбиение помеченных треугольников
@@ -380,10 +380,17 @@ namespace TestDelaunayGenerator.Smoothing
                 IList<IHPoint> newPoints = SplitLine(points[vid1], points[vid2]);
 
                 int curH0 = H0;
+                var edgeSplitter = new EdgeSplitter(
+                    points,
+                    halfEdges,
+                    pointStatuses,
+                    faces,
+                    boundaryEdges);
                 //TODO H0 нужно переназначать
                 foreach (var p in newPoints)
                 {
-                    curH0 = SplitEdge(curH0, p);
+                    curH0 = edgeSplitter.SplitEdge(curH0, p);
+                    //curH0 = SplitEdge(curH0, p);
                 }
 
             }
@@ -397,7 +404,7 @@ namespace TestDelaunayGenerator.Smoothing
             return refinedMesh;
         }
 
-
+        //TODO ручное создание треугольников заменить на этот метод
         protected int AddTriangle(int v0, int v1, int v2, int he0, int he1, int he2)
         {
             //формируем треугольник

@@ -75,7 +75,10 @@ namespace TestDelaunayGenerator.Smoothing
                     $"Сглаживание #{totalIterations}. Время: {sw.Elapsed.TotalSeconds}(c)");
             }
             //TODO поправить
-            mesh = new QualityMesher(new QualityMesherConfig() { SplitTriangleParts = 2, RebuildOnlyBoundary = false}).Refine(mesh);
+            mesh = new QualityMesher(
+                new QualityMesherConfig()
+                { SplitTriangleParts = 2, RebuildOnlyBoundary = false, MaxAngle = Math.PI * 3.5 / 6 })
+                .Refine(mesh);
             mesh = mesh.ToDcelTriMesh();
             firstIterFlag = false;
         }

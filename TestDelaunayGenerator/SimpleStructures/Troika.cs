@@ -53,5 +53,19 @@ namespace TestDelaunayGenerator.SimpleStructures
         {
             return $"{i},{j},{k};flag:{flag}";
         }
+
+        /// <summary>
+        /// true - треугольник содержит вершину <paramref name="vid"/>
+        /// </summary>
+        /// <param name="vid"></param>
+        /// <returns></returns>
+        public bool Contains(int vid)
+        {
+            if (i == vid ||
+                j == vid ||
+                k == vid)
+                return true;
+            return false;
+        }
     }
 }

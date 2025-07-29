@@ -191,6 +191,8 @@ namespace GeometryLib.Locators
             else
             {
                 flag = true;
+                if (res is null)
+                    res = new HPoint(0, 0);
                 res.X = (B2 * C1 - B1 * C2) / det;
                 res.Y = (A1 * C2 - A2 * C1) / det;
             }
@@ -280,22 +282,30 @@ namespace GeometryLib.Locators
         /// Поиск точки p - пересечения отрезка v11 , v12  с отрезком v21 , v22
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsCrossing(HPoint v11, HPoint v12, HPoint v21, HPoint v22, ref IHPoint p)
+        public static bool IsCrossing(HPoint v11, HPoint v12, HPoint v21, HPoint v22, ref IHPoint p, bool includeStart = false)
         {
             if (HPoint.Equals(v11, v22))
             {
+                if (!includeStart)
+                    return false;
                 p = v11; return true;
             }
             if (HPoint.Equals(v11, v21))
             {
+                if (!includeStart)
+                    return false;
                 p = v11; return true;
             }
             if (HPoint.Equals(v12, v22))
             {
+                if (!includeStart)
+                    return false;
                 p = v12; return true;
             }
             if (HPoint.Equals(v12, v21))
             {
+                if (!includeStart)
+                    return false;
                 p = v12; return true;
             }
             Vector3 cut1 = new Vector3(v12 - v11);
@@ -320,7 +330,9 @@ namespace GeometryLib.Locators
                 return false;
 
             // точка пересечения
-            p.X = v11.X + cut1.X * Math.Abs(prod1.Z) / Math.Abs(prod2.Z - prod1.Z);
+            if (p is null)
+                p = new HPoint(0, 0);
+            p.X = v11.X + cut1.X * Math.Abs(prod1.Z) / Math.Abs(prod2.Z - prod1.Z);
             p.Y = v11.Y + cut1.Y * Math.Abs(prod1.Z) / Math.Abs(prod2.Z - prod1.Z);
 
             return true;

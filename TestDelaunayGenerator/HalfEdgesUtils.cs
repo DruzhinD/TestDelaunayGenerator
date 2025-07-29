@@ -341,6 +341,39 @@ namespace TestDelaunayGenerator
         }
 
 
+        /// <summary>
+        /// Поместить вершину <paramref name="vid"/> на границе
+        /// между <paramref name="left"/> и <paramref name="right"/>
+        /// </summary>
+        /// <param name="boundaryEdges"></param>
+        /// <param name="vid"></param>
+        /// <param name="left"></param>
+        /// <param name="right"></param>
+        public static void LinkBoundaryEdge(IList<EdgeIndex> boundaryEdges, int vid, int left, int right)
+        {
+            boundaryEdges[vid] = new EdgeIndex()
+            {
+                PointID = vid,
+                adjacent1 = left, //v0
+                adjacent2 = right, //v1
+                BoundaryID = boundaryEdges[left].BoundaryID
+            };
+            //изменяем соседей у исходных граничных вершин
+            var edgeAdj1 = boundaryEdges[left];
+                if (edgeAdj1.adjacent1 == right)
+                    edgeAdj1.adjacent1 = vid;
+                else
+                    edgeAdj1.adjacent2 = vid;
+                boundaryEdges[left] = edgeAdj1;
+
+                var edgeAdj2 = boundaryEdges[right];
+                if (edgeAdj2.adjacent1 == left)
+                    edgeAdj2.adjacent1 = vid;
+                else
+                    edgeAdj2.adjacent2 = vid;
+                boundaryEdges[right] = edgeAdj2;
+        }
+
         #region Валидация, вспомогательные функции
         /// <summary>
         /// Валидация полуребра/треугольника

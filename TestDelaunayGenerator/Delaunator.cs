@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -700,6 +701,8 @@ namespace TestDelaunayGenerator
             if (this.boundaryContainer is null)
                 Array.ForEach(Hull, x => pointStatuses[x] = PointStatus.Boundary);
             //удаление связей с внешними треугольниками в полуребрах
+            RestoreBorder();
+            ClippingTriangles();
             ErraseExternalTriangles();
         }
 
@@ -751,6 +754,8 @@ namespace TestDelaunayGenerator
                 //вершина смежного треугольника
                 int p1 = Triangles[idxElemB][(EdgeB_ID + 2) % 3];
 
+                //отсечение треугольников в процессе построения триангуляции
+                /*
                 //если задан граничный контур
                 if (boundaryContainer != null)
                 {
@@ -773,7 +778,6 @@ namespace TestDelaunayGenerator
 #endif
                         //инвертируем принадлежность области для нового треугольника (треуг A)
                         //относительно смежного с ним (треуг B)
-
                         TriangleInfect newTriangleValue = TriangleInfect.External;
                         if (Triangles[idxElemB].flag == (int)newTriangleValue)
                             newTriangleValue = TriangleInfect.Internal;
@@ -796,6 +800,7 @@ namespace TestDelaunayGenerator
                 {
                     Triangles[idxElemA].flag = (int)TriangleInfect.Internal;
                 }
+                */
 
                 bool illegal = InCircle(p0, pr, pl, p1);
                 if (illegal)
@@ -997,6 +1002,9 @@ namespace TestDelaunayGenerator
             Triangles[triangleId].i = i0;
             Triangles[triangleId].j = i1;
             Triangles[triangleId].k = i2;
+            //TODO все помечаются внутренними
+            if (boundaryContainer is null)
+                Triangles[triangleId].flag = (int)TriangleInfect.Internal;
 
             //индекс первой вершины, в крайнем треугольнике
             //относительно массива точек
@@ -1536,5 +1544,196 @@ namespace TestDelaunayGenerator
                     UnLinkTriangle(i);
             }
         }
+
+        /// <summary>
+        /// Восстановление граничного контура
+        /// </summary>
+        protected void RestoreBorder()
+        {
+            if (boundaryContainer is null)
+                return;
+
+            IList<IHPoint> pointsLst = new List<IHPoint>(Points);
+            IList<int> halfEdgesLst = new List<int>(HalfEdges);
+            IList<PointStatus> pointStatusesLst = new List<PointStatus>(pointStatuses);
+            IList<Troika> facesLst = new List<Troika>(Triangles);
+            IList<EdgeIndex> boundaryEdgesLst = new List<EdgeIndex>(boundaryEdges);
+            EdgeSplitter edgeSplitter = new EdgeSplitter(
+                pointsLst,
+                halfEdgesLst,
+                pointStatusesLst,
+                facesLst,
+                boundaryEdgesLst
+                );
+
+            int cnter = 0;
+            bool missAdj1, missAdj2;
+            //проход по всем полуребрам в поисках тех, что указывают на граничную точку
+            for (int he = 0; he < HalfEdges.Length; he++)
+            {
+
+                int vid = HalfEdgesUtils.Origin(facesLst, he);
+                //точка неграничная - пропуск
+                if (pointStatusesLst[vid] != PointStatus.Boundary)
+                    continue;
+
+                //смежные полуребра для he
+                //(кроме последнего - последнее не смежное, но содержит смежную вершину!)
+                int[] adjHes = HalfEdgesUtils.AdjacentEdgesVertex(halfEdgesLst, facesLst, he, true);
+
+                //true - упущено одно из ребер
+                missAdj1 = true;
+                missAdj2 = true;
+
+
+                //проверка существования ребер
+                for (int i = 0; i < adjHes.Length; i++)
+                {
+                    int twinHe = adjHes[i];
+                    int twinVid = HalfEdgesUtils.Origin(facesLst, twinHe);
+
+                    if (boundaryEdgesLst[vid].adjacent1 == twinVid)
+                        missAdj1 = false;
+                    if (boundaryEdgesLst[vid].adjacent2 == twinVid)
+                        missAdj2 = false;
+
+                    //связи существуют, поэтому заканчиваем цикл
+                    if (!missAdj1 && !missAdj2)
+                        break;
+                }
+
+                //ни одно из ребер не пропущено => идем дальше
+                if (!missAdj1 && !missAdj2)
+                    continue;
+                if (missAdj1)
+                    RestoreEdge(he, boundaryEdges[vid].adjacent1);
+                //определение верное
+                if (missAdj2)
+                    RestoreEdge(he, boundaryEdges[vid].adjacent2);
+                //TODO убрать остановку после первой итерации
+                cnter++;
+#if DEBUG
+#else
+                if (cnter == 2)
+                    break;
+#endif
+
+            }
+
+            points = pointsLst.ToArray();
+            HalfEdges = halfEdgesLst.ToArray();
+            pointStatuses = pointStatusesLst.ToArray();
+            Triangles = facesLst.ToArray();
+            boundaryEdges = boundaryEdgesLst.ToArray();
+
+
+            void RestoreEdge(int H0, int missedVid)
+            {
+                const int STOP = -10;
+
+                int vid = HalfEdgesUtils.Origin(facesLst, H0);
+                //полуребра, исходящие из вершины vid, на которую указывает he
+                var HEs = HalfEdgesUtils.AdjacentEdgesVertex(halfEdgesLst, facesLst, H0, false);
+
+                int splitHe = STOP;
+                IHPoint intersectPoint = null;
+
+                //поиск первого ребра, которое будет разделено
+                for (int i = 0; i < HEs.Length; i++)
+                {
+                    int adjHe = HEs[i];
+
+                    //полуребро, которое указывает на vid
+                    int he = HalfEdgesUtils.Twin(halfEdgesLst, adjHe);
+                    //пропускаем (мб исходное граничное ребро может пересекает границу?)
+                    if (he == -1)
+                        continue;
+
+                    int nextHe = HalfEdgesUtils.Next(he);
+                    intersectPoint = IsIntersect(nextHe);
+                    //нет пересечения
+                    if (intersectPoint is null)
+                        continue;
+
+                    //пересечение есть
+                    splitHe = HalfEdgesUtils.Twin(halfEdgesLst, nextHe);
+                    break;
+                }
+
+                //исключение для выявления аномалий
+                if (splitHe == STOP)
+                    throw new ArgumentException($"{nameof(splitHe)} не определен, " +
+                        $"хотя граничного ребра {(vid, missedVid)} фактически нет!");
+
+                //null - нет пересечения, иначе - точка пересечения
+                IHPoint IsIntersect(int potentialHe)
+                {
+                    //TODO мб полуребро -1 ?
+                    //вершины потенциального ребра для деления
+                    int nextHeVid1 = HalfEdgesUtils.Origin(facesLst, potentialHe);
+                    int nextHeVid2 = HalfEdgesUtils.Origin(facesLst, HalfEdgesUtils.Twin(halfEdgesLst, potentialHe));
+
+                    //точка пересечения
+                    IHPoint intersect = null;
+                    bool isIntersect = CrossLineUtils.IsCrossing(
+                        (HPoint)pointsLst[vid], (HPoint)pointsLst[missedVid],
+                        (HPoint)pointsLst[nextHeVid1], (HPoint)pointsLst[nextHeVid2],
+                        ref intersect);
+
+                    //есть пересечение
+                    if (isIntersect)
+                        return intersect;
+                    return null;
+                }
+
+                int nextSplitHe = STOP;
+                IHPoint nextIntersectPoint = null;
+                //предыдущая добавленная граничная вершина
+                int exVid = vid;
+                //до тех пор, пока не дойдем до треугольника с пропущенной вершиной
+                while (true)
+                {
+                    int trid = splitHe / 3;
+                    if (facesLst[trid].Contains(missedVid))
+                        nextSplitHe = STOP;
+                    //следующее ребро тоже будем делить
+                    else
+                    {
+                        int next = HalfEdgesUtils.Next(splitHe);
+                        nextIntersectPoint = IsIntersect(next);
+                        if (nextIntersectPoint != null)
+                        {
+                            nextSplitHe = HalfEdgesUtils.Twin(halfEdgesLst, next);
+                        }
+                        else
+                        {
+                            int prev = HalfEdgesUtils.Prev(splitHe);
+                            nextIntersectPoint = IsIntersect(prev);
+                            if (nextIntersectPoint != null)
+                                nextSplitHe = HalfEdgesUtils.Twin(halfEdgesLst, prev);
+                            else
+                                throw new ArgumentException("Нет пересечений: ни prev, ни next!");
+                        }
+                    }
+                    edgeSplitter.SplitEdge(splitHe, intersectPoint);
+                    int newVidx = pointsLst.Count - 1;
+                    pointStatusesLst[newVidx] = PointStatus.Boundary;
+                    if (missAdj1)
+                        HalfEdgesUtils.LinkBoundaryEdge(boundaryEdgesLst, newVidx, missedVid, exVid);
+                    else
+                        HalfEdgesUtils.LinkBoundaryEdge(boundaryEdgesLst, newVidx, exVid, missedVid);
+                    exVid = newVidx;
+
+                    //следующий треугольник содержит missedVid
+                    if (nextSplitHe == STOP)
+                        break;
+
+                    splitHe = nextSplitHe;
+                    intersectPoint = nextIntersectPoint;
+                }
+            }
+        }
+
     }
 }
+
