@@ -341,6 +341,7 @@ namespace TestDelaunayGenerator
         }
 
 
+        //TODO упростить LinkBound
         /// <summary>
         /// Поместить вершину <paramref name="vid"/> на границе
         /// между <paramref name="left"/> и <paramref name="right"/>
@@ -351,27 +352,41 @@ namespace TestDelaunayGenerator
         /// <param name="right"></param>
         public static void LinkBoundaryEdge(IList<EdgeIndex> boundaryEdges, int vid, int left, int right)
         {
-            boundaryEdges[vid] = new EdgeIndex()
+            var newBound = new EdgeIndex()
             {
                 PointID = vid,
+                //нет гарантии корректности
                 adjacent1 = left, //v0
                 adjacent2 = right, //v1
                 BoundaryID = boundaryEdges[left].BoundaryID
             };
             //изменяем соседей у исходных граничных вершин
             var edgeAdj1 = boundaryEdges[left];
-                if (edgeAdj1.adjacent1 == right)
-                    edgeAdj1.adjacent1 = vid;
-                else
-                    edgeAdj1.adjacent2 = vid;
-                boundaryEdges[left] = edgeAdj1;
+            if (edgeAdj1.adjacent1 == right)
+            {
+                edgeAdj1.adjacent1 = vid;
+                newBound.adjacent2 = edgeAdj1.PointID;
+            }
+            else
+            {
+                edgeAdj1.adjacent2 = vid;
+                newBound.adjacent1 = edgeAdj1.PointID;
+            }
+            boundaryEdges[left] = edgeAdj1;
 
-                var edgeAdj2 = boundaryEdges[right];
-                if (edgeAdj2.adjacent1 == left)
-                    edgeAdj2.adjacent1 = vid;
-                else
-                    edgeAdj2.adjacent2 = vid;
-                boundaryEdges[right] = edgeAdj2;
+            var edgeAdj2 = boundaryEdges[right];
+            if (edgeAdj2.adjacent1 == left)
+            {
+                edgeAdj2.adjacent1 = vid;
+                newBound.adjacent2 = edgeAdj2.PointID;
+            }
+            else
+            {
+                edgeAdj2.adjacent2 = vid;
+                newBound.adjacent1 = edgeAdj2.PointID;
+            }
+            boundaryEdges[right] = edgeAdj2;
+            boundaryEdges[vid] = newBound;
         }
 
         #region Валидация, вспомогательные функции
@@ -405,12 +420,24 @@ namespace TestDelaunayGenerator
         /// <param name="faces"></param>
         /// <param name="he"></param>
         /// <returns></returns>
-        public static string HeInfo(IList<Troika> faces, IList<int> halfEdges, int he)
+        public static string HeInfo(IList<Troika> faces, IList<int> halfEdges, int he, bool extended = false)
         {
             int trid = he / 3;
-            string log = $"he:{he};twin:{Twin(halfEdges, he)};trid:{trid} " +
-                $"{faces[trid].Get()} " +
-                $"he:{(trid * 3, trid * 3 + 1, trid * 3 + 2)}";
+            string log = $"he:{he};twin:{Twin(halfEdges, he)};";
+            //origin
+            if (extended)
+                log += $"origin:{Origin(faces, he)};";
+            //trid
+            log += $"trid:{trid}{faces[trid].Get()};";
+            int he1 = trid * 3;
+            int he2 = trid * 3 + 1;
+            int he3 = trid * 3 + 2;
+            //he
+            if (extended)
+                log += $"he:({he1}|{Twin(halfEdges, he1)}, {he2}|{Twin(halfEdges, he2)}, {he3}|{Twin(halfEdges, he3)});";
+            else
+                log += $"he:{(he1, he2, he3)};";
+
             return log;
         }
         #endregion

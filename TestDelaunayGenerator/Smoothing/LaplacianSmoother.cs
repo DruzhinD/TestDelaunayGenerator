@@ -77,7 +77,7 @@ namespace TestDelaunayGenerator.Smoothing
             //TODO поправить
             mesh = new QualityMesher(
                 new QualityMesherConfig()
-                { SplitTriangleParts = 2, RebuildOnlyBoundary = false, MaxAngle = Math.PI * 3.5 / 6 })
+                { SplitTriangleParts = 2, RebuildOnlyBoundary = true, MaxAngle = Math.PI * 4 / 6 })
                 .Refine(mesh);
             mesh = mesh.ToDcelTriMesh();
             firstIterFlag = false;

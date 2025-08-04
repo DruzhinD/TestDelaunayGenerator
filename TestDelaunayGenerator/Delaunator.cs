@@ -10,8 +10,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Security.Cryptography;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using TestDelaunayGenerator.Boundary;
@@ -67,6 +65,15 @@ namespace TestDelaunayGenerator
             this.boundaryContainer = boundaryContainer;
         }
 
+        /// <summary>
+        /// true - все треугольники учитываются при построении триангуляции
+        /// </summary>
+        public bool IncludeExternal = false;
+
+        /// <summary>
+        /// true - использовать отсечение треугольников
+        /// </summary>
+        public bool UseClippingTriangles = true;
 
         #region Свойства, необходимые для генерации триангуляции по s-hull
         /// <summary>
@@ -108,12 +115,14 @@ namespace TestDelaunayGenerator
         int[] Hull;
         /// <summary>
         /// Массив индексов выпуклой оболочки данных 
-        /// по направлению движения часовой стрелке
+        /// направление движения против ч.с.
+        /// (изначально предполагалось движение по ч.с.)
         /// </summary>
         int[] hullPrev;
         /// <summary>
         /// Массив индексов выпуклой оболочки данных  
-        /// направлению движения против часовой стрелки
+        /// направлению движения по ч.с.
+        /// (изначально предполагалось движение против ч.с.)
         /// </summary>
         int[] hullNext;
         /// <summary>
@@ -206,14 +215,57 @@ namespace TestDelaunayGenerator
         /// Экспорт в объект DCEL с ограничениями
         /// </summary>
         /// <returns></returns>
-        public IRestrictedDCEL ToRestrictedDCEL()
+        public IRestrictedDCEL ToRestrictedDCEL(bool useActual = false)
         {
+            if (IncludeExternal)
+                for (int i = 0; i < Triangles.Length; i++)
+                    this.Triangles[i].flag = (int)TriangleInfect.Internal;
+
+            IRestrictedDCEL dcel = null;
+            if (!useActual)
+                dcel = new RestrictedDCEL(
+                    points,
+                    this.HalfEdges,
+                    this.pointStatuses,
+                    this.Triangles,
+                    this.boundaryEdges
+                    );
+            //используется в процессе дебага,
+            //сохраняет существующие треугольники
+            else
+            {
+                //кол-во треугольников
+                int cnt = 0;
+                for (int i = 0; i < Triangles.Length; i++)
+                {
+
+                    var tr = Triangles[i];
+                    if (tr.i == 0 && tr.j == 0 && tr.k == 0)
+                    {
+                        cnt = i;
+                        break;
+                    }
+
+                }
+                return this.ToRestrictedDCEL(cnt);
+            }
+            return dcel;
+        }
+
+        public IRestrictedDCEL ToRestrictedDCEL(int trCnt)
+        {
+            if (IncludeExternal)
+                for (int i = 0; i < Triangles.Length; i++)
+                    this.Triangles[i].flag = (int)TriangleInfect.Internal;
+
+            int[] hes = HalfEdges.Take(trCnt * 3).ToArray();
+            var faces = Triangles.Take(trCnt).ToArray();
 
             IRestrictedDCEL dcel = new RestrictedDCEL(
                 points,
-                this.HalfEdges,
+                hes,
                 this.pointStatuses,
-                this.Triangles,
+                faces,
                 this.boundaryEdges
                 );
             return dcel;
@@ -262,80 +314,10 @@ namespace TestDelaunayGenerator
             return debugDelaunay;
         }
 
-        public TriMesh ToMesh(bool debug = false)
+        public TriMesh ToMesh()
         {
-            RestrictedDCEL restrictedDcel = ToRestrictedDCEL() as RestrictedDCEL;
+            IRestrictedDCEL restrictedDcel = ToRestrictedDCEL();
             return restrictedDcel.ToDcelTriMesh();
-
-            //инициализация объекта сетки и выделение памяти
-            TriMesh mesh = new DcelTriMesh(
-                this.HalfEdges,
-                this.pointStatuses,
-                this.Triangles,
-                this.boundaryEdges,
-                this.points);
-
-            var triangles = new List<Troika>(Triangles.Length);
-            for (int i = 0; i < Triangles.Length; i++)
-                if (Triangles[i].flag == (int)TriangleInfect.Internal)
-                    triangles.Add(Triangles[i]);
-            mesh.AreaElems = triangles.Select(triangle => triangle.GetTri).ToArray();
-
-            mesh.CoordsX = this.coordsX;
-            mesh.CoordsY = this.coordsY;
-
-            //формирование граничных точек и ребер
-            if (boundaryContainer != null)
-            {
-                //количество граничных точек
-                int boundPointCnt = boundaryContainer.AllBoundaryPoints.Length;
-
-                //ребра
-                MEM.Alloc(boundPointCnt, ref mesh.BoundElems);
-                MEM.Alloc(boundPointCnt, ref mesh.BoundElementsMark);
-
-                //узлы
-                MEM.Alloc(boundPointCnt, ref mesh.BoundKnots);
-                MEM.Alloc(boundPointCnt, ref mesh.BoundKnotsMark);
-
-                int meshPointId = 0;
-                for (int i = this.points.Length - boundPointCnt; i < this.points.Length; i++)
-                {
-                    //заполняем ребра
-                    mesh.BoundElems[meshPointId].Vertex1 = (uint)i;
-                    mesh.BoundElems[meshPointId].Vertex2 = (uint)boundaryEdges[i].adjacent1;
-                    mesh.BoundElementsMark[meshPointId] = boundaryEdges[i].BoundaryID;
-
-                    //заполняем узлы
-                    mesh.BoundKnots[meshPointId] = i;
-                    mesh.BoundKnotsMark[meshPointId] = i;
-                    meshPointId++;
-                }
-            }
-            else
-            {
-                //выделение памяти
-                MEM.Alloc(CountHullKnots, ref mesh.BoundElems);
-                MEM.Alloc(CountHullKnots, ref mesh.BoundElementsMark);
-                for (int i = 0; i < Hull.Length; i++)
-                {
-                    mesh.BoundElems[i].Vertex1 = (uint)Hull[i];
-                    mesh.BoundElems[i].Vertex2 = (uint)Hull[(i + 1) % Hull.Length];
-                    mesh.BoundElementsMark[i] = 0;
-                }
-
-                MEM.Alloc(CountHullKnots, ref mesh.BoundKnots);
-                MEM.Alloc(CountHullKnots, ref mesh.BoundKnotsMark);
-                for (int i = 0; i < Hull.Length; i++)
-                {
-                    mesh.BoundKnots[i] = Hull[i];
-                    mesh.BoundKnotsMark[i] = 0;
-                }
-            }
-
-            if (debug)
-                mesh.Print();
-            return mesh;
         }
         #endregion
 
@@ -518,6 +500,8 @@ namespace TestDelaunayGenerator
                 if (isInArea)
                     isInAreaEnum = TriangleInfect.Internal;
                 Triangles[triangleId].flag = (int)isInAreaEnum;
+                //TODO убрать для отсечения
+                //Triangles[triangleId].flag = (int)TriangleInfect.Internal; 
             }
             else
             {
@@ -531,7 +515,7 @@ namespace TestDelaunayGenerator
 
             //проход по всем узлам оболочки, за исключением тех, что уже в ней,
             //т.е. первых трех
-            for (int k = 3; k < ids.Length; k++)
+            for (int k = 0; k < ids.Length; k++)
             {
                 int pointId = ids[k];
 
@@ -547,6 +531,7 @@ namespace TestDelaunayGenerator
                         break;
                 }
                 start = hullPrev[start];
+                //e - вершина
                 int e = start;
                 int q = hullNext[e];
 
@@ -579,6 +564,8 @@ namespace TestDelaunayGenerator
                 //         i
 
                 //индекс первой вершины треугольника в массиве треугольников
+                //TODO hullTri неправильно сформировалась после легализации треуг 3 и 4.
+                //в качестве внешней вершины указывается вершина 329 - в массиве hullTri ребро 13
                 int trVertId = AddTriangle(e, pointId, hullNext[e], -1, -1, hullTri[e]);
 
                 // рекурсивная перестройки треугольников от точки к точке,
@@ -679,7 +666,6 @@ namespace TestDelaunayGenerator
             //граничная оболочка не задана
             if (this.boundaryContainer is null)
             {
-                //TODO выделять память только под граничные вершины
                 this.boundaryEdges = new EdgeIndex[points.Length];
 
                 //отмечаем граничные ребра
@@ -701,9 +687,14 @@ namespace TestDelaunayGenerator
             if (this.boundaryContainer is null)
                 Array.ForEach(Hull, x => pointStatuses[x] = PointStatus.Boundary);
             //удаление связей с внешними треугольниками в полуребрах
+            //TODO убрать IF
+//#if DEBUG
             RestoreBorder();
-            ClippingTriangles();
-            ErraseExternalTriangles();
+//#endif
+            if (UseClippingTriangles)
+                ClippingTriangles();
+            if (!IncludeExternal)
+                ErraseExternalTriangles();
         }
 
         #region Логика генерации триангуляции делоне по S-hull
@@ -755,9 +746,10 @@ namespace TestDelaunayGenerator
                 int p1 = Triangles[idxElemB][(EdgeB_ID + 2) % 3];
 
                 //отсечение треугольников в процессе построения триангуляции
-                /*
+
+                //TODO отсечение треугольников в процессе триангуляции
                 //если задан граничный контур
-                if (boundaryContainer != null)
+                if (boundaryContainer != null && false)
                 {
                     // начало ребра
                     int localVertex = EdgeA_ID % 3;
@@ -773,15 +765,15 @@ namespace TestDelaunayGenerator
                          boundaryEdges[edgeIdStart].Adjacents.Contains(edgeIdEnd))
                     {
 #if DEBUG
-                        //Log.Debug($"Легализация пропущена для треугольников {idxElemA}(новый) {idxElemB}(в оболочке), " +
-                        //    $"ребро ({edgeIdStart}-{edgeIdEnd}) является граничным");
+                        Log.Debug($"Легализация пропущена для треугольников {idxElemA}(новый) {idxElemB}(в оболочке), " +
+                            $"ребро ({edgeIdStart}-{edgeIdEnd}) является граничным");
 #endif
                         //инвертируем принадлежность области для нового треугольника (треуг A)
                         //относительно смежного с ним (треуг B)
-                        TriangleInfect newTriangleValue = TriangleInfect.External;
-                        if (Triangles[idxElemB].flag == (int)newTriangleValue)
-                            newTriangleValue = TriangleInfect.Internal;
-                        Triangles[idxElemA].flag = (int)newTriangleValue;
+                        //TriangleInfect newTriangleValue = TriangleInfect.External;
+                        //if (Triangles[idxElemB].flag == (int)newTriangleValue)
+                        //    newTriangleValue = TriangleInfect.Internal;
+                        //Triangles[idxElemA].flag = (int)newTriangleValue;
 
                         //берем следующий из стека
                         if (i == 0)
@@ -792,15 +784,15 @@ namespace TestDelaunayGenerator
                     //смежное ребро не граничое => новый треугольник входит в область
                     else
                     {
-                        Triangles[idxElemA].flag = Triangles[idxElemB].flag;
+                        //Triangles[idxElemA].flag = Triangles[idxElemB].flag;
                     }
                 }
                 //граничный контур не задан => все треугольники входят в область
                 else
                 {
-                    Triangles[idxElemA].flag = (int)TriangleInfect.Internal;
+                    //Triangles[idxElemA].flag = (int)TriangleInfect.Internal;
                 }
-                */
+
 
                 bool illegal = InCircle(p0, pr, pl, p1);
                 if (illegal)
@@ -994,7 +986,9 @@ namespace TestDelaunayGenerator
         /// <param name="a"></param>
         /// <param name="b"></param>
         /// <param name="c"></param>
-        /// <returns>возвращает индекс вершины в <see cref="points"/>. Первая вершина треугольника.</returns>
+        /// <returns>возвращает индекс вершины в <see cref="Triangles"/>. 
+        /// Первая вершина треугольника.
+        /// Индексация совпадает с <see cref="HalfEdges"/></returns>
         private int AddTriangle(int i0, int i1, int i2, int a, int b, int c)
         {
             //индекс треугольника
@@ -1012,7 +1006,7 @@ namespace TestDelaunayGenerator
 
             Link(triangleIndex, a);
             Link(triangleIndex + 1, b);
-            Link(triangleIndex + 2, c);
+            Link(triangleIndex + 2, c); //c == 13 triangleIdex == 33
 
             triangleVertexCounter += 3;
 
@@ -1566,7 +1560,6 @@ namespace TestDelaunayGenerator
                 boundaryEdgesLst
                 );
 
-            int cnter = 0;
             bool missAdj1, missAdj2;
             //проход по всем полуребрам в поисках тех, что указывают на граничную точку
             for (int he = 0; he < HalfEdges.Length; he++)
@@ -1610,14 +1603,6 @@ namespace TestDelaunayGenerator
                 //определение верное
                 if (missAdj2)
                     RestoreEdge(he, boundaryEdges[vid].adjacent2);
-                //TODO убрать остановку после первой итерации
-                cnter++;
-#if DEBUG
-#else
-                if (cnter == 2)
-                    break;
-#endif
-
             }
 
             points = pointsLst.ToArray();
@@ -1718,10 +1703,7 @@ namespace TestDelaunayGenerator
                     edgeSplitter.SplitEdge(splitHe, intersectPoint);
                     int newVidx = pointsLst.Count - 1;
                     pointStatusesLst[newVidx] = PointStatus.Boundary;
-                    if (missAdj1)
-                        HalfEdgesUtils.LinkBoundaryEdge(boundaryEdgesLst, newVidx, missedVid, exVid);
-                    else
-                        HalfEdgesUtils.LinkBoundaryEdge(boundaryEdgesLst, newVidx, exVid, missedVid);
+                    HalfEdgesUtils.LinkBoundaryEdge(boundaryEdgesLst, newVidx, missedVid, exVid);
                     exVid = newVidx;
 
                     //следующий треугольник содержит missedVid

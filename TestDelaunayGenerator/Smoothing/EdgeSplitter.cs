@@ -38,7 +38,7 @@ namespace TestDelaunayGenerator.Smoothing
         /// <param name="H0">Полуребро, принадлежащее ребру, которое будет поделено надвое</param>
         /// <param name="vertex">координаты точки деления ребра</param>
         /// <returns>idx первого нового треугольника</returns>
-        public int SplitEdge(int H0, IHPoint vertex)
+        public int SplitEdge(int H0, IHPoint vertex, bool boundaryVertex = false)
         {
             //полуребро нового треугольника,
             //которое также может быть разбито

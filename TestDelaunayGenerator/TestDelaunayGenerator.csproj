@@ -7,7 +7,7 @@
     <ProjectGuid>{AA3F285E-66BD-4F90-BEA6-534D016C06D8}</ProjectGuid>
     <OutputType>Library</OutputType>
     <RootNamespace>TestDelaunayGenerator</RootNamespace>
-    <AssemblyName>TestDelaunayGenerator</AssemblyName>
+    <AssemblyName>мон</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
