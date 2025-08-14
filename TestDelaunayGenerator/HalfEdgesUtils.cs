@@ -440,6 +440,16 @@ namespace TestDelaunayGenerator
 
             return log;
         }
+
+        public static string TwinHEdges(int[] halfEdges, int trid)
+        {
+            string log = "";
+            for (int he = trid * 3; he < trid * 3 + 3; he++)
+            {
+                log += $"{he}->{Twin(halfEdges, he)};";
+            }
+            return log;
+        }
         #endregion
     }
 }

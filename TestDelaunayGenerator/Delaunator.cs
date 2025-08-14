@@ -114,19 +114,26 @@ namespace TestDelaunayGenerator
         /// </summary>
         int[] Hull;
         /// <summary>
-        /// Массив индексов выпуклой оболочки данных 
-        /// направление движения против ч.с.
-        /// (изначально предполагалось движение по ч.с.)
+        /// Выпуклая оболочка против ч.с.
+        /// <br/>
+        /// /// Индексация совпадает с <see cref="Points"/>,
+        /// ячейки содержат вершины из <see cref="Points"/>.
         /// </summary>
         int[] hullPrev;
         /// <summary>
-        /// Массив индексов выпуклой оболочки данных  
-        /// направлению движения по ч.с.
-        /// (изначально предполагалось движение против ч.с.)
+        /// Выпуклая оболочка по ч.с.
+        /// <br/>
+        /// Индексация совпадает с <see cref="Points"/>,
+        /// ячейки содержат вершины из <see cref="Points"/>.
+        /// Прим.: если значение ячейки совпадает с индексом, то вершина удалена из оболочки
         /// </summary>
         int[] hullNext;
         /// <summary>
-        /// Массив индексов выпуклой оболочки данных против часовой стрелки
+        /// Массив индексов выпуклой оболочки данных против часовой стрелки.
+        /// <br/>
+        /// Индексация совпадает с <see cref="Points"/>,
+        /// ячейки содержат полуребра, которые указывают на вершины из <see cref="Points"/> и
+        /// образуют выпуклую оболочку
         /// </summary>
         int[] hullTri;
         /// <summary>
@@ -254,9 +261,9 @@ namespace TestDelaunayGenerator
 
         public IRestrictedDCEL ToRestrictedDCEL(int trCnt)
         {
-            if (IncludeExternal)
-                for (int i = 0; i < Triangles.Length; i++)
-                    this.Triangles[i].flag = (int)TriangleInfect.Internal;
+            //if (IncludeExternal)
+            for (int i = 0; i < Triangles.Length; i++)
+                this.Triangles[i].flag = (int)TriangleInfect.Internal;
 
             int[] hes = HalfEdges.Take(trCnt * 3).ToArray();
             var faces = Triangles.Take(trCnt).ToArray();
@@ -452,11 +459,12 @@ namespace TestDelaunayGenerator
             Quicksort(ids, dists, 0, points.Length - 1);
 
             //выделяем память для вспомогательных массивов
+            const int none = -99;
             int maxTriangles = 2 * points.Length - 5;
-            MEM.Alloc(maxTriangles * 3, ref HalfEdges);
+            MEM.Alloc(maxTriangles * 3, ref HalfEdges, none);
             MEM.Alloc(points.Length, ref hullPrev);
             MEM.Alloc(points.Length, ref hullNext);
-            MEM.Alloc(points.Length, ref hullTri);
+            MEM.Alloc(points.Length, ref hullTri, none);
 
             //вычисление размера хеш-пространства
             //и выделение памяти
@@ -490,22 +498,22 @@ namespace TestDelaunayGenerator
             triangleVertexCounter = 0;
 
             // Добавление 1 треугольника в список треугольников
-            int triangleId = AddTriangle(i0, i1, i2, -1, -1, -1) / 3;
+            int trid = AddTriangle(i0, i1, i2, -1, -1, -1) / 3;
 
             //принадлежит треугольник области или нет
             if (boundaryContainer != null)
             {
-                bool isInArea = IsTriangleInArea(triangleId);
+                bool isInArea = IsTriangleInArea(trid);
                 TriangleInfect isInAreaEnum = TriangleInfect.External;
                 if (isInArea)
                     isInAreaEnum = TriangleInfect.Internal;
-                Triangles[triangleId].flag = (int)isInAreaEnum;
+                Triangles[trid].flag = (int)isInAreaEnum;
                 //TODO убрать для отсечения
                 //Triangles[triangleId].flag = (int)TriangleInfect.Internal; 
             }
             else
             {
-                Triangles[triangleId].flag = (int)TriangleInfect.Internal;
+                Triangles[trid].flag = (int)TriangleInfect.Internal;
             }
             #endregion
 
@@ -517,28 +525,28 @@ namespace TestDelaunayGenerator
             //т.е. первых трех
             for (int k = 0; k < ids.Length; k++)
             {
-                int pointId = ids[k];
+                int vid = ids[k];
 
                 //ближайший узел к текущему на выпуклой оболочке
                 int start = 0;
 
-                // поиск  края видимой выпуклой оболочки, используя хэш ребра
+                //поиск ближайшего узла не видимой части выпуклой оболочки
                 for (int j = 0; j < hashSize; j++)
                 {
-                    int key = HashKey(pointId);
+                    int key = HashKey(vid);
                     start = hullHash[(key + j) % hashSize];
                     if (start != -1 && start != hullNext[start])
                         break;
                 }
                 start = hullPrev[start];
-                //e - вершина
+                //вершины
                 int e = start;
                 int q = hullNext[e];
 
                 // проверка видимости найденного стартового узла и возможности
                 // построения новых треугольников на оболочке
                 //true - грань видима для добавляемой точки
-                while (Orient(pointId, e, q) == false)
+                while (Orient(vid, e, q) == false)
                 {
                     e = q;
                     if (e == start)
@@ -564,24 +572,22 @@ namespace TestDelaunayGenerator
                 //         i
 
                 //индекс первой вершины треугольника в массиве треугольников
-                //TODO hullTri неправильно сформировалась после легализации треуг 3 и 4.
-                //в качестве внешней вершины указывается вершина 329 - в массиве hullTri ребро 13
-                int trVertId = AddTriangle(e, pointId, hullNext[e], -1, -1, hullTri[e]);
+                int heStart = AddTriangle(e, vid, hullNext[e], -1, -1, hullTri[e]);
 
                 // рекурсивная перестройки треугольников от точки к точке,
                 // пока они не удовлетворят условию Делоне
-                hullTri[pointId] = Legalize(trVertId + 2);
+                hullTri[vid] = Legalize(heStart + 2);
                 // добавление треугольника в оболочку
-                hullTri[e] = trVertId;
+                hullTri[e] = heStart;
                 CountHullKnots++;
 
                 // пройдите вперед по оболочке,
                 // добавляя треугольники и переворачивая их рекурсивно
                 int nextW = hullNext[e];
                 int nextE = hullNext[nextW];
-                // проверка видимой грани (nextW,nextE) оболочки из i точки
-                // при движении вперед по контуру 
-                while (Orient(pointId, nextW, nextE) == true)
+
+                //достраиваем треугольники к оболочке, пока контур невыпуклый
+                while (Orient(vid, nextW, nextE) == true)
                 {
                     // если nextW - hullNext[nextW] - на видимой границе оболочки
                     //  добавьте первый треугольник от точки i
@@ -595,24 +601,26 @@ namespace TestDelaunayGenerator
                     //                  \   /
                     //                    i    
                     // добавить треугольник 
-                    trVertId = AddTriangle(
-                        nextW, pointId, nextE, hullTri[pointId], -1, hullTri[nextW]);
+                    heStart = AddTriangle(
+                        nextW, vid, nextE, hullTri[vid], -1, hullTri[nextW]);
                     //  проверка и перестройка по Делоне
-                    hullTri[pointId] = Legalize(trVertId + 2);
+                    hullTri[vid] = Legalize(heStart + 2);
                     // пометить как удаленный узел ущедщий из оболочки
                     hullNext[nextW] = nextW;
                     CountHullKnots--;
-                    // следующее ребро оболочки
+                    // следующее ребро оболочки (по ч.с.)
                     nextW = nextE;
                     nextE = hullNext[nextW];
                 }
 
+                //достраиваем оболочку при обходе в обратную сторону
+                //так же, пока контур не станет выпуклым
                 // пройдите назад с другой стороны,
                 int prewE = e;
                 if (prewE == start)
                 {
                     int prewW = hullPrev[prewE];
-                    while (Orient(pointId, prewW, prewE) == true)
+                    while (Orient(vid, prewW, prewE) == true)
                     {
                         //  если prewW  - prewE - на видимой границе оболочки
                         //  добавьте первый треугольник от точки i
@@ -626,10 +634,10 @@ namespace TestDelaunayGenerator
                         //                  \   /
                         //                    i    
                         // добавить треугольник 
-                        trVertId = AddTriangle(prewW, pointId, prewE, -1, hullTri[prewE], hullTri[prewW]);
+                        heStart = AddTriangle(prewW, vid, prewE, -1, hullTri[prewE], hullTri[prewW]);
                         //  проверка и перестройка по Делоне
-                        Legalize(trVertId + 2);
-                        hullTri[prewW] = trVertId;
+                        Legalize(heStart + 2);
+                        hullTri[prewW] = heStart;
                         // пометить как удаленный узел ущедщий из оболочки
                         hullNext[prewE] = prewE;
                         CountHullKnots--;
@@ -639,11 +647,12 @@ namespace TestDelaunayGenerator
                     }
                 }
                 // пометить как удаленный
-                hullStart = hullPrev[pointId] = prewE;
-                hullNext[prewE] = hullPrev[nextW] = pointId;
-                hullNext[pointId] = nextW;
+                //связываем вершины выпуклой оболочки между собой
+                hullStart = hullPrev[vid] = prewE;
+                hullNext[prewE] = hullPrev[nextW] = vid;
+                hullNext[vid] = nextW;
                 // сохраните два новых ребра в хэш-таблице
-                hullHash[HashKey(pointId)] = pointId;
+                hullHash[HashKey(vid)] = vid;
                 hullHash[HashKey(prewE)] = prewE;
             }
 
@@ -687,162 +696,142 @@ namespace TestDelaunayGenerator
             if (this.boundaryContainer is null)
                 Array.ForEach(Hull, x => pointStatuses[x] = PointStatus.Boundary);
             //удаление связей с внешними треугольниками в полуребрах
-            //TODO убрать IF
-//#if DEBUG
             RestoreBorder();
-//#endif
             if (UseClippingTriangles)
                 ClippingTriangles();
             if (!IncludeExternal)
                 ErraseExternalTriangles();
         }
 
+        /// <summary>
+        /// текущая выпуклая оболочка, заданная по ч.с.
+        /// </summary>
+        int[] GetHull
+        {
+            get
+            {
+                int[] currentHull = new int[CountHullKnots];
+                int s = hullStart;
+                for (int i = 0; i < CountHullKnots; i++)
+                {
+                    currentHull[i] = s;
+                    s = hullNext[s];
+                }
+                return currentHull;
+            }
+        }
+
         #region Логика генерации триангуляции делоне по S-hull
         /// <summary>
-        /// рекурсивная перестройки треугольников от точки к точке,
-        /// пока они не удовлетворят условию Делоне 
+        /// Рекурсивная перестройка треугольников сетки до выполнения условия Делоне
         /// </summary>
-        /// <param name="EdgeA_ID">индекс 3-ей вершины треугольника в массиве <see cref="Triangles"/></param>
-        /// <returns>индекс 2-ой (средней) вершины треугольника</returns>
-        private int Legalize(int EdgeA_ID)
+        /// <param name="a">проверяемое полуребро, которое мб перестроено (flip)</param>
+        /// <returns></returns>
+        private int Legalize(int a)
         {
-            //индекс текущей пустой ячейки стека
             var i = 0;
-            int ar = -1;
+            int ar;
 
-            // рекурсия устранена с помощью стека фиксированного размера
+            //рекурсия устранена стеком фикс размера
             while (true)
             {
+                var b = HalfEdges[a];
 
-                //смежное полуребро для EdgeA_ID
-                var EdgeB_ID = HalfEdges[EdgeA_ID];
-                //если смежный треугольник не был найден (т.е. -1), то достаем следующий из стека
-                if (EdgeB_ID == -1)
+                int tridA = a / 3;
+                int tridB = b / 3;
+
+                /* фактический обход по полуребрам не совпадает (при просмотре по внутреннему контуру)
+                 * совпадают полуребер относительно связанных вершин, т.е. al связывает p0 и pl b и т.п.
+                 *           pl                    pl
+                 *          /||\                  /  \
+                 *       al/ || \bl            al/    \a
+                 *        /  ||  \              /      \
+                 *       /  a||b  \    flip    /___ar___\
+                 *     p0\   ||   /p1   =>   p0\---bl---/p1
+                 *        \  ||  /              \      /
+                 *       ar\ || /br             b\    /br
+                 *          \||/                  \  /
+                 *           pr                    pr
+                 */
+                int a0 = a - a % 3;
+                ar = a0 + (a + 2) % 3;
+
+                if (b == -1)
                 {
-                    // граница выпуклой оболочки
-                    if (i == 0)
-                        break;
-                    EdgeA_ID = EdgeStack[--i];
+                    //ребро выпуклой оболочки
+                    if (i == 0) break;
+                    a = EdgeStack[--i];
                     continue;
                 }
 
-                // адрес - смешение для 1 треугольника (1-ый индекс в треугольнике)
-                int triA_ID = EdgeA_ID - EdgeA_ID % 3;
-                ar = triA_ID + (EdgeA_ID + 2) % 3;
-
-                int al = triA_ID + (EdgeA_ID + 1) % 3;
-                // адрес - смешение для 2 треугольника
-                int triB_ID = EdgeB_ID - EdgeB_ID % 3;
-                int bl = triB_ID + (EdgeB_ID + 2) % 3;
-
-                //новый треугольник
-                int idxElemA = triA_ID / 3;
-                //треугольник, уже входящий в оболочку и смежный с новым
-                int idxElemB = triB_ID / 3;
-                int p0 = Triangles[idxElemA][(EdgeA_ID + 2) % 3];
-                int pr = Triangles[idxElemA][(EdgeA_ID + 0) % 3];
-                int pl = Triangles[idxElemA][(EdgeA_ID + 1) % 3];
-                //вершина смежного треугольника
-                int p1 = Triangles[idxElemB][(EdgeB_ID + 2) % 3];
-
-                //отсечение треугольников в процессе построения триангуляции
-
-                //TODO отсечение треугольников в процессе триангуляции
-                //если задан граничный контур
-                if (boundaryContainer != null && false)
+                if (boundaryContainer != null)
                 {
-                    // начало ребра
-                    int localVertex = EdgeA_ID % 3;
-                    int edgeIdStart = Triangles[idxElemA][localVertex];
-
-                    // конец ребра
-                    localVertex = EdgeB_ID % 3;
-                    int edgeIdEnd = Triangles[idxElemB][localVertex];
+                    //ребро, которое будет развернуто
+                    int edgeStart = HalfEdgesUtils.Origin(Triangles, a);
+                    int edgeEnd = HalfEdgesUtils.Origin(Triangles, b);
 
                     //смежное ребро между треугольниками является граничным
-                    if (pointStatuses[edgeIdStart] == PointStatus.Boundary &&
-                         pointStatuses[edgeIdEnd] == PointStatus.Boundary &&
-                         boundaryEdges[edgeIdStart].Adjacents.Contains(edgeIdEnd))
+                    if (pointStatuses[edgeStart] == PointStatus.Boundary &&
+                         pointStatuses[edgeEnd] == PointStatus.Boundary &&
+                         boundaryEdges[edgeStart].Adjacents.Contains(edgeEnd))
                     {
 #if DEBUG
-                        Log.Debug($"Легализация пропущена для треугольников {idxElemA}(новый) {idxElemB}(в оболочке), " +
-                            $"ребро ({edgeIdStart}-{edgeIdEnd}) является граничным");
+                        Log.Debug($"Легализация пропущена для треугольников {tridA}(новый) {tridB}(в оболочке), " +
+                            $"ребро ({edgeStart}-{edgeEnd}) является граничным");
 #endif
-                        //инвертируем принадлежность области для нового треугольника (треуг A)
-                        //относительно смежного с ним (треуг B)
-                        //TriangleInfect newTriangleValue = TriangleInfect.External;
-                        //if (Triangles[idxElemB].flag == (int)newTriangleValue)
-                        //    newTriangleValue = TriangleInfect.Internal;
-                        //Triangles[idxElemA].flag = (int)newTriangleValue;
-
                         //берем следующий из стека
                         if (i == 0)
                             break;
-                        EdgeA_ID = EdgeStack[--i];
+                        a = EdgeStack[--i];
                         continue;
                     }
-                    //смежное ребро не граничое => новый треугольник входит в область
-                    else
-                    {
-                        //Triangles[idxElemA].flag = Triangles[idxElemB].flag;
-                    }
-                }
-                //граничный контур не задан => все треугольники входят в область
-                else
-                {
-                    //Triangles[idxElemA].flag = (int)TriangleInfect.Internal;
                 }
 
 
-                bool illegal = InCircle(p0, pr, pl, p1);
+                var b0 = b - b % 3;
+                var al = a0 + (a + 1) % 3;
+                var bl = b0 + (b + 2) % 3;
+                var br = b0 + (b + 1) % 3;
+
+                var p0 = HalfEdgesUtils.Origin(Triangles, ar);
+                var pr = HalfEdgesUtils.Origin(Triangles, a);
+                var pl = HalfEdgesUtils.Origin(Triangles, al);
+                var p1 = HalfEdgesUtils.Origin(Triangles, bl);
+
+                var illegal = InCircle(p0, pr, pl, p1);
+
                 if (illegal)
                 {
-                    // Если пара треугольников не удовлетворяет условию Делоне
-                    // (p1 находится внутри описанной окружности [p0, pl, pr]),
-                    // переверните их против часовой стрелки.
-                    // Выполните ту же проверку рекурсивно для новой пары
-                    // треугольников
-                    //                                    triA
-                    //            pl                       pl
-                    //           /||\                     /  \
-                    //        al/ || \bl               al/    \EdgeA_ID
-                    //         /  ||  \                 /      \
-                    //    EdgeA_ID|| EdgeB_ID  flip    /___ar___\
-                    //      p0\   ||   /p1      =>   p0\---bl---/p1
-                    //         \  ||  /                 \      /
-                    //        ar\ || /br         EdgeB_ID\    /br
-                    //           \||/                     \  /
-                    //            pr                       pr
-                    //                                    triB
-                    Triangles[idxElemA][(EdgeA_ID + 0) % 3] = p1;
-                    Triangles[idxElemB][(EdgeB_ID + 0) % 3] = p0;
+                    Triangles[a / 3][a % 3] = p1;
+                    Triangles[b / 3][b % 3] = p0;
 
-                    int hbl = HalfEdges[bl];
-                    // ребро поменяно местами на другой стороне оболочки (редко);
-                    // исправить ссылку ребра смежного треугольника
+                    var hbl = HalfEdges[bl];
+
+                    // ребро перевернуто в паре треугольников на обратной стороне оболочки (редко);
+                    // поправить ссылку полуребер
                     if (hbl == -1)
                     {
-                        int e = hullStart;
+                        var e = hullStart;
                         do
                         {
                             if (hullTri[e] == bl)
                             {
-                                hullTri[e] = EdgeA_ID;
+                                hullTri[e] = a;
                                 break;
                             }
                             e = hullPrev[e];
-                        }
-                        while (e != hullStart);
+                        } while (e != hullStart);
                     }
-                    Link(EdgeA_ID, hbl);
-                    Link(EdgeB_ID, HalfEdges[ar]);
+                    Link(a, hbl);
+                    Link(b, HalfEdges[ar]);
                     Link(ar, bl);
-                    // не беспокойтесь о достижении предела: это может
-                    // произойти только при крайне вырожденном вводе
+
+                    
+
+                    //переполнение стека возможно только при вырожденном случае (напр. регулярная сетка)
                     if (i < EdgeStack.Length)
                     {
-                        //помещаем середину второго треугольника полученного при флипе
-                        EdgeStack[i++] = triB_ID + (EdgeB_ID + 1) % 3;
+                        EdgeStack[i++] = br;
                     }
                     else
                     {
@@ -853,15 +842,13 @@ namespace TestDelaunayGenerator
                 }
                 else
                 {
-                    if (i == 0)
-                        break;
-                    EdgeA_ID = EdgeStack[--i];
+                    if (i == 0) break;
+                    a = EdgeStack[--i];
                 }
             }
+
             return ar;
         }
-
-
 
         /// <summary>
         /// Рассчитать квадрат расстояния между двумя точками
@@ -987,7 +974,7 @@ namespace TestDelaunayGenerator
         /// <param name="b"></param>
         /// <param name="c"></param>
         /// <returns>возвращает индекс вершины в <see cref="Triangles"/>. 
-        /// Первая вершина треугольника.
+        /// Первая вершина нового треугольника.
         /// Индексация совпадает с <see cref="HalfEdges"/></returns>
         private int AddTriangle(int i0, int i1, int i2, int a, int b, int c)
         {
