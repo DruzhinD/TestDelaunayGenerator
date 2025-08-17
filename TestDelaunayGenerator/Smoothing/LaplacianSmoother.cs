@@ -108,7 +108,7 @@ namespace TestDelaunayGenerator.Smoothing
                     continue;
 
                 //определение полуребер, смежных с vid
-                int[] edgesAroundVId = HalfEdgesUtils.AdjacentEdgesVertex(mesh.HalfEdges, mesh.Faces, halfEdgeId, true);
+                int[] edgesAroundVId = HalfEdgeUtils.AdjacentEdgesVertex(mesh.HalfEdges, mesh.Faces, halfEdgeId, true);
                 segments[vertexId] = new Segment(vertexId, mesh.PointStatuses[vertexId], edgesAroundVId);
                 //определение выпуклости
                 segments[vertexId].isConvex = IsSegmentConvex(vertexId);

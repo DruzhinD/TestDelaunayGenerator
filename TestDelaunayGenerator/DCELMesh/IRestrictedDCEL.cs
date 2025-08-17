@@ -44,6 +44,6 @@ namespace TestDelaunayGenerator.DCELMesh
         /// Примечание: часть вершин содержит значения по умолчанию (0),
         /// т.к. не являются граничными, но для индексации под них выделяется память
         /// </summary>
-        EdgeIndex[] BoundaryEdges { get; set; }
+        EdgePair[] BoundaryEdges { get; set; }
     }
 }

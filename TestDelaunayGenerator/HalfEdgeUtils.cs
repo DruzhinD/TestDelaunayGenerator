@@ -14,7 +14,7 @@ namespace TestDelaunayGenerator
     /// <summary>
     /// Набор методов для работы с полуребрами
     /// </summary>
-    public static class HalfEdgesUtils
+    public static class HalfEdgeUtils
     {
 
         #region Стандартные HalfEdge
@@ -203,32 +203,32 @@ namespace TestDelaunayGenerator
             //true - сегмент замкнут, т.е. треугольники окружают точку вкруг
             bool isSegmentClosed = false;
 
-            int incoming, outgoing;
+            int outgoing, incoming;
 
             //обход против ч.с.
-            for (incoming = twinHe; ;)
+            for (outgoing = twinHe; ;)
             {
-                int startIncoming = incoming;
+                int startIncoming = outgoing;
                 //помещаем текущее ребро в список ребер
-                segmentHalfEdges.Add(incoming);
+                segmentHalfEdges.Add(outgoing);
 
                 //одно ребро
-                outgoing = Next(incoming); //указывает на общую вершину
-                incoming = Twin(halfEdges, outgoing); //указывает на смежную с ней
+                incoming = Next(outgoing); //указывает на общую вершину
+                outgoing = Twin(halfEdges, incoming); //указывает на смежную с ней
 #if DEBUG
                 //outgoing должна указывать на vid
-                if (Origin(triangles, outgoing) != vid)
+                if (Origin(triangles, incoming) != vid)
                 {
-                    string log = $"общая вершина ({nameof(outgoing)}) != {vid} " +
+                    string log = $"общая вершина ({nameof(incoming)}) != {vid} " +
                         $"({triangles[startIncoming / 3][startIncoming % 3]}," +
-                        $"{triangles[outgoing / 3][outgoing % 3]}," +
-                        $"{triangles[incoming / 3][incoming % 3]})";
+                        $"{triangles[incoming / 3][incoming % 3]}," +
+                        $"{triangles[outgoing / 3][outgoing % 3]})";
                     Log.Error(log);
                 }
 #endif
                 //достигли вершины, с которой начался цикл
                 //поэтому сегмент замкнут
-                if (incoming == twinHe)
+                if (outgoing == twinHe)
                 {
                     isSegmentClosed = true;
                     break;
@@ -236,13 +236,13 @@ namespace TestDelaunayGenerator
 
                 //нет смежного ребра
                 //попадание только если vid является граничной
-                if (incoming == -1)
+                if (outgoing == -1)
                 {
                     if (include)
                     {
                         //ребро указывает на вершину, смежную с vid
                         //но полуребра этих вершин не связаны
-                        int nextBoundaryVid = Next(outgoing);
+                        int nextBoundaryVid = Next(incoming);
                         segmentHalfEdges.Add(nextBoundaryVid);
                     }
 
@@ -257,16 +257,16 @@ namespace TestDelaunayGenerator
             //количество полуребер, полученное при обходе против ч.с.
             int firstRoundCnt = segmentHalfEdges.Count;
             // обход по ч.с.
-            for (outgoing = he; ;)
+            for (incoming = he; ;)
             {
-                incoming = Prev(outgoing);
-                segmentHalfEdges.Add(incoming);
-                outgoing = Twin(halfEdges, incoming); //указывает на vid
+                outgoing = Prev(incoming);
+                segmentHalfEdges.Add(outgoing);
+                incoming = Twin(halfEdges, outgoing); //указывает на vid
 
-                if (outgoing == -1)
+                if (incoming == -1)
                     break;
 
-                if (outgoing == he)
+                if (incoming == he)
                     //throw new ArgumentException($"Достигнута исходная вершина {adjacentEdgeId} при обратном обходе!");
                     break;
             }
@@ -350,11 +350,11 @@ namespace TestDelaunayGenerator
         /// <param name="vid"></param>
         /// <param name="left"></param>
         /// <param name="right"></param>
-        public static void LinkBoundaryEdge(IList<EdgeIndex> boundaryEdges, int vid, int left, int right)
+        public static void LinkBoundaryEdge(IList<EdgePair> boundaryEdges, int vid, int left, int right)
         {
-            var newBound = new EdgeIndex()
+            var newBound = new EdgePair()
             {
-                PointID = vid,
+                vid = vid,
                 //нет гарантии корректности
                 adjacent1 = left, //v0
                 adjacent2 = right, //v1
@@ -365,12 +365,12 @@ namespace TestDelaunayGenerator
             if (edgeAdj1.adjacent1 == right)
             {
                 edgeAdj1.adjacent1 = vid;
-                newBound.adjacent2 = edgeAdj1.PointID;
+                newBound.adjacent2 = edgeAdj1.vid;
             }
             else
             {
                 edgeAdj1.adjacent2 = vid;
-                newBound.adjacent1 = edgeAdj1.PointID;
+                newBound.adjacent1 = edgeAdj1.vid;
             }
             boundaryEdges[left] = edgeAdj1;
 
@@ -378,12 +378,12 @@ namespace TestDelaunayGenerator
             if (edgeAdj2.adjacent1 == left)
             {
                 edgeAdj2.adjacent1 = vid;
-                newBound.adjacent2 = edgeAdj2.PointID;
+                newBound.adjacent2 = edgeAdj2.vid;
             }
             else
             {
                 edgeAdj2.adjacent2 = vid;
-                newBound.adjacent1 = edgeAdj2.PointID;
+                newBound.adjacent1 = edgeAdj2.vid;
             }
             boundaryEdges[right] = edgeAdj2;
             boundaryEdges[vid] = newBound;

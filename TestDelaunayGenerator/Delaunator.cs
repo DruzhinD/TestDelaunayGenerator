@@ -41,6 +41,8 @@ namespace TestDelaunayGenerator
         /// контейнер граничных оболочек
         /// </summary>
         public BoundaryContainer BoundaryContainer => boundaryContainer;
+
+        public DelaunatorConfig Config { get; set; }
         #endregion
 
         /// <summary>
@@ -50,7 +52,7 @@ namespace TestDelaunayGenerator
         /// <param name="boundaryContainer">контейнер границ.
         /// Не требуется объединять с <paramref name="points"/></param>
         /// <exception cref="ArgumentException"></exception>
-        public Delaunator(IHPoint[] points, BoundaryContainer boundaryContainer = null)
+        public Delaunator(IHPoint[] points, BoundaryContainer boundaryContainer = null, DelaunatorConfig config = null)
         {
             //валидация множества точек
             if (points is null || points.Length < 3)
@@ -63,17 +65,11 @@ namespace TestDelaunayGenerator
                 throw new ArgumentException(
                     "При инициализированном контейнере оболочек должна быть задана как минимум внешняя оболочка!");
             this.boundaryContainer = boundaryContainer;
+
+            Config = config;
+            if (Config is null)
+                Config = new DelaunatorConfig();
         }
-
-        /// <summary>
-        /// true - все треугольники учитываются при построении триангуляции
-        /// </summary>
-        public bool IncludeExternal = false;
-
-        /// <summary>
-        /// true - использовать отсечение треугольников
-        /// </summary>
-        public bool UseClippingTriangles = true;
 
         #region Свойства, необходимые для генерации триангуляции по s-hull
         /// <summary>
@@ -193,28 +189,11 @@ namespace TestDelaunayGenerator
 
         /// <summary>
         /// Граничные ребра.
-        /// Индексация внутри <see cref="EdgeIndex"/> используется из <see cref="points"/>
+        /// Индексация внутри <see cref="EdgePair"/> используется из <see cref="points"/>
         /// </summary>
-        EdgeIndex[] boundaryEdges;
-
+        EdgePair[] boundaryEdges;
         #endregion
 
-        //разворачиваем структуру Triangles в сплошной массив
-        int[] ToArrayTriangles
-        {
-            get
-            {
-                int[] intTriangles = new int[3 * Triangles.Length];
-                for (int i = 0; i < Triangles.Length; i++)
-                {
-                    for (int j = 0; j < 3; j++)
-                    {
-                        intTriangles[3 * i + j] = Triangles[i][j];
-                    }
-                }
-                return intTriangles;
-            }
-        }
 
         #region Экспорт в объекты данных (сетка, DCEL, прочее)
 
@@ -224,9 +203,9 @@ namespace TestDelaunayGenerator
         /// <returns></returns>
         public IRestrictedDCEL ToRestrictedDCEL(bool useActual = false)
         {
-            if (IncludeExternal)
+            if (Config.IncludeExtTriangles)
                 for (int i = 0; i < Triangles.Length; i++)
-                    this.Triangles[i].flag = (int)TriangleInfect.Internal;
+                    this.Triangles[i].flag = TriangleState.Internal;
 
             IRestrictedDCEL dcel = null;
             if (!useActual)
@@ -263,7 +242,7 @@ namespace TestDelaunayGenerator
         {
             //if (IncludeExternal)
             for (int i = 0; i < Triangles.Length; i++)
-                this.Triangles[i].flag = (int)TriangleInfect.Internal;
+                this.Triangles[i].flag = TriangleState.Internal;
 
             int[] hes = HalfEdges.Take(trCnt * 3).ToArray();
             var faces = Triangles.Take(trCnt).ToArray();
@@ -291,7 +270,7 @@ namespace TestDelaunayGenerator
         public DebugDelaunay ToDebug()
         {
             //вхождение треугольника в область
-            TriangleInfect[] triangleInfects = new TriangleInfect[Triangles.Length * 3];
+            TriangleState[] triangleInfects = new TriangleState[Triangles.Length * 3];
             //id треугольника
             int[] triangleIds = new int[Triangles.Length * 3];
             //index в разрезе троек вершин
@@ -303,7 +282,7 @@ namespace TestDelaunayGenerator
             //заполнение
             for (int i = 0; i < Triangles.Length * 3; i++)
             {
-                triangleInfects[i] = (TriangleInfect)Triangles[i / 3].flag;
+                triangleInfects[i] = Triangles[i / 3].flag;
                 triangleIds[i] = i / 3;
                 indexes[i] = i;
                 triangleVertexes[i] = Triangles[i / 3][i % 3];
@@ -499,22 +478,6 @@ namespace TestDelaunayGenerator
 
             // Добавление 1 треугольника в список треугольников
             int trid = AddTriangle(i0, i1, i2, -1, -1, -1) / 3;
-
-            //принадлежит треугольник области или нет
-            if (boundaryContainer != null)
-            {
-                bool isInArea = IsTriangleInArea(trid);
-                TriangleInfect isInAreaEnum = TriangleInfect.External;
-                if (isInArea)
-                    isInAreaEnum = TriangleInfect.Internal;
-                Triangles[trid].flag = (int)isInAreaEnum;
-                //TODO убрать для отсечения
-                //Triangles[triangleId].flag = (int)TriangleInfect.Internal; 
-            }
-            else
-            {
-                Triangles[trid].flag = (int)TriangleInfect.Internal;
-            }
             #endregion
 
             //выделение памяти для массива стека перестроения
@@ -657,13 +620,7 @@ namespace TestDelaunayGenerator
             }
 
             //создаем массив граничных узлов выпуклой оболочки
-            Hull = new int[CountHullKnots];
-            int s = hullStart;
-            for (int i = 0; i < CountHullKnots; i++)
-            {
-                Hull[i] = s;
-                s = hullNext[s];
-            }
+            Hull = GetConvexHull;
             //удаление ссылок на временные массивы
             hullPrev = hullNext = hullTri = null;
             #endregion
@@ -675,7 +632,7 @@ namespace TestDelaunayGenerator
             //граничная оболочка не задана
             if (this.boundaryContainer is null)
             {
-                this.boundaryEdges = new EdgeIndex[points.Length];
+                this.boundaryEdges = new EdgePair[points.Length];
 
                 //отмечаем граничные ребра
                 //отмечаем точки, формирующие оболочку граничными
@@ -688,7 +645,7 @@ namespace TestDelaunayGenerator
                     //id соседних вершин
                     int prevVid = Hull[(Hull.Length - 1 + i) % Hull.Length];
                     int nextVid = Hull[(i + 1) % Hull.Length];
-                    this.boundaryEdges[vid] = new EdgeIndex(vid, prevVid, nextVid, 0);
+                    this.boundaryEdges[vid] = new EdgePair(vid, prevVid, nextVid, 0);
                 }
             }
 
@@ -697,16 +654,16 @@ namespace TestDelaunayGenerator
                 Array.ForEach(Hull, x => pointStatuses[x] = PointStatus.Boundary);
             //удаление связей с внешними треугольниками в полуребрах
             RestoreBorder();
-            if (UseClippingTriangles)
+            if (Config.ClippingTriangles)
                 ClippingTriangles();
-            if (!IncludeExternal)
+            if (Config.IncludeExtTriangles)
                 ErraseExternalTriangles();
         }
 
         /// <summary>
         /// текущая выпуклая оболочка, заданная по ч.с.
         /// </summary>
-        int[] GetHull
+        int[] GetConvexHull
         {
             get
             {
@@ -767,8 +724,8 @@ namespace TestDelaunayGenerator
                 if (boundaryContainer != null)
                 {
                     //ребро, которое будет развернуто
-                    int edgeStart = HalfEdgesUtils.Origin(Triangles, a);
-                    int edgeEnd = HalfEdgesUtils.Origin(Triangles, b);
+                    int edgeStart = HalfEdgeUtils.Origin(Triangles, a);
+                    int edgeEnd = HalfEdgeUtils.Origin(Triangles, b);
 
                     //смежное ребро между треугольниками является граничным
                     if (pointStatuses[edgeStart] == PointStatus.Boundary &&
@@ -787,16 +744,15 @@ namespace TestDelaunayGenerator
                     }
                 }
 
-
                 var b0 = b - b % 3;
                 var al = a0 + (a + 1) % 3;
                 var bl = b0 + (b + 2) % 3;
                 var br = b0 + (b + 1) % 3;
 
-                var p0 = HalfEdgesUtils.Origin(Triangles, ar);
-                var pr = HalfEdgesUtils.Origin(Triangles, a);
-                var pl = HalfEdgesUtils.Origin(Triangles, al);
-                var p1 = HalfEdgesUtils.Origin(Triangles, bl);
+                var p0 = HalfEdgeUtils.Origin(Triangles, ar);
+                var pr = HalfEdgeUtils.Origin(Triangles, a);
+                var pl = HalfEdgeUtils.Origin(Triangles, al);
+                var p1 = HalfEdgeUtils.Origin(Triangles, bl);
 
                 var illegal = InCircle(p0, pr, pl, p1);
 
@@ -826,7 +782,7 @@ namespace TestDelaunayGenerator
                     Link(b, HalfEdges[ar]);
                     Link(ar, bl);
 
-                    
+
 
                     //переполнение стека возможно только при вырожденном случае (напр. регулярная сетка)
                     if (i < EdgeStack.Length)
@@ -979,13 +935,13 @@ namespace TestDelaunayGenerator
         private int AddTriangle(int i0, int i1, int i2, int a, int b, int c)
         {
             //индекс треугольника
-            int triangleId = triangleVertexCounter / 3;
-            Triangles[triangleId].i = i0;
-            Triangles[triangleId].j = i1;
-            Triangles[triangleId].k = i2;
+            int trid = triangleVertexCounter / 3;
+            Triangles[trid].i = i0;
+            Triangles[trid].j = i1;
+            Triangles[trid].k = i2;
             //TODO все помечаются внутренними
             if (boundaryContainer is null)
-                Triangles[triangleId].flag = (int)TriangleInfect.Internal;
+                Triangles[trid].flag = TriangleState.Internal;
 
             //индекс первой вершины, в крайнем треугольнике
             //относительно массива точек
@@ -993,7 +949,7 @@ namespace TestDelaunayGenerator
 
             Link(triangleIndex, a);
             Link(triangleIndex + 1, b);
-            Link(triangleIndex + 2, c); //c == 13 triangleIdex == 33
+            Link(triangleIndex + 2, c);
 
             triangleVertexCounter += 3;
 
@@ -1136,6 +1092,49 @@ namespace TestDelaunayGenerator
 
 
         /// <summary>
+        /// Удалить связи с треугольником. По сути очистить его из <see cref="HalfEdges"/>
+        /// </summary>
+        /// <param name="trid"></param>
+        void UnLinkTriangle(int trid)
+        {
+            //проходим по его полуребрам
+            for (int he = trid * 3; he < trid * 3 + 3; he++)
+            {
+                //пара к этому полуребру
+                int twinHe = HalfEdges[he];
+                UnLink(he, twinHe);
+            }
+        }
+
+        /// <summary>
+        /// Разорвать связь между 2 полуребрами
+        /// </summary>
+        /// <param name="he1"></param>
+        /// <param name="he2"></param>
+        void UnLink(int he1, int he2)
+        {
+            if (he1 != -1)
+                this.HalfEdges[he1] = -1;
+            if (he2 != -1)
+                this.HalfEdges[he2] = -1;
+        }
+
+        //TODO добавить очистку внешних треугольников
+        /// <summary>
+        /// Разорвать связи в полуребрах с внешними треугольниками
+        /// </summary>
+        /// <param name="removeExternalTriangles">true - очистка внешних треугольников</param>
+        void ErraseExternalTriangles(bool removeExternalTriangles = false)
+        {
+            //удаление связей с внешними треугольниками
+            for (int i = 0; i < Triangles.Length; i++)
+            {
+                if (Triangles[i].flag == TriangleState.External)
+                    UnLinkTriangle(i);
+            }
+        }
+
+        /// <summary>
         /// Отсечение точек <see cref="points"/>.
         /// Массив <see cref="points"/> расширяется засчет <see cref="boundaryContainer"/>,
         /// если такой определен
@@ -1150,31 +1149,33 @@ namespace TestDelaunayGenerator
             InitializeExternalPoint();
 
             //количество точек, входящих в область
-            int markedPointAmount = 0;
+            int inAreaPointCnt = 0;
             //определение принадлежности точек области
 
-            #region Однопоточное отсечение точек. Удобно для дебага
-            //for (int i = 0; i < points.Length; i++)
-            //{
-            //    bool isInArea = IsInArea(points[i]);
-            //    //устанавливаем текущую точку, как входящую в область marker == 1
-            //    if (isInArea)
-            //    {
-            //        points[i].marker = (int)PointStatus.Internal;
-            //        //требуется для корректного результата в рамках "гонки потоков"
-            //        Interlocked.Increment(ref markedPointAmount);
-            //    }
-            //    //точка не граничная
-            //    else
-            //    {
-            //        points[i].marker = (int)PointStatus.External;
-            //    }
-            //}
-            #endregion
 
             //отсечение точек в параллель
-            Parallel.For(
-                0, points.Length, (i, loopState) =>
+            if (Config.ParallelClippingPoints)
+                Parallel.For(
+                    0, points.Length, (i, loopState) =>
+                    {
+                        bool isInArea = IsInArea(points[i]);
+                        //устанавливаем текущую точку, как входящую в область marker == 1
+                        if (isInArea)
+                        {
+                            pointStatuses[i] = PointStatus.Internal;
+                            //требуется для корректного результата в рамках "гонки потоков"
+                            Interlocked.Increment(ref inAreaPointCnt);
+                        }
+                        //точка не граничная
+                        else
+                        {
+                            pointStatuses[i] = PointStatus.External;
+                        }
+                    }
+                );
+            else
+                #region Однопоточное отсечение точек. Удобно для дебага
+                for (int i = 0; i < points.Length; i++)
                 {
                     bool isInArea = IsInArea(points[i]);
                     //устанавливаем текущую точку, как входящую в область marker == 1
@@ -1182,7 +1183,7 @@ namespace TestDelaunayGenerator
                     {
                         pointStatuses[i] = PointStatus.Internal;
                         //требуется для корректного результата в рамках "гонки потоков"
-                        Interlocked.Increment(ref markedPointAmount);
+                        Interlocked.Increment(ref inAreaPointCnt);
                     }
                     //точка не граничная
                     else
@@ -1190,22 +1191,22 @@ namespace TestDelaunayGenerator
                         pointStatuses[i] = PointStatus.External;
                     }
                 }
-            );
+                #endregion
 
             //текущий индекс для перезаписи в массиве
-            int currentPointIndex = 0;
+            int curVid = 0;
             //оставляем в массиве только точки, входящие в область
             for (int i = 0; i < points.Length; i++)
             {
                 if (pointStatuses[i] == PointStatus.Internal)
                 {
-                    points[currentPointIndex] = points[i];
-                    pointStatuses[currentPointIndex] = pointStatuses[i];
-                    currentPointIndex++;
+                    points[curVid] = points[i];
+                    pointStatuses[curVid] = pointStatuses[i];
+                    curVid++;
                 }
             }
 
-            return markedPointAmount;
+            return inAreaPointCnt;
         }
 
         /// <summary>
@@ -1227,9 +1228,9 @@ namespace TestDelaunayGenerator
             MEM.Alloc(this.points.Length, ref boundaryEdges);
 
             //текущий свободный индекс для записи
-            int curPointId = notBorderPointCnt;
+            int curVid = notBorderPointCnt;
             //смещение по количеству точек до граничных точек
-            int offset = curPointId;
+            int offset = curVid;
             //проход по каждой оболочке
             for (int boundId = 0; boundId < boundaryContainer.Count; boundId++)
             {
@@ -1239,22 +1240,22 @@ namespace TestDelaunayGenerator
                 for (int i = 0; i < bndPointCnt; i++)
                 {
                     //копируем граничную точку в общий массив точек
-                    points[curPointId] = boundaryContainer[boundId].Points[i];
-                    pointStatuses[curPointId] = PointStatus.Boundary;
+                    points[curVid] = boundaryContainer[boundId].Points[i];
+                    pointStatuses[curVid] = PointStatus.Boundary;
 
                     //сосед 1
-                    int leftNeighId = offset + (bndPointCnt + (curPointId - offset) - 1) % bndPointCnt;
+                    int leftNeighId = offset + (bndPointCnt + (curVid - offset) - 1) % bndPointCnt;
                     //сосед 2
-                    int rightNeighId = offset + ((curPointId - offset) + 1) % bndPointCnt;
+                    int rightNeighId = offset + ((curVid - offset) + 1) % bndPointCnt;
                     //соседние точки для текущей точки
-                    boundaryEdges[curPointId] = new EdgeIndex(
-                        curPointId, //ID текущей точки
+                    boundaryEdges[curVid] = new EdgePair(
+                        curVid, //ID текущей точки
                         leftNeighId,
                         rightNeighId,
                         boundaryContainer[boundId].ID
                         );
 
-                    curPointId++;
+                    curVid++;
                 }
                 //при переходе к следующему контуру
                 //учитываем смещение по количеству точек в текущем контуре
@@ -1346,6 +1347,26 @@ namespace TestDelaunayGenerator
         #endregion
 
 
+        #region Отсечение треугольников
+        /// <summary>
+        /// Определить принадлежность треугольника области
+        /// </summary>
+        /// <param name="trid">id треугольника из <see cref="Triangles"/></param>
+        /// <returns>true - принаделжит области, иначе - false</returns>
+        bool IsTriangleInArea(int trid)
+        {
+            var triangle = Triangles[trid];
+            (int i, int j, int k) = triangle.Get();
+
+            //вычисляем принадлежность треугольника области
+            double ctx = (coordsX[i] + coordsX[j] + coordsX[k]) / 3;
+            double cty = (coordsY[i] + coordsY[j] + coordsY[k]) / 3;
+            HPoint ctri = new HPoint(ctx, cty);
+
+            bool isInArea = IsInArea(ctri);
+            return isInArea;
+        }
+
         /// <summary>
         /// Отсечение треугольников
         /// </summary>
@@ -1360,172 +1381,104 @@ namespace TestDelaunayGenerator
 
             InitializeExternalPoint();
 
-            int[] possibleValues = { (int)TriangleInfect.External, (int)TriangleInfect.Internal };
             //определение принадлежности области "нулевого" треугольника
             for (int triangleId = 0; triangleId < Triangles.Length; triangleId++)
             {
                 //принадлежность треугольника области уже определена
-                if (possibleValues.Contains(Triangles[triangleId].flag))
-                    continue;
-                int triangleInfectCnt = InfectTriangles(triangleId, possibleValues);
+                if (Triangles[triangleId].flag != TriangleState.None)
+                        continue;
+                int triangleInfectCnt = ClippingTriangles(triangleId);
 #if DEBUG
                 Log.Debug($"TriangleId:{triangleId};\tЗаражено: {triangleInfectCnt}");
 #endif
             }
         }
-
+        
         /// <summary>
         /// Определить принадлежность треугольников области на основе принадлежности
-        /// <paramref name="triangleId"/>.
+        /// <paramref name="trid"/>.
         /// </summary>
-        /// <param name="triangleId">идентификатор треугольника</param>
-        /// <param name="possibleValues">возможные значения принадлежности области</param>
-        int InfectTriangles(int triangleId, int[] possibleValues)
+        /// <param name="trid">идентификатор треугольника</param>
+        int ClippingTriangles(int trid)
         {
-            //количество зараженных треугольников (включая нулевой)
-            int triangleInfectCnt = 1;
+            //количество проверенных треугольников
+            int clippedCnt = 0;
 
             //определение принадлежности области
-            bool isInArea = IsTriangleInArea(triangleId);
-            //значение для заражения (по умолчанию треугольник - внешний)
-            TriangleInfect infectValue = TriangleInfect.External;
+            bool isInArea = IsTriangleInArea(trid);
+            //значение для отсечения (по умолчанию треугольник - внешний)
+            TriangleState clipValue = TriangleState.External;
             //входит в область
             if (isInArea)
-                infectValue = TriangleInfect.Internal;
-            Triangles[triangleId].flag = (int)infectValue;
+                clipValue = TriangleState.Internal;
+            Triangles[trid].flag = clipValue;
 
-            //стек заражения
-            int[] infectionStack = null;
-            MEM.Alloc(this.Triangles.Length, ref infectionStack, -1);
+            //стек отсечения
+            int[] clipStack = null;
+            MEM.Alloc(this.Triangles.Length, ref clipStack, -1);
             //индекс текущей пустой ячейки стека
-            int currentStackId = 0;
+            int i = 0;
             //размещаем в стеке нулевой треугольник
-            infectionStack[currentStackId++] = triangleId;
+            clipStack[i++] = trid;
 
             //начинаем заражение, счетчик может наращиваться внутри цикла
-            for (currentStackId = 1; currentStackId > 0;)
+            for (i = 1; i > 0;)
             {
                 //достаем из стека верхний (последний) треугольник
-                triangleId = infectionStack[--currentStackId];
+                trid = clipStack[--i];
                 //зануляем значение в стеке
-                infectionStack[currentStackId] = -1;
-                infectValue = (TriangleInfect)Triangles[triangleId].flag;
+                clipStack[i] = -1;
+                clipValue = Triangles[trid].flag;
 
-                //проход по вершинам (ребрам) треугольника
-                for (int localVertex = 0; localVertex < 3;)
+                for (int he = trid * 3; he < trid * 3 + 3;)
                 {
-                    //глобальный индекс вершины треугольника
-                    int globalKnotId = Triangles[triangleId][localVertex];
-                    int halfEdge = HalfEdges[triangleId * 3 + localVertex];
-                    //смежный треугольник
-                    int adjacentTriangleId = halfEdge / 3;
+                    int vid = HalfEdgeUtils.Origin(Triangles, he);
 
-                    //пропуск, если треугольник уже был обработан
-                    //или нет смежного треугольника
-                    if (halfEdge == -1 || possibleValues.Contains(Triangles[adjacentTriangleId].flag))
+                    int twinHe = HalfEdgeUtils.Twin(HalfEdges, he);
+                    int twinTrid = twinHe / 3;
+                    //нет смежного треугольника или смежный треугольник уже обработан
+                    if (he == -1 || twinHe == -1 || Triangles[twinTrid].flag != TriangleState.None)
                     {
-                        localVertex++;
+                        he++;
                         continue;
                     }
 
-                    //помещаем текущий треугольник в стек заражения
-                    infectionStack[currentStackId++] = triangleId;
-                    //индексы вершин смежного ребра между двумя треугольниками
-                    int vertexIdStart = Triangles[triangleId][localVertex];
-                    int vertexIdEnd = Triangles[adjacentTriangleId][halfEdge % 3];
+                    //помещаем текущий треугольник в стек отсечения
+                    clipStack[i++] = trid;
 
-                    int halfEdgeStart = triangleId * 3 + localVertex;
-                    int halfEdgeEnd = HalfEdges[halfEdgeStart];
-                    //в качестве текущего треугольника устанавливаем смежный
-                    triangleId = adjacentTriangleId;
+                    int vid2 = HalfEdgeUtils.Origin(Triangles, twinHe);
 
                     //проверка - является ли смежное ребро граничным
                     if (
                         //обе точки являются граничными
-                        (pointStatuses[vertexIdStart] == PointStatus.Boundary ||
-                        pointStatuses[vertexIdEnd] == PointStatus.Boundary) &&
+                        (pointStatuses[vid] == PointStatus.Boundary ||
+                        pointStatuses[vid2] == PointStatus.Boundary) &&
                         //первая точка имеет соседа - вторую точку
-                        boundaryEdges[vertexIdStart].Adjacents.Contains(vertexIdEnd)
+                        boundaryEdges[vid].Adjacents.Contains(vid2)
                     )
                     {
-                        if (infectValue == TriangleInfect.External)
-                            infectValue = TriangleInfect.Internal;
+                        if (clipValue == TriangleState.External)
+                            clipValue = TriangleState.Internal;
                         else
-                            infectValue = TriangleInfect.External;
+                            clipValue = TriangleState.External;
                     }
-                    triangleInfectCnt++;
-                    Triangles[triangleId].flag = (int)infectValue;
-                    localVertex = 0;
+                    clippedCnt++;
+                    Triangles[twinTrid].flag = clipValue;
+                    //в качестве текущего треугольника устанавливаем смежный
+                    trid = twinTrid;
+                    he = trid * 3;
                 }
+
                 //удаляем связи с треугольником, не входящим в область
-                if (Triangles[triangleId].flag == (int)TriangleInfect.External)
-                    UnLinkTriangle(triangleId);
+                if (Triangles[trid].flag == TriangleState.External)
+                    UnLinkTriangle(trid);
             }
-            return triangleInfectCnt;
+            return clippedCnt;
         }
+        #endregion
 
-        /// <summary>
-        /// Удалить связи с треугольником. По сути очистить его из <see cref="HalfEdges"/>
-        /// </summary>
-        /// <param name="triangleId"></param>
-        void UnLinkTriangle(int triangleId)
-        {
-            //проходим по его полуребрам
-            for (int halfEdge = triangleId * 3; halfEdge < triangleId * 3 + 3; halfEdge++)
-            {
-                //пара к этому полуребру
-                int secondHalfEdge = HalfEdges[halfEdge];
-                UnLink(halfEdge, secondHalfEdge);
-            }
-        }
 
-        /// <summary>
-        /// Разорвать связь между 2 полуребрами
-        /// </summary>
-        /// <param name="edge1"></param>
-        /// <param name="edge2"></param>
-        void UnLink(int edge1, int edge2)
-        {
-            if (edge1 != -1)
-                this.HalfEdges[edge1] = -1;
-            if (edge2 != -1)
-                this.HalfEdges[edge2] = -1;
-        }
-
-        /// <summary>
-        /// Определить принадлежность треугольника области
-        /// </summary>
-        /// <param name="triangleId">id треугольника из <see cref="Triangles"/></param>
-        /// <returns>true - принаделжит области, иначе - false</returns>
-        bool IsTriangleInArea(int triangleId)
-        {
-            var triangle = Triangles[triangleId];
-            (int i, int j, int k) = triangle.Get();
-
-            //вычисляем принадлежность треугольника области
-            double ctx = (coordsX[i] + coordsX[j] + coordsX[k]) / 3;
-            double cty = (coordsY[i] + coordsY[j] + coordsY[k]) / 3;
-            HPoint ctri = new HPoint(ctx, cty);
-
-            bool isInArea = IsInArea(ctri);
-            return isInArea;
-        }
-
-        //TODO добавить очистку внешних треугольников
-        /// <summary>
-        /// Разорвать связи в полуребрах с внешними треугольниками
-        /// </summary>
-        /// <param name="removeExternalTriangles">true - очистка внешних треугольников</param>
-        void ErraseExternalTriangles(bool removeExternalTriangles = false)
-        {
-            //удаление связей с внешними треугольниками
-            for (int i = 0; i < Triangles.Length; i++)
-            {
-                if (Triangles[i].flag == (int)TriangleInfect.External)
-                    UnLinkTriangle(i);
-            }
-        }
-
+        #region Восстановление граничного контура
         /// <summary>
         /// Восстановление граничного контура
         /// </summary>
@@ -1538,7 +1491,7 @@ namespace TestDelaunayGenerator
             IList<int> halfEdgesLst = new List<int>(HalfEdges);
             IList<PointStatus> pointStatusesLst = new List<PointStatus>(pointStatuses);
             IList<Troika> facesLst = new List<Troika>(Triangles);
-            IList<EdgeIndex> boundaryEdgesLst = new List<EdgeIndex>(boundaryEdges);
+            IList<EdgePair> boundaryEdgesLst = new List<EdgePair>(boundaryEdges);
             EdgeSplitter edgeSplitter = new EdgeSplitter(
                 pointsLst,
                 halfEdgesLst,
@@ -1552,14 +1505,14 @@ namespace TestDelaunayGenerator
             for (int he = 0; he < HalfEdges.Length; he++)
             {
 
-                int vid = HalfEdgesUtils.Origin(facesLst, he);
+                int vid = HalfEdgeUtils.Origin(facesLst, he);
                 //точка неграничная - пропуск
                 if (pointStatusesLst[vid] != PointStatus.Boundary)
                     continue;
 
                 //смежные полуребра для he
                 //(кроме последнего - последнее не смежное, но содержит смежную вершину!)
-                int[] adjHes = HalfEdgesUtils.AdjacentEdgesVertex(halfEdgesLst, facesLst, he, true);
+                int[] adjHes = HalfEdgeUtils.AdjacentEdgesVertex(halfEdgesLst, facesLst, he, true);
 
                 //true - упущено одно из ребер
                 missAdj1 = true;
@@ -1570,7 +1523,7 @@ namespace TestDelaunayGenerator
                 for (int i = 0; i < adjHes.Length; i++)
                 {
                     int twinHe = adjHes[i];
-                    int twinVid = HalfEdgesUtils.Origin(facesLst, twinHe);
+                    int twinVid = HalfEdgeUtils.Origin(facesLst, twinHe);
 
                     if (boundaryEdgesLst[vid].adjacent1 == twinVid)
                         missAdj1 = false;
@@ -1598,37 +1551,38 @@ namespace TestDelaunayGenerator
             Triangles = facesLst.ToArray();
             boundaryEdges = boundaryEdgesLst.ToArray();
 
-
             void RestoreEdge(int H0, int missedVid)
             {
-                const int STOP = -10;
 
-                int vid = HalfEdgesUtils.Origin(facesLst, H0);
-                //полуребра, исходящие из вершины vid, на которую указывает he
-                var HEs = HalfEdgesUtils.AdjacentEdgesVertex(halfEdgesLst, facesLst, H0, false);
+                int vid = HalfEdgeUtils.Origin(facesLst, H0);
+                //полуребра, исходящие из вершины vid
+                var HEs = HalfEdgeUtils.AdjacentEdgesVertex(halfEdgesLst, facesLst, H0, false);
 
+                //обозначает - отсутствие ребра для деления
+                const int STOP = -99;
+                //полуребро, которое будет разделено надвое
                 int splitHe = STOP;
-                IHPoint intersectPoint = null;
+                //точка деления полурерба
+                IHPoint newPoint = null;
 
                 //поиск первого ребра, которое будет разделено
                 for (int i = 0; i < HEs.Length; i++)
                 {
-                    int adjHe = HEs[i];
-
+                    int twinHe = HEs[i];
                     //полуребро, которое указывает на vid
-                    int he = HalfEdgesUtils.Twin(halfEdgesLst, adjHe);
+                    int he = HalfEdgeUtils.Twin(halfEdgesLst, twinHe);
                     //пропускаем (мб исходное граничное ребро может пересекает границу?)
                     if (he == -1)
                         continue;
 
-                    int nextHe = HalfEdgesUtils.Next(he);
-                    intersectPoint = IsIntersect(nextHe);
+                    int nextHe = HalfEdgeUtils.Next(he);
+                    newPoint = IsIntersect(nextHe);
                     //нет пересечения
-                    if (intersectPoint is null)
+                    if (newPoint is null)
                         continue;
 
                     //пересечение есть
-                    splitHe = HalfEdgesUtils.Twin(halfEdgesLst, nextHe);
+                    splitHe = HalfEdgeUtils.Twin(halfEdgesLst, nextHe);
                     break;
                 }
 
@@ -1637,13 +1591,14 @@ namespace TestDelaunayGenerator
                     throw new ArgumentException($"{nameof(splitHe)} не определен, " +
                         $"хотя граничного ребра {(vid, missedVid)} фактически нет!");
 
+                //поиск пересечения граничного ребра с ребром he
                 //null - нет пересечения, иначе - точка пересечения
-                IHPoint IsIntersect(int potentialHe)
+                IHPoint IsIntersect(int he)
                 {
                     //TODO мб полуребро -1 ?
                     //вершины потенциального ребра для деления
-                    int nextHeVid1 = HalfEdgesUtils.Origin(facesLst, potentialHe);
-                    int nextHeVid2 = HalfEdgesUtils.Origin(facesLst, HalfEdgesUtils.Twin(halfEdgesLst, potentialHe));
+                    int nextHeVid1 = HalfEdgeUtils.Origin(facesLst, he);
+                    int nextHeVid2 = HalfEdgeUtils.Origin(facesLst, HalfEdgeUtils.Twin(halfEdgesLst, he));
 
                     //точка пересечения
                     IHPoint intersect = null;
@@ -1659,9 +1614,9 @@ namespace TestDelaunayGenerator
                 }
 
                 int nextSplitHe = STOP;
-                IHPoint nextIntersectPoint = null;
+                IHPoint nextNewPoint = null;
                 //предыдущая добавленная граничная вершина
-                int exVid = vid;
+                int exAddedVid = vid;
                 //до тех пор, пока не дойдем до треугольника с пропущенной вершиной
                 while (true)
                 {
@@ -1671,37 +1626,38 @@ namespace TestDelaunayGenerator
                     //следующее ребро тоже будем делить
                     else
                     {
-                        int next = HalfEdgesUtils.Next(splitHe);
-                        nextIntersectPoint = IsIntersect(next);
-                        if (nextIntersectPoint != null)
+                        int next = HalfEdgeUtils.Next(splitHe);
+                        nextNewPoint = IsIntersect(next);
+                        if (nextNewPoint != null)
                         {
-                            nextSplitHe = HalfEdgesUtils.Twin(halfEdgesLst, next);
+                            nextSplitHe = HalfEdgeUtils.Twin(halfEdgesLst, next);
                         }
                         else
                         {
-                            int prev = HalfEdgesUtils.Prev(splitHe);
-                            nextIntersectPoint = IsIntersect(prev);
-                            if (nextIntersectPoint != null)
-                                nextSplitHe = HalfEdgesUtils.Twin(halfEdgesLst, prev);
+                            int prev = HalfEdgeUtils.Prev(splitHe);
+                            nextNewPoint = IsIntersect(prev);
+                            if (nextNewPoint != null)
+                                nextSplitHe = HalfEdgeUtils.Twin(halfEdgesLst, prev);
                             else
                                 throw new ArgumentException("Нет пересечений: ни prev, ни next!");
                         }
                     }
-                    edgeSplitter.SplitEdge(splitHe, intersectPoint);
+                    edgeSplitter.SplitEdge(splitHe, newPoint);
                     int newVidx = pointsLst.Count - 1;
                     pointStatusesLst[newVidx] = PointStatus.Boundary;
-                    HalfEdgesUtils.LinkBoundaryEdge(boundaryEdgesLst, newVidx, missedVid, exVid);
-                    exVid = newVidx;
+                    HalfEdgeUtils.LinkBoundaryEdge(boundaryEdgesLst, newVidx, missedVid, exAddedVid);
+                    exAddedVid = newVidx;
 
                     //следующий треугольник содержит missedVid
                     if (nextSplitHe == STOP)
                         break;
 
                     splitHe = nextSplitHe;
-                    intersectPoint = nextIntersectPoint;
+                    newPoint = nextNewPoint;
                 }
             }
         }
+        #endregion
 
     }
 }

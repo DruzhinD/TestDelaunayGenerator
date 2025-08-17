@@ -31,7 +31,7 @@ namespace DelaunayUI
         //внутренняя оболочка
         public IHPoint[] innerBoundary = null;
         //генератор для граничных точек
-        public IGeneratorBase generator = new GeneratorFixed();
+        public IGeneratorBase generator = new GeneratorFixed(0);
         public Test() { }
         public void CreateRestArea(int idx)
         {
@@ -55,7 +55,7 @@ namespace DelaunayUI
 
                         //
                         //new HPoint(0.42, 0.8),
-                        //new HPoint(0.63, 0.8),
+                        new HPoint(0.63, 0.8),
 
                         new HPoint(0.7, 0.8),
                         new HPoint(0.7, 0.6),
@@ -75,7 +75,7 @@ namespace DelaunayUI
                         new HPoint(0.7, 0.3),
 
                         //
-                        new HPoint(0.63, 0.83),
+                        //new HPoint(0.63, 0.83),
                         new HPoint(0.42, 0.83),
                     };
                     break;
@@ -100,7 +100,7 @@ namespace DelaunayUI
                             idd++;
                             idd = idd % dxx.Length;
                         }
-                    generator = new GeneratorFixed(15);
+                    generator = new GeneratorFixed(0);
                     outerBoundary = new IHPoint[]
                         {
                             new HPoint(1.1,1.1),
@@ -200,6 +200,7 @@ namespace DelaunayUI
         }
         public Delaunator Run(bool showForm = true)
         {
+            Console.Title = Name;
             LoggerConfig();
             Log.Information($"Запуск {DateTime.Now}");
             Log.Information($"Количество точек:{points.Length}");
@@ -219,7 +220,13 @@ namespace DelaunayUI
                     Log.Information($"Внутрення граница. Количество точек:{container.InnerBoundaries.Sum(b => b.Points.Length)}");
                 }
             }
-            Delaunator delaunator = new Delaunator(points, container);
+            var config = new DelaunatorConfig()
+            {
+                ClippingTriangles = true,
+                IncludeExtTriangles = false,
+                RestoreBorder = true,
+            };
+            Delaunator delaunator = new Delaunator(points, container, config);
             Stopwatch sw = Stopwatch.StartNew();
             delaunator.Generate();
             sw.Stop();
@@ -228,7 +235,7 @@ namespace DelaunayUI
 
             IRestrictedDCEL dcel = delaunator.ToRestrictedDCEL();
             //Console.WriteLine("Выполняется сериализация...");
-            //string path = Path.Combine(SolutionDataPath, Name + ".dcel");
+            //string path = Path.Combine(ProjectPath, Name + ".dcel");
             //SerializerDCEL.SerializeXML((RestrictedDCEL)dcel, path);
             //Console.WriteLine("Сериализация выполнена!");
 
@@ -236,6 +243,13 @@ namespace DelaunayUI
                 ShowMesh(mesh);
 
             return delaunator;
+        }
+
+        public void RunFromXml(string path)
+        {
+            RestrictedDCEL dcel = SerializerDCEL.DeserializeXML(path);
+            var mesh = dcel.ToDcelTriMesh();
+            ShowMesh(mesh);
         }
 
         protected void ShowMesh(IMesh mesh)

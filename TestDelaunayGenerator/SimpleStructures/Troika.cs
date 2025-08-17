@@ -23,7 +23,7 @@ namespace TestDelaunayGenerator.SimpleStructures
         /// <summary>
         /// Флаг, обозначающий атрибуты тройки вершин (вхождение в область и т.п.)
         /// </summary>
-        public int flag;
+        public TriangleState flag;
         public int i;
         public int j;
         public int k;

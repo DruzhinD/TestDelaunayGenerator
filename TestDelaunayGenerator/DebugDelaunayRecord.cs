@@ -12,7 +12,7 @@ namespace TestDelaunayGenerator
     /// </summary>
     public class DebugDelaunayRecord
     {
-        public DebugDelaunayRecord(TriangleInfect areaStatus, int triangleId, int index, int halfEdge, int triangleVertex, PointStatus pointStatus)
+        public DebugDelaunayRecord(TriangleState areaStatus, int triangleId, int index, int halfEdge, int triangleVertex, PointStatus pointStatus)
         {
             AreaStatus = areaStatus;
             TriangleId = triangleId;
@@ -25,7 +25,7 @@ namespace TestDelaunayGenerator
         /// <summary>
         /// Вхождение треугольника в область
         /// </summary>
-        public TriangleInfect AreaStatus { get; set; }
+        public TriangleState AreaStatus { get; set; }
 
         /// <summary>
         /// ID треугольника

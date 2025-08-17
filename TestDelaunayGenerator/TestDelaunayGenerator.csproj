@@ -36,6 +36,11 @@
     <StartupObject />
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="BenchmarkDotNet, Version=0.9.5.0, Culture=neutral, PublicKeyToken=aa0ca2f9092cefc4, processorArchitecture=MSIL">
+      <HintPath>..\packages\BenchmarkDotNet.0.9.5\lib\net46\BenchmarkDotNet.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Build" />
+    <Reference Include="Microsoft.Build.Framework" />
     <Reference Include="Serilog, Version=2.0.0.0, Culture=neutral, PublicKeyToken=24c2f752a8e58a10, processorArchitecture=MSIL">
       <HintPath>..\packages\Serilog.3.0.0\lib\net471\Serilog.dll</HintPath>
     </Reference>
@@ -66,8 +71,9 @@
     <Compile Include="DCELMesh\SerializerDCEL.cs" />
     <Compile Include="DebugDelaunay.cs" />
     <Compile Include="DebugDelaunayRecord.cs" />
-    <Compile Include="HalfEdgesUtils.cs" />
-    <Compile Include="SimpleStructures\EdgeIndex.cs" />
+    <Compile Include="DelaunatorConfig.cs" />
+    <Compile Include="HalfEdgeUtils.cs" />
+    <Compile Include="SimpleStructures\EdgePair.cs" />
     <Compile Include="Delaunator.cs" />
     <Compile Include="Boundary\IGeneratorBase.cs" />
     <Compile Include="Boundary\GeneratorFixed.cs" />

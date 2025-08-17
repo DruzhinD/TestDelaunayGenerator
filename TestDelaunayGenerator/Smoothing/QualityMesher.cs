@@ -71,7 +71,7 @@ namespace TestDelaunayGenerator.Smoothing
         IList<int> halfEdges;
         IList<PointStatus> pointStatuses;
         IList<Troika> faces;
-        IList<EdgeIndex> boundaryEdges;
+        IList<EdgePair> boundaryEdges;
         #endregion
 
         //TODO выполнять перестроение здесь же
@@ -103,23 +103,23 @@ namespace TestDelaunayGenerator.Smoothing
                     continue;
 
                 //пропуск ребра, входящего во внешний треугольник
-                if (faces[he / 3].flag == (int)TriangleInfect.External)
+                if (faces[he / 3].flag == TriangleState.External)
                 {
                     halfEdgeStatus[he] = EdgeStatus.Skipped;
 #if DEBUG
-                    Log.Debug($"{HalfEdgesUtils.HeInfo(faces, halfEdges, he)}. trid внешний.");
+                    Log.Debug($"{HalfEdgeUtils.HeInfo(faces, halfEdges, he)}. trid внешний.");
 #endif
                     continue;
                 }
 
-                int twinHe = HalfEdgesUtils.Twin(halfEdges, he);
+                int twinHe = HalfEdgeUtils.Twin(halfEdges, he);
                 //пропуск неграничных если установлено такое условие
                 if (Config.RebuildOnlyBoundary &&
                     twinHe != -1)
                 {
                     halfEdgeStatus[he] = EdgeStatus.NotBoundary;
 #if DEBUG
-                    Log.Debug($"{HalfEdgesUtils.HeInfo(faces, halfEdges, he)}. Status:{halfEdgeStatus[he]}. SKIP");
+                    Log.Debug($"{HalfEdgeUtils.HeInfo(faces, halfEdges, he)}. Status:{halfEdgeStatus[he]}. SKIP");
 #endif
                     continue;
                 }
@@ -129,7 +129,7 @@ namespace TestDelaunayGenerator.Smoothing
                 {
                     halfEdgeStatus[he] = EdgeStatus.Skipped;
 #if DEBUG
-                    Log.Debug($"{HalfEdgesUtils.HeInfo(faces, halfEdges, he)}. Status:{halfEdgeStatus[he]}. SKIP");
+                    Log.Debug($"{HalfEdgeUtils.HeInfo(faces, halfEdges, he)}. Status:{halfEdgeStatus[he]}. SKIP");
 #endif
                     continue;
                 }
@@ -138,20 +138,20 @@ namespace TestDelaunayGenerator.Smoothing
                 //уже есть полуребро для деления
                 if (twinHe != -1)
                 {
-                    if (halfEdgeStatus[HalfEdgesUtils.Next(twinHe)] == EdgeStatus.Split ||
-                        halfEdgeStatus[HalfEdgesUtils.Prev(twinHe)] == EdgeStatus.Split)
+                    if (halfEdgeStatus[HalfEdgeUtils.Next(twinHe)] == EdgeStatus.Split ||
+                        halfEdgeStatus[HalfEdgeUtils.Prev(twinHe)] == EdgeStatus.Split)
                     {
                         halfEdgeStatus[he] = EdgeStatus.Skipped;
 #if DEBUG
-                        Log.Debug($"{HalfEdgesUtils.HeInfo(faces, halfEdges, he)}. Status:{halfEdgeStatus[he]}. SKIP");
+                        Log.Debug($"{HalfEdgeUtils.HeInfo(faces, halfEdges, he)}. Status:{halfEdgeStatus[he]}. SKIP");
 #endif
                         continue;
                     }
                 }
 
-                int vid = HalfEdgesUtils.Origin(faces, he);
-                int nextVid = HalfEdgesUtils.Origin(faces, HalfEdgesUtils.Next(he));
-                int prevVid = HalfEdgesUtils.Origin(faces, HalfEdgesUtils.Prev(he));
+                int vid = HalfEdgeUtils.Origin(faces, he);
+                int nextVid = HalfEdgeUtils.Origin(faces, HalfEdgeUtils.Next(he));
+                int prevVid = HalfEdgeUtils.Origin(faces, HalfEdgeUtils.Prev(he));
 
                 //угол напротив полуребра he
                 double angle = CalcAngle(points[vid], points[prevVid], points[nextVid]);
@@ -162,7 +162,7 @@ namespace TestDelaunayGenerator.Smoothing
                     halfEdgeSplit.Add(he);
 #if DEBUG
                     Log.Debug(
-                    $"{HalfEdgesUtils.HeInfo(faces, halfEdges, he)}. Status:{halfEdgeStatus[he]}. " +
+                    $"{HalfEdgeUtils.HeInfo(faces, halfEdges, he)}. Status:{halfEdgeStatus[he]}. " +
                     $"angle{(vid, nextVid, prevVid)}={ToDegrees(angle)}"
                     );
 #endif
@@ -174,26 +174,26 @@ namespace TestDelaunayGenerator.Smoothing
                     if (twinHe != -1)
                     {
                         halfEdgeStatus[twinHe] = EdgeStatus.Skipped;
-                        twinNextHe = HalfEdgesUtils.Next(twinHe);
+                        twinNextHe = HalfEdgeUtils.Next(twinHe);
                         halfEdgeStatus[twinNextHe] = EdgeStatus.Blocked;
-                        int twintwinNextHe = HalfEdgesUtils.Twin(halfEdges, twinNextHe);
+                        int twintwinNextHe = HalfEdgeUtils.Twin(halfEdges, twinNextHe);
                         if (twintwinNextHe != -1)
                             halfEdgeStatus[twintwinNextHe] = EdgeStatus.Blocked;
 
-                        twinPrevHe = HalfEdgesUtils.Prev(twinHe);
+                        twinPrevHe = HalfEdgeUtils.Prev(twinHe);
                         halfEdgeStatus[twinPrevHe] = EdgeStatus.Blocked;
-                        int twintwinPrevHe = HalfEdgesUtils.Twin(halfEdges, twinPrevHe);
+                        int twintwinPrevHe = HalfEdgeUtils.Twin(halfEdges, twinPrevHe);
                         if (twintwinPrevHe != -1)
                             halfEdgeStatus[twintwinPrevHe] = EdgeStatus.Blocked;
                     }
-                    int nextHe = HalfEdgesUtils.Next(he);
+                    int nextHe = HalfEdgeUtils.Next(he);
                     halfEdgeStatus[nextHe] = EdgeStatus.Blocked;
-                    twinNextHe = HalfEdgesUtils.Twin(halfEdges, nextHe);
+                    twinNextHe = HalfEdgeUtils.Twin(halfEdges, nextHe);
                     if (twinNextHe != -1)
                         halfEdgeStatus[twinNextHe] = EdgeStatus.Blocked;
-                    int prevHe = HalfEdgesUtils.Prev(he);
+                    int prevHe = HalfEdgeUtils.Prev(he);
                     halfEdgeStatus[prevHe] = EdgeStatus.Blocked;
-                    twinPrevHe = HalfEdgesUtils.Twin(halfEdges, prevHe);
+                    twinPrevHe = HalfEdgeUtils.Twin(halfEdges, prevHe);
                     if (twinPrevHe != -1)
                         halfEdgeStatus[twinPrevHe] = EdgeStatus.Blocked;
 
@@ -204,7 +204,7 @@ namespace TestDelaunayGenerator.Smoothing
                     if (twinHe != -1)
                         halfEdgeStatus[twinHe] = EdgeStatus.Skipped;
 #if DEBUG
-                    Log.Debug($"{HalfEdgesUtils.HeInfo(faces, halfEdges, he)}. Status:{halfEdgeStatus[he]}. " +
+                    Log.Debug($"{HalfEdgeUtils.HeInfo(faces, halfEdges, he)}. Status:{halfEdgeStatus[he]}. " +
                         $"angle{(vid, nextVid, prevVid)}={ToDegrees(angle)}");
 #endif
                 }
@@ -231,7 +231,7 @@ namespace TestDelaunayGenerator.Smoothing
             //вставляем новую вершину
             points.Add(vertex);
             pointStatuses.Add(PointStatus.Internal);
-            boundaryEdges.Add(new EdgeIndex());
+            boundaryEdges.Add(new EdgePair());
 
             //id новой вершины
             int vn = points.Count - 1;
@@ -243,35 +243,35 @@ namespace TestDelaunayGenerator.Smoothing
             (int startTr0, int startTr1) = AddTrianglePair(H0, vn);
             newTrHe = startTr1;
 #if DEBUG
-            Log.Debug($"Новый треугольник: {HalfEdgesUtils.TriangleInfo(faces, startTr0 / 3)}");
-            Log.Debug($"Новый треугольник: {HalfEdgesUtils.TriangleInfo(faces, startTr1 / 3)}");
+            Log.Debug($"Новый треугольник: {HalfEdgeUtils.TriangleInfo(faces, startTr0 / 3)}");
+            Log.Debug($"Новый треугольник: {HalfEdgeUtils.TriangleInfo(faces, startTr1 / 3)}");
 #endif
-            int twinH0 = HalfEdgesUtils.Twin(halfEdges, H0);
+            int twinH0 = HalfEdgeUtils.Twin(halfEdges, H0);
             //если есть парное ребро у H0
             if (twinH0 != -1)
             {
                 //добавляем пару новых треугольников (внутри смежного исходному)
                 (int startTr2, int startTr3) = AddTrianglePair(twinH0, vn);
 #if DEBUG
-                Log.Debug($"Новый треугольник: {HalfEdgesUtils.TriangleInfo(faces, startTr2 / 3)}");
-                Log.Debug($"Новый треугольник: {HalfEdgesUtils.TriangleInfo(faces, startTr3 / 3)}");
+                Log.Debug($"Новый треугольник: {HalfEdgeUtils.TriangleInfo(faces, startTr2 / 3)}");
+                Log.Debug($"Новый треугольник: {HalfEdgeUtils.TriangleInfo(faces, startTr3 / 3)}");
 #endif
                 //связываем t1 и t2
-                HalfEdgesUtils.Link(this.halfEdges, startTr1, startTr2);
+                HalfEdgeUtils.Link(this.halfEdges, startTr1, startTr2);
                 //связываем t0 и t3
-                HalfEdgesUtils.Link(this.halfEdges, startTr0, startTr3);
+                HalfEdgeUtils.Link(this.halfEdges, startTr0, startTr3);
             }
             //иначе ребро граничное => новая точка тоже граничная
             else
             {
 
-                int adj1 = HalfEdgesUtils.Origin(faces, HalfEdgesUtils.Next(H0));
-                int adj2 = HalfEdgesUtils.Origin(faces, HalfEdgesUtils.Prev(H0));
+                int adj1 = HalfEdgeUtils.Origin(faces, HalfEdgeUtils.Next(H0));
+                int adj2 = HalfEdgeUtils.Origin(faces, HalfEdgeUtils.Prev(H0));
                 //обновление массивов границ
                 pointStatuses[vn] = PointStatus.Boundary;
-                boundaryEdges[vn] = new EdgeIndex()
+                boundaryEdges[vn] = new EdgePair()
                 {
-                    PointID = vn,
+                    vid = vn,
                     adjacent1 = adj1, //v0
                     adjacent2 = adj2 //v1
                 };
@@ -291,9 +291,9 @@ namespace TestDelaunayGenerator.Smoothing
                     edgeAdj2.adjacent2 = vn;
                 boundaryEdges[adj2] = edgeAdj2;
             }
-            HalfEdgesUtils.UnLinkTriangle(halfEdges, H0 / 3);
+            HalfEdgeUtils.UnLinkTriangle(halfEdges, H0 / 3);
             if (twinH0 != -1)
-                HalfEdgesUtils.UnLinkTriangle(halfEdges, twinH0 / 3);
+                HalfEdgeUtils.UnLinkTriangle(halfEdges, twinH0 / 3);
             return newTrHe;
         }
 
@@ -313,33 +313,33 @@ namespace TestDelaunayGenerator.Smoothing
                 halfEdges.Add(-1);
             //инициализация треугольников на вершинах
             Troika tr0 = new Troika();
-            tr0.flag = (int)TriangleInfect.Internal;
-            tr0[0] = HalfEdgesUtils.Origin(this.faces, H0);
+            tr0.flag = TriangleState.Internal;
+            tr0[0] = HalfEdgeUtils.Origin(this.faces, H0);
             tr0[1] = vidNew;
-            tr0[2] = HalfEdgesUtils.Origin(this.faces, HalfEdgesUtils.Prev(H0));
+            tr0[2] = HalfEdgeUtils.Origin(this.faces, HalfEdgeUtils.Prev(H0));
             this.faces.Add(tr0);
 
             int startTr1 = halfEdges.Count;
             for (int i = 0; i < 3; i++)
                 halfEdges.Add(-1);
             Troika tr1 = new Troika();
-            tr1.flag = (int)TriangleInfect.Internal;
+            tr1.flag = TriangleState.Internal;
             tr1[0] = vidNew;
-            tr1[1] = HalfEdgesUtils.Origin(this.faces, HalfEdgesUtils.Next(H0));
-            tr1[2] = HalfEdgesUtils.Origin(this.faces, HalfEdgesUtils.Prev(H0));
+            tr1[1] = HalfEdgeUtils.Origin(this.faces, HalfEdgeUtils.Next(H0));
+            tr1[2] = HalfEdgeUtils.Origin(this.faces, HalfEdgeUtils.Prev(H0));
             this.faces.Add(tr1);
 
             //связать пары полуребер новых треугольников внутри исходного
-            HalfEdgesUtils.Link(
-                this.halfEdges, HalfEdgesUtils.Next(startTr0), HalfEdgesUtils.Prev(startTr1));
+            HalfEdgeUtils.Link(
+                this.halfEdges, HalfEdgeUtils.Next(startTr0), HalfEdgeUtils.Prev(startTr1));
 
             //связать пары полуребер из исходного треугольника
-            HalfEdgesUtils.Link(this.halfEdges, HalfEdgesUtils.Prev(startTr0), halfEdges[HalfEdgesUtils.Prev(H0)]);
-            HalfEdgesUtils.Link(this.halfEdges, HalfEdgesUtils.Next(startTr1), halfEdges[HalfEdgesUtils.Next(H0)]);
+            HalfEdgeUtils.Link(this.halfEdges, HalfEdgeUtils.Prev(startTr0), halfEdges[HalfEdgeUtils.Prev(H0)]);
+            HalfEdgeUtils.Link(this.halfEdges, HalfEdgeUtils.Next(startTr1), halfEdges[HalfEdgeUtils.Next(H0)]);
 
             //помечаем исходный треугольник как внешний
             var exTr = faces[H0 / 3];
-            exTr.flag = (int)TriangleInfect.External;
+            exTr.flag = TriangleState.External;
             faces[H0 / 3] = exTr;
 
             return (startTr0, startTr1);
@@ -365,17 +365,17 @@ namespace TestDelaunayGenerator.Smoothing
             halfEdges = new List<int>(mesh.HalfEdges);
             pointStatuses = new List<PointStatus>(mesh.PointStatuses);
             faces = new List<Troika>(mesh.Faces);
-            boundaryEdges = new List<EdgeIndex>(mesh.BoundaryEdges);
+            boundaryEdges = new List<EdgePair>(mesh.BoundaryEdges);
 
             foreach (int H0 in halfEdgeRebuild)
             {
 #if DEBUG
-                Log.Debug($"Деление {HalfEdgesUtils.TriangleInfo(faces, H0 / 3)}(he:{H0}) на {Config.SplitTriangleParts} частей.");
+                Log.Debug($"Деление {HalfEdgeUtils.TriangleInfo(faces, H0 / 3)}(he:{H0}) на {Config.SplitTriangleParts} частей.");
 #endif
                 int trIdOld = H0 / 3;
 
                 //рассчитать координаты для новых точек
-                int vid1 = faces[trIdOld][HalfEdgesUtils.Next(H0) % 3];
+                int vid1 = faces[trIdOld][HalfEdgeUtils.Next(H0) % 3];
                 int vid2 = faces[trIdOld][H0 % 3];
                 IList<IHPoint> newPoints = SplitLine(points[vid1], points[vid2]);
 
@@ -412,7 +412,7 @@ namespace TestDelaunayGenerator.Smoothing
             tr.i = v0;
             tr.j = v1;
             tr.k = v1;
-            tr.flag = (int)TriangleInfect.Internal;
+            tr.flag = TriangleState.Internal;
 
             //вставляем
             faces.Add(tr);
@@ -420,9 +420,9 @@ namespace TestDelaunayGenerator.Smoothing
             for (int i = 0; i < 3; i++)
                 halfEdges.Add(-1);
             int idx = faces.Count - 1;
-            HalfEdgesUtils.Link(halfEdges, idx, he0);
-            HalfEdgesUtils.Link(halfEdges, idx + 1, he1);
-            HalfEdgesUtils.Link(halfEdges, idx + 2, he2);
+            HalfEdgeUtils.Link(halfEdges, idx, he0);
+            HalfEdgeUtils.Link(halfEdges, idx + 1, he1);
+            HalfEdgeUtils.Link(halfEdges, idx + 2, he2);
             return idx;
 
         }

@@ -27,7 +27,7 @@ namespace TestDelaunayGenerator.DCELMesh
             mesh.CoordsY = dcelMesh.Points.Select(p => p.Y).ToArray();
 
             mesh.AreaElems = dcelMesh.Faces
-                .Where(troika => troika.flag == (int)TriangleInfect.Internal)
+                .Where(troika => troika.flag == TriangleState.Internal)
                 .Select(troika => troika.GetTri)
                 .ToArray();
 

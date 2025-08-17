@@ -21,7 +21,7 @@ namespace TestDelaunayGenerator.DCELMesh
     public class RestrictedDCEL : IRestrictedDCEL
     {
         public RestrictedDCEL() { }
-        public RestrictedDCEL(IHPoint[] points, int[] halfEdges, PointStatus[] pointStatuses, Troika[] faces, EdgeIndex[] boundaryEdges)
+        public RestrictedDCEL(IHPoint[] points, int[] halfEdges, PointStatus[] pointStatuses, Troika[] faces, EdgePair[] boundaryEdges)
         {
             Points = points;
             HalfEdges = halfEdges;
@@ -39,6 +39,6 @@ namespace TestDelaunayGenerator.DCELMesh
         [DataMember]
         public Troika[] Faces { get; set; }
         [DataMember]
-        public EdgeIndex[] BoundaryEdges { get; set; }
+        public EdgePair[] BoundaryEdges { get; set; }
     }
 }

@@ -20,7 +20,7 @@ namespace TestDelaunayGenerator.DCELMesh
     /// </summary>
     public class DcelTriMesh : TriMesh, IRestrictedDCEL
     {
-        public DcelTriMesh(int[] halfEdges, PointStatus[] pointStatuses, Troika[] triangles, EdgeIndex[] boundaryEdges, IHPoint[] points)
+        public DcelTriMesh(int[] halfEdges, PointStatus[] pointStatuses, Troika[] triangles, EdgePair[] boundaryEdges, IHPoint[] points)
         {
             this.HalfEdges = halfEdges;
             this.PointStatuses = pointStatuses;
@@ -45,7 +45,7 @@ namespace TestDelaunayGenerator.DCELMesh
             MEM.MemCopy(ref triangles, mesh.Faces);
             this.Faces = triangles;
 
-            EdgeIndex[] boundaryEdges = null;
+            EdgePair[] boundaryEdges = null;
             MEM.MemCopy(ref boundaryEdges, mesh.BoundaryEdges);
             this.BoundaryEdges = boundaryEdges;
 
@@ -61,7 +61,7 @@ namespace TestDelaunayGenerator.DCELMesh
 
         public Troika[] Faces { get; set; }
 
-        public EdgeIndex[] BoundaryEdges { get; set; }
+        public EdgePair[] BoundaryEdges { get; set; }
         public IHPoint[] Points { get; set; }
 
         public override IMesh Clone()

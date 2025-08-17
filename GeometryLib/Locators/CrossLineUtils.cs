@@ -282,30 +282,22 @@ namespace GeometryLib.Locators
         /// Поиск точки p - пересечения отрезка v11 , v12  с отрезком v21 , v22
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsCrossing(HPoint v11, HPoint v12, HPoint v21, HPoint v22, ref IHPoint p, bool includeStart = false)
+        public static bool IsCrossing(HPoint v11, HPoint v12, HPoint v21, HPoint v22, ref IHPoint p)
         {
             if (HPoint.Equals(v11, v22))
             {
-                if (!includeStart)
-                    return false;
                 p = v11; return true;
             }
             if (HPoint.Equals(v11, v21))
             {
-                if (!includeStart)
-                    return false;
                 p = v11; return true;
             }
             if (HPoint.Equals(v12, v22))
             {
-                if (!includeStart)
-                    return false;
                 p = v12; return true;
             }
             if (HPoint.Equals(v12, v21))
             {
-                if (!includeStart)
-                    return false;
                 p = v12; return true;
             }
             Vector3 cut1 = new Vector3(v12 - v11);

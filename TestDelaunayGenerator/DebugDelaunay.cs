@@ -9,7 +9,7 @@ namespace TestDelaunayGenerator
 {
     public class DebugDelaunay
     {
-        public DebugDelaunay(TriangleInfect[] triangleInfects, int[] triangleIds, int[] indexes, int[] halfEdges, int[] triangleVertexes, PointStatus[] pointStatuses)
+        public DebugDelaunay(TriangleState[] triangleInfects, int[] triangleIds, int[] indexes, int[] halfEdges, int[] triangleVertexes, PointStatus[] pointStatuses)
         {
             TriangleInfects = triangleInfects;
             TriangleIds = triangleIds;
@@ -22,7 +22,7 @@ namespace TestDelaunayGenerator
         /// <summary>
         /// вхождение треугольника в область,
         /// </summary>
-        public TriangleInfect[] TriangleInfects { get; set; }
+        public TriangleState[] TriangleInfects { get; set; }
 
         /// <summary>
         /// id треугольника (одинаковые значения идут тройками)

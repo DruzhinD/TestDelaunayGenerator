@@ -7,9 +7,9 @@ using System.Threading.Tasks;
 namespace TestDelaunayGenerator.SimpleStructures
 {
     /// <summary>
-    /// Структура ребра на основе индексов вершин в замкнутом контуре
+    /// Пара ребер, соединенных общей вершиной
     /// </summary>
-    public struct EdgeIndex
+    public struct EdgePair
     {
         /// <summary>
         /// Создание ребра на основе индексов вершин
@@ -17,9 +17,9 @@ namespace TestDelaunayGenerator.SimpleStructures
         /// <param name="adjacent1">1-ая соседняя вершина</param>
         /// <param name="adjacent2">2-ая соседняя вершина</param>
         /// <param name="boundaryId">Индекс граничного контура (оболочки), которой принадлежит точка</param>
-        public EdgeIndex(int pointID, int adjacent1, int adjacent2, int boundaryId)
+        public EdgePair(int vid, int adjacent1, int adjacent2, int boundaryId)
         {
-            PointID = pointID;
+            this.vid = vid;
             this.adjacent1 = adjacent1;
             this.adjacent2 = adjacent2;
             this.BoundaryID = boundaryId;
@@ -28,24 +28,24 @@ namespace TestDelaunayGenerator.SimpleStructures
         /// <summary>
         /// Индекс текущей вершины
         /// </summary>
-        public int PointID;
+        public int vid;
 
         /// <summary>
-        /// Индекс 1-ой соседней вершины с <see cref="PointID"/>
+        /// Индекс 1-ой соседней вершины с <see cref="vid"/>
         /// </summary>
         public int adjacent1;
         /// <summary>
-        /// Индекс 2-ой соседней вершины с <see cref="PointID"/>
+        /// Индекс 2-ой соседней вершины с <see cref="vid"/>
         /// </summary>
         public int adjacent2;
 
         /// <summary>
-        /// Индексы соседних вершин с <see cref="PointID"/>
+        /// Индексы соседних вершин с <see cref="vid"/>
         /// </summary>
         public int[] Adjacents => new int[] { adjacent1, adjacent2 };
 
         /// <summary>
-        /// Индекс граничного контура (оболочки), которой принадлежит <see cref="PointID"/>
+        /// Индекс граничного контура (оболочки), которой принадлежит <see cref="vid"/>
         /// </summary>
         public int BoundaryID;
     }

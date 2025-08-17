@@ -26,6 +26,7 @@ namespace DelaunayUI
                 Console.WriteLine("5. Круглое множество с границей");
                 Console.WriteLine("6. Круглое множество с вогнутой границей");
                 Console.WriteLine("7. Случайно сгенерированное множество точек");
+                Console.WriteLine("T. Импорт из xml");
                 //Console.WriteLine("7. Равномерное распределение");
                 //Console.WriteLine("8. Звезда (сетка) (с границей)");
                 Console.WriteLine("Esc: выход");
@@ -64,9 +65,12 @@ namespace DelaunayUI
                             test.CreateRestArea(6);
                             test.Run();
                             break;
-                        case ConsoleKey.D8:
-                            test.CreateRestArea(7);
-                            test.Run();
+                        //из xml
+                        case ConsoleKey.T:
+                            Console.Write("Введите путь: ");
+                            string path = Console.ReadLine();
+                            Console.Title = $"XML+{path}";
+                            test.RunFromXml(path);
                             break;
                     }
                     Console.Clear();
