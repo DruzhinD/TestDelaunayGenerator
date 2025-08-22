@@ -652,8 +652,9 @@ namespace TestDelaunayGenerator
             //если множество оболочек не задано, то полученную выпуклую оболочку помечаем граничной
             if (this.boundaryContainer is null)
                 Array.ForEach(Hull, x => pointStatuses[x] = PointStatus.Boundary);
+            if (Config.RestoreBorder)
+                RestoreBorder();
             //удаление связей с внешними треугольниками в полуребрах
-            RestoreBorder();
             if (Config.ClippingTriangles)
                 ClippingTriangles();
             if (Config.IncludeExtTriangles)
@@ -1191,7 +1192,7 @@ namespace TestDelaunayGenerator
                         pointStatuses[i] = PointStatus.External;
                     }
                 }
-                #endregion
+            #endregion
 
             //текущий индекс для перезаписи в массиве
             int curVid = 0;
@@ -1386,14 +1387,14 @@ namespace TestDelaunayGenerator
             {
                 //принадлежность треугольника области уже определена
                 if (Triangles[triangleId].flag != TriangleState.None)
-                        continue;
+                    continue;
                 int triangleInfectCnt = ClippingTriangles(triangleId);
 #if DEBUG
                 Log.Debug($"TriangleId:{triangleId};\tЗаражено: {triangleInfectCnt}");
 #endif
             }
         }
-        
+
         /// <summary>
         /// Определить принадлежность треугольников области на основе принадлежности
         /// <paramref name="trid"/>.
@@ -1487,11 +1488,16 @@ namespace TestDelaunayGenerator
             if (boundaryContainer is null)
                 return;
 
-            IList<IHPoint> pointsLst = new List<IHPoint>(Points);
-            IList<int> halfEdgesLst = new List<int>(HalfEdges);
-            IList<PointStatus> pointStatusesLst = new List<PointStatus>(pointStatuses);
-            IList<Troika> facesLst = new List<Troika>(Triangles);
-            IList<EdgePair> boundaryEdgesLst = new List<EdgePair>(boundaryEdges);
+            List<IHPoint> pointsLst = new List<IHPoint>((int)(Points.Length * 1.25));
+            pointsLst.AddRange(Points);
+            List<int> halfEdgesLst = new List<int>((int)(HalfEdges.Length * 1.25));
+            halfEdgesLst.AddRange(HalfEdges);
+            List<PointStatus> pointStatusesLst = new List<PointStatus>((int)(pointStatuses.Length * 1.25));
+            pointStatusesLst.AddRange(pointStatuses);
+            List<Troika> facesLst = new List<Troika>((int)(Triangles.Length * 1.25));
+            facesLst.AddRange(Triangles);
+            List<EdgePair> boundaryEdgesLst = new List<EdgePair>((int)(boundaryEdges.Length * 1.25));
+            boundaryEdgesLst.AddRange(boundaryEdges);
             EdgeSplitter edgeSplitter = new EdgeSplitter(
                 pointsLst,
                 halfEdgesLst,
@@ -1518,7 +1524,6 @@ namespace TestDelaunayGenerator
                 missAdj1 = true;
                 missAdj2 = true;
 
-
                 //проверка существования ребер
                 for (int i = 0; i < adjHes.Length; i++)
                 {
@@ -1535,9 +1540,6 @@ namespace TestDelaunayGenerator
                         break;
                 }
 
-                //ни одно из ребер не пропущено => идем дальше
-                if (!missAdj1 && !missAdj2)
-                    continue;
                 if (missAdj1)
                     RestoreEdge(he, boundaryEdges[vid].adjacent1);
                 //определение верное
