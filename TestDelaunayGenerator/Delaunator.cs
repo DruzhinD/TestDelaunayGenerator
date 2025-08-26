@@ -203,9 +203,9 @@ namespace TestDelaunayGenerator
         /// <returns></returns>
         public IRestrictedDCEL ToRestrictedDCEL(bool useActual = false)
         {
-            if (Config.IncludeExtTriangles)
-                for (int i = 0; i < Triangles.Length; i++)
-                    this.Triangles[i].flag = TriangleState.Internal;
+            //if (Config.IncludeExtTriangles)
+            //    for (int i = 0; i < Triangles.Length; i++)
+            //        this.Triangles[i].flag = TriangleState.Internal;
 
             IRestrictedDCEL dcel = null;
             if (!useActual)
@@ -328,8 +328,10 @@ namespace TestDelaunayGenerator
                     ref pointStatuses,
                     PointStatus.Internal);
 
+                int pointCnt = Points.Length;
                 //отсечение точек
-                int pointCnt = this.ClippingPoints();
+                if (Config.UseClippingPoints)
+                    pointCnt = this.ClippingPoints();
                 //объединение с множеством граничных точек
                 CombinePointSets(pointCnt);
 
@@ -478,10 +480,29 @@ namespace TestDelaunayGenerator
 
             // Добавление 1 треугольника в список треугольников
             int trid = AddTriangle(i0, i1, i2, -1, -1, -1) / 3;
-            #endregion
+            //определение принадлежности первого треугольника
+            //TODO разобраться с этой хуйней
+            if (boundaryContainer != null)
+            {
 
-            //выделение памяти для массива стека перестроения
-            MEM.Alloc((int)Math.Sqrt(points.Length), ref EdgeStack);
+                if (!Config.RestoreBorder)
+                {
+                    InitializeExternalPoint();
+                    var inArea = IsTriangleInArea(0);
+                    var status = TriangleState.Internal;
+                    if (!inArea)
+                        status = TriangleState.External;
+                    Triangles[0].flag = status;
+                }
+            }
+            else
+            {
+                Triangles[0].flag = TriangleState.Internal;
+            }
+                #endregion
+
+                //выделение памяти для массива стека перестроения
+                MEM.Alloc((int)Math.Sqrt(points.Length), ref EdgeStack);
             #region Поиск выпуклой оболочки и триангуляции
 
             //проход по всем узлам оболочки, за исключением тех, что уже в ней,
@@ -649,15 +670,14 @@ namespace TestDelaunayGenerator
                 }
             }
 
-            //если множество оболочек не задано, то полученную выпуклую оболочку помечаем граничной
-            if (this.boundaryContainer is null)
-                Array.ForEach(Hull, x => pointStatuses[x] = PointStatus.Boundary);
             if (Config.RestoreBorder)
+            {
                 RestoreBorder();
-            //удаление связей с внешними треугольниками в полуребрах
-            if (Config.ClippingTriangles)
                 ClippingTriangles();
-            if (Config.IncludeExtTriangles)
+
+            }
+            //удаление связей с внешними треугольниками в полуребрах
+            if (!Config.IncludeExtTriangles)
                 ErraseExternalTriangles();
         }
 
@@ -722,6 +742,7 @@ namespace TestDelaunayGenerator
                     continue;
                 }
 
+                //если задан граничный контур, то избегаем легализации для ребер, входящих в него
                 if (boundaryContainer != null)
                 {
                     //ребро, которое будет развернуто
@@ -734,15 +755,34 @@ namespace TestDelaunayGenerator
                          boundaryEdges[edgeStart].Adjacents.Contains(edgeEnd))
                     {
 #if DEBUG
-                        Log.Debug($"Легализация пропущена для треугольников {tridA}(новый) {tridB}(в оболочке), " +
-                            $"ребро ({edgeStart}-{edgeEnd}) является граничным");
+                        Log.Debug($"Легализация пропущена {nameof(tridA)}:{tridA} {nameof(tridB)}:{tridB}; " +
+                            $"ребро ({edgeStart}-{edgeEnd}) - граничное");
 #endif
+                        if (!Config.RestoreBorder && !Config.IncludeExtTriangles)
+                        {
+                            var trStatus = TriangleState.External;
+                            if (Triangles[tridB].flag == trStatus)
+                                trStatus = TriangleState.Internal;
+                            Triangles[tridA].flag = trStatus;
+                        }
+
                         //берем следующий из стека
                         if (i == 0)
                             break;
                         a = EdgeStack[--i];
                         continue;
                     }
+                    //если отключено восстановление границы,
+                    //то используем отсечение треугольников в процессе построения триангуляции;
+                    //также нужно, чтобы внешние треугольники не входили в триангуляцию
+                    else if (!Config.RestoreBorder && !Config.IncludeExtTriangles)
+                    {
+                        Triangles[tridA].flag = Triangles[tridB].flag;
+                    }
+                }
+                else
+                {
+                    Triangles[tridA].flag = TriangleState.Internal;
                 }
 
                 var b0 = b - b % 3;
@@ -940,8 +980,7 @@ namespace TestDelaunayGenerator
             Triangles[trid].i = i0;
             Triangles[trid].j = i1;
             Triangles[trid].k = i2;
-            //TODO все помечаются внутренними
-            if (boundaryContainer is null)
+            if (Config.IncludeExtTriangles)
                 Triangles[trid].flag = TriangleState.Internal;
 
             //индекс первой вершины, в крайнем треугольнике

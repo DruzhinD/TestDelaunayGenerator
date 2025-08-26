@@ -69,8 +69,11 @@ namespace DelaunayUI
                         case ConsoleKey.T:
                             Console.Write("Введите путь: ");
                             string path = Console.ReadLine();
-                            Console.Title = $"XML+{path}";
-                            test.RunFromXml(path);
+                            test.Run(path);
+                            break;
+                        case ConsoleKey.F:
+                            test.CreateBenchmarkTestArea(100000, 0);
+                            test.Run();
                             break;
                     }
                     Console.Clear();

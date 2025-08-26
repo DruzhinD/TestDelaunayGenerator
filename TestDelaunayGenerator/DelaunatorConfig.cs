@@ -10,18 +10,15 @@ namespace TestDelaunayGenerator
     {
 
         /// <summary>
-        /// true - использовать отсечение треугольников
-        /// </summary>
-        /// <remarks>Использование без <see cref="RestoreBorder"/> 
-        /// может повлечь разрушение сетки!
-        /// <br/>
-        /// Совместно с <see cref="IncludeExtTriangles"/> бесполезен</remarks>
-        public bool ClippingTriangles { get; set; } = true;
-
-        /// <summary>
         /// Отсечение точек выполняется параллельно
         /// </summary>
+        /// <remarks>Имеет смысл, если <see cref="UseClippingPoints"/> включен</remarks>
         public bool ParallelClippingPoints { get; set; } = true;
+
+        /// <summary>
+        /// true - использовать отсечение точек
+        /// </summary>
+        public bool UseClippingPoints { get; set; } = true;
 
         /// <summary>
         /// Использовать алгоритм восстановления границы.
