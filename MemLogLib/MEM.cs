@@ -90,7 +90,7 @@ namespace MemLogLib
         /// <summary>
         /// Сравнение вещественных чисел
         /// </summary>
-        public static bool Equals(double a, double b, double eps = Error8)
+        public static bool Equals(double a, double b, double eps = Error14)
         {
             if (Math.Abs(a - b) < eps)
                 return true;

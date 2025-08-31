@@ -382,8 +382,8 @@ namespace RenderLib
                     {
                         PointF pp = new PointF(p0.X - 20f, p0.Y);
                         g.DrawString(fbk[i].ToString(), colorScheme.FontKnot, colorScheme.BrushTextKnot, pp);
-                        pp = new PointF(p0.X + 10f, p0.Y);
-                        g.DrawString(bk[i].ToString(), colorScheme.FontKnot, colorScheme.BrushTextKnot, pp);
+                        //pp = new PointF(p0.X + 10f, p0.Y);
+                        //g.DrawString(bk[i].ToString(), colorScheme.FontKnot, colorScheme.BrushTextKnot, pp);
                     }
                 }
             }
