@@ -13,7 +13,6 @@ DeleteBinObjFolders.bat
 
 # добавлено пользователем
 data/
-BenchmarkTest/
 DeulaunayUnitTest/
 
 # User-specific files (MonoDevelop/Xamarin Studio)
