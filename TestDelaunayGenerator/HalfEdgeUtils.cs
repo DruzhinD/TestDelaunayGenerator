@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using TestDelaunayGenerator.SimpleStructures;
@@ -24,6 +25,7 @@ namespace TestDelaunayGenerator
         /// <param name="he">текущее полуребро</param>
         /// <returns></returns>
         /// <exception cref="ArgumentException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int Next(int he)
         {
             ValidateParam(he, nameof(he));
@@ -42,6 +44,7 @@ namespace TestDelaunayGenerator
         /// <param name="he">текущее полуребро</param>
         /// <returns></returns>
         /// <exception cref="ArgumentException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int Prev(int he)
         {
             ValidateParam(he, nameof(he));
@@ -60,6 +63,7 @@ namespace TestDelaunayGenerator
         /// <param name="faces"></param>
         /// <param name="he"></param>
         /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int Origin(IList<Troika> faces, int he)
         {
             return faces[he / 3][he % 3];
@@ -71,6 +75,7 @@ namespace TestDelaunayGenerator
         /// <param name="halfEdges"></param>
         /// <param name="he"></param>
         /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int Twin(IList<int> halfEdges, int he)
         {
             return halfEdges[he];
@@ -80,6 +85,7 @@ namespace TestDelaunayGenerator
         /// Является ли ребро граничным
         /// </summary>
         /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsBoundary(IList<int> halfEdges, int he)
         {
             int twin = Twin(halfEdges, he);
@@ -92,6 +98,7 @@ namespace TestDelaunayGenerator
         /// <param name="halfEdges"></param>
         /// <param name="edgeA">значение должно быть неотрицательным</param>
         /// <param name="edgeB">может быть опущен</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Link(IList<int> halfEdges, int edgeA, int edgeB = -1)
         {
             ValidateParam(edgeA, nameof(edgeA));
@@ -106,6 +113,7 @@ namespace TestDelaunayGenerator
         /// <param name="halfEdges"></param>
         /// <param name="edgeA"></param>
         /// <param name="edgeB"></param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void UnLink(IList<int> halfEdges, int edgeA, int edgeB)
         {
             if (edgeA != -1)
@@ -123,6 +131,7 @@ namespace TestDelaunayGenerator
         /// <param name="trId"></param>
         /// <param name="both">true - связи будут удалены и у смежного с <paramref name="trId"/> треугольника.
         /// Может привести к неожиданным результатам!</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void UnLinkTriangle(IList<int> halfEdges, int trId, bool both = false)
         {
             ValidateParam(trId, nameof(trId));
@@ -161,6 +170,7 @@ namespace TestDelaunayGenerator
         /// Параметр <paramref name="include"/> уместен, если общая вершина является граничной.
         /// Тогда последнее полуребро не будет смежным с полуребром, указывающим на общую вершину.
         /// </remarks>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int[] AdjacentEdgesVertex(IList<int> halfEdges, IList<Troika> triangles, int he, bool include = false)
         {
             int vid = triangles[he / 3][he % 3];
@@ -350,6 +360,7 @@ namespace TestDelaunayGenerator
         /// <param name="vid"></param>
         /// <param name="left"></param>
         /// <param name="right"></param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void LinkBoundaryEdge(IList<EdgePair> boundaryEdges, int vid, int left, int right)
         {
             var newBound = new EdgePair()
