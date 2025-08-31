@@ -29,6 +29,7 @@ namespace DelaunayUI
                 Console.WriteLine("6. Круглое множество с вогнутой границей");
                 Console.WriteLine("7. Случайно сгенерированное множество точек");
                 Console.WriteLine("T. Импорт из xml");
+                Console.WriteLine("F. Запуск примера теста из бенчмарка");
                 //Console.WriteLine("7. Равномерное распределение");
                 //Console.WriteLine("8. Звезда (сетка) (с границей)");
                 Console.WriteLine("Esc: выход");
@@ -82,7 +83,7 @@ namespace DelaunayUI
                             {
                                 IncludeExtTriangles = false,
                                 RestoreBorder = true,
-                                UseClippingPoints = false,
+                                UseClippingPoints = true,
                                 ParallelClippingPoints = true,
                                 IgnoreRestoreBorderException = true
                             };
@@ -91,7 +92,7 @@ namespace DelaunayUI
                                 boundVertexCnt,
                                 new GeneratorFixed(pbyedge));
                             test.Run(
-                                showForm: false,
+                                showForm: true,
                                 config: config);
                             break;
                     }
