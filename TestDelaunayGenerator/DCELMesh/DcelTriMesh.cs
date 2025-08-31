@@ -1,4 +1,5 @@
 ﻿using CommonLib;
+using CommonLib.Geometry;
 using MemLogLib;
 using MeshLib;
 using System;
@@ -10,23 +11,25 @@ using System.Threading.Tasks;
 using TestDelaunayGenerator.SimpleStructures;
 using TestDelaunayGenerator.Smoothing;
 
-namespace TestDelaunayGenerator.Smoothing
+namespace TestDelaunayGenerator.DCELMesh
 {
 
     /// <summary>
     /// Расширенная сетка <see cref="TriMesh"/>
     /// засчет HalfEdge и указателей на принадлежность точек
     /// </summary>
-    public class ExtendedTriMesh : TriMesh, IHalfEdge
+    public class DcelTriMesh : TriMesh, IRestrictedDCEL
     {
-        public ExtendedTriMesh(int[] halfEdges, PointStatus[] pointStatuses, Troika[] triangles)
+        public DcelTriMesh(int[] halfEdges, PointStatus[] pointStatuses, Troika[] triangles, EdgePair[] boundaryEdges, IHPoint[] points)
         {
             this.HalfEdges = halfEdges;
             this.PointStatuses = pointStatuses;
-            this.Triangles = triangles;
+            this.Faces = triangles;
+            this.BoundaryEdges = boundaryEdges;
+            this.Points = points;
         }
 
-        public ExtendedTriMesh(ExtendedTriMesh mesh)
+        public DcelTriMesh(DcelTriMesh mesh)
             : base(mesh)
         {
             //нельзя передавать в ref свойство, поэтому используется переменная
@@ -39,8 +42,16 @@ namespace TestDelaunayGenerator.Smoothing
             this.PointStatuses = pointStatuses;
 
             Troika[] triangles = null;
-            MEM.MemCopy(ref triangles, mesh.Triangles);
-            this.Triangles = triangles;
+            MEM.MemCopy(ref triangles, mesh.Faces);
+            this.Faces = triangles;
+
+            EdgePair[] boundaryEdges = null;
+            MEM.MemCopy(ref boundaryEdges, mesh.BoundaryEdges);
+            this.BoundaryEdges = boundaryEdges;
+
+            IHPoint[] points = null;
+            MEM.MemCopy(ref points, mesh.Points);
+            this.Points = points;
 
         }
 
@@ -48,18 +59,14 @@ namespace TestDelaunayGenerator.Smoothing
 
         public PointStatus[] PointStatuses { get; set; }
 
-        public Troika[] Triangles { get; set; }
+        public Troika[] Faces { get; set; }
 
-        public int GetVertex(int index)
-        {
-            int triangleId = index / 3;
-            var triangle = Triangles[triangleId];
-            return (int)triangle[index % 3];
-        }
+        public EdgePair[] BoundaryEdges { get; set; }
+        public IHPoint[] Points { get; set; }
 
         public override IMesh Clone()
         {
-            return new ExtendedTriMesh(this);
+            return new DcelTriMesh(this);
         }
     }
 }

@@ -28,7 +28,7 @@
         /// </summary>
         /// <param name="boundary">область, в которой требуется сгенерировать границу</param>
         /// <returns>Множество граничных точек, с учетом вершин области</returns>
-        public IHPoint[] Generate(BoundaryNew boundary)
+        public IHPoint[] Generate(BoundaryHull boundary)
         {
             //количество ребер по сути равно количеству вершин.
             //Общее количество точек на всех границах,

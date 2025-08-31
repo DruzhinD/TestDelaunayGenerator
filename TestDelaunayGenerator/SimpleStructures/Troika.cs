@@ -23,7 +23,7 @@ namespace TestDelaunayGenerator.SimpleStructures
         /// <summary>
         /// Флаг, обозначающий атрибуты тройки вершин (вхождение в область и т.п.)
         /// </summary>
-        public int flag;
+        public TriangleState flag;
         public int i;
         public int j;
         public int k;
@@ -52,6 +52,20 @@ namespace TestDelaunayGenerator.SimpleStructures
         public override string ToString()
         {
             return $"{i},{j},{k};flag:{flag}";
+        }
+
+        /// <summary>
+        /// true - треугольник содержит вершину <paramref name="vid"/>
+        /// </summary>
+        /// <param name="vid"></param>
+        /// <returns></returns>
+        public bool Contains(int vid)
+        {
+            if (i == vid ||
+                j == vid ||
+                k == vid)
+                return true;
+            return false;
         }
     }
 }

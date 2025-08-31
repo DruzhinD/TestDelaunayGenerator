@@ -9,7 +9,7 @@
         /// </summary>
         IHPoint[] Points { get; }
 
-        IHPoint[] Generate(BoundaryNew boundary);
+        IHPoint[] Generate(BoundaryHull boundary);
 
         /// <summary>
         /// Индексы опорных вершин внутри <see cref="Points"/>

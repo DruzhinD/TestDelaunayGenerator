@@ -10,7 +10,7 @@ using TestDelaunayGenerator.SimpleStructures;
 
 namespace TestDelaunayGenerator.Boundary
 {
-    public class BoundaryNew
+    public class BoundaryHull
     {
         /// <summary>
         /// Счетчик для уникальности границ
@@ -44,8 +44,6 @@ namespace TestDelaunayGenerator.Boundary
         /// <see cref="baseVertexes"/>
         /// </summary>
         protected IHPoint[] points;
-
-        public int[] VertexesIds;
 
         /// <summary>
         /// Граничные ребра, формирующие оболочку
@@ -85,11 +83,11 @@ namespace TestDelaunayGenerator.Boundary
         /// <param name="baseVertexes">опорные вершины, образующие форму оболочки</param>
         /// <param name="generator">правила генерации точек на ребрах оболочки, между опорными вершинами</param>
         /// <exception cref="ArgumentNullException"></exception>
-        public BoundaryNew(IHPoint[] baseVertexes, IGeneratorBase generator)
+        public BoundaryHull(IHPoint[] baseVertexes, IGeneratorBase generator)
         {
-            this.ID = BoundaryNew.uniqueIdCounter;
+            this.ID = BoundaryHull.uniqueIdCounter;
             //наращиваем счетчик для индексации границ
-            BoundaryNew.uniqueIdCounter++;
+            BoundaryHull.uniqueIdCounter++;
             //проверка на null
             if (baseVertexes is null || baseVertexes.Length == 0)
                 throw new ArgumentNullException($"{nameof(baseVertexes)} null или пуст");
@@ -102,8 +100,6 @@ namespace TestDelaunayGenerator.Boundary
 
             //инициализация описанного прямоугольника
             this.InitilizeRect();
-            //сохраняем индексы вершин, образующих область
-            InitializeVertexIds();
             // Инициализация граничных ребер
             InitializeBoundaryEdges();
         }
@@ -180,27 +176,6 @@ namespace TestDelaunayGenerator.Boundary
             rectangle[2] = new HPoint(maxX, maxY);
             rectangle[3] = new HPoint(maxX, minY);
             this.outRect = rectangle;
-        }
-
-        //TODO убрать бы...
-        /// <summary>
-        /// Инициализация индексов вершин оболочки
-        /// </summary>
-        protected void InitializeVertexIds()
-        {
-            VertexesIds = new int[this.BaseVertexes.Length];
-            int currentVertexId = 0;
-            for (int i = 0; i < Points.Length; i++)
-            {
-                if (BaseVertexes[currentVertexId].X == Points[i].X &&
-                    BaseVertexes[currentVertexId].Y == Points[i].Y)
-                {
-                    VertexesIds[currentVertexId] = i;
-                    currentVertexId++;
-                    if (currentVertexId == VertexesIds.Length)
-                        break;
-                }
-            }
         }
         #endregion
     }

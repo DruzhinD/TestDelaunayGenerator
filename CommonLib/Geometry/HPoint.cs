@@ -465,5 +465,9 @@ namespace CommonLib.Geometry
             return new HPoint(x, y);
         }
 
+        public override string ToString()
+        {
+            return $"({this.X};{this.Y})";
+        }
     }
 }

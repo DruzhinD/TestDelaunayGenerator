@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using TestDelaunayGenerator;
+using TestDelaunayGenerator.Boundary;
 
 namespace DelaunayUI
 {
@@ -26,6 +28,7 @@ namespace DelaunayUI
                 Console.WriteLine("5. Круглое множество с границей");
                 Console.WriteLine("6. Круглое множество с вогнутой границей");
                 Console.WriteLine("7. Случайно сгенерированное множество точек");
+                Console.WriteLine("T. Импорт из xml");
                 //Console.WriteLine("7. Равномерное распределение");
                 //Console.WriteLine("8. Звезда (сетка) (с границей)");
                 Console.WriteLine("Esc: выход");
@@ -63,6 +66,33 @@ namespace DelaunayUI
                         case ConsoleKey.D7:
                             test.CreateRestArea(6);
                             test.Run();
+                            break;
+                        //из xml
+                        case ConsoleKey.T:
+                            Console.Write("Введите путь: ");
+                            string path = Console.ReadLine();
+                            test.Run(path);
+                            break;
+                        case ConsoleKey.F:
+                            int pointCnt = 100_000;
+                            int boundVertexCnt = 70;
+                            int pbyedge = (int)(0.1 * pointCnt / boundVertexCnt);
+                            //int pbyedge = 0;
+                            var config = new DelaunatorConfig()
+                            {
+                                IncludeExtTriangles = false,
+                                RestoreBorder = true,
+                                UseClippingPoints = false,
+                                ParallelClippingPoints = true,
+                                IgnoreRestoreBorderException = true
+                            };
+                            test.CreateBenchmarkTestArea(
+                                pointCnt,
+                                boundVertexCnt,
+                                new GeneratorFixed(pbyedge));
+                            test.Run(
+                                showForm: false,
+                                config: config);
                             break;
                     }
                     Console.Clear();

@@ -13,7 +13,6 @@ namespace RenderLib
     using GeometryLib;
     using GeometryLib.Vector;
     using RenderLib.Fields;
-
     using System;
     using System.IO;
     using System.Drawing;
@@ -24,6 +23,8 @@ namespace RenderLib
     using MeshLib.Locators;
     using GeometryLib.Geometry;
     using TestDelaunayGenerator.Smoothing;
+    using System.Diagnostics;
+    using TestDelaunayGenerator.DCELMesh;
 
     /// <summary>
     ///ОО: Компонент визуализации данных (сетки, и сеточных полей, кривых (устарело) ) 
@@ -562,6 +563,14 @@ namespace RenderLib
                 SetData(spData);
                 // Передача данных в прокси/рендер контрол
                 proxyRendererControl.SetData(spData);
+                //TODO параметры отрисовки убрать
+#if DEBUG
+                cb_showMesh.Checked = true;
+                cb_showKnotNamber.Checked = false;
+                cb_opFillValues.Checked = false;
+                cb_showBoudary.Checked = false;
+#endif
+
                 SendOption();
                 // отрисовка в статус бар
                 tSSL_Time.Text = sp.time.ToString("F4");
@@ -578,6 +587,7 @@ namespace RenderLib
                     tLine = new LocatorTriMeshFacet(sp.mesh);
                 }
             }
+
         }
 
         private void cb_showMesh_CheckedChanged(object sender, EventArgs e)
@@ -1118,20 +1128,26 @@ namespace RenderLib
 
         }
 
-        ISmoother smoother = new LaplacianSmoother();
+        SmootherBase smoother = null;
         private void btSmooth_Click(object sender, EventArgs e)
         {
-            ExtendedTriMesh mesh;
+            DcelTriMesh mesh;
             //попытка преобразования
             try
             {
-                mesh = spData.mesh as ExtendedTriMesh;
+                mesh = spData.mesh as DcelTriMesh;
                 if (mesh is null)
                     throw new Exception();
+
+                //если объект сглаживания не инициализирован => инициализация
+                if (smoother is null)
+                {
+                    smoother = new LaplacianSmoother(new SmootherConfig(iterationsCount: 10), mesh);
+                }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Сетка не является типом или не наследуется от {nameof(ExtendedTriMesh)}, " +
+                MessageBox.Show($"Сетка не является типом или не наследуется от {nameof(DcelTriMesh)}, " +
                     $"сглаживание невозможно!");
                 return;
             }
@@ -1143,10 +1159,23 @@ namespace RenderLib
                 MessageBox.Show($"Неверное значение коэффициента! Установлено значение по умолчанию: {smoothRatio}");
                 tbSmoothRatio.Text = smoothRatio.ToString();
             }
-            smoother.Smooth(mesh, smoothRatio);
-#if DEBUG
-            Console.WriteLine($"Выполнено сглаживание с коэффициентом {smoothRatio}");
-#endif
+            smoother.Config.SmoothRatio = smoothRatio;
+            
+            Stopwatch sw = Stopwatch.StartNew();
+            smoother.Smooth();
+            sw.Stop();
+            mesh = smoother.DcelMesh as DcelTriMesh;
+
+            //т.к. IHPoint[] не связано с double[] координатами
+            //заменяем значения вручную
+            for (int i = 0; i < mesh.Points.Length; i++)
+            {
+                mesh.CoordsX[i] = mesh.Points[i].X;
+                mesh.CoordsY[i] = mesh.Points[i].Y;
+            }
+            var spd = new SavePoint();
+            spd.SetSavePoint(0, mesh);
+            SendSavePoint(spd);
         }
     }
 }

@@ -191,6 +191,8 @@ namespace GeometryLib.Locators
             else
             {
                 flag = true;
+                if (res is null)
+                    res = new HPoint(0, 0);
                 res.X = (B2 * C1 - B1 * C2) / det;
                 res.Y = (A1 * C2 - A2 * C1) / det;
             }
@@ -304,10 +306,11 @@ namespace GeometryLib.Locators
             Vector3 prod1 = Vector3.Cross(cut1, new Vector3(v21 - v11));
             Vector3 prod2 = Vector3.Cross(cut1, new Vector3(v22 - v11));
 
+            double eps = double.Epsilon;
             // Отсекаем пограничные случаи
             if (Math.Sign(prod1.Z) == Math.Sign(prod2.Z) ||
-            MEM.Equals(prod1.Z, 0) == true ||
-            MEM.Equals(prod1.Z, 0) == true)
+            MEM.Equals(prod1.Z, 0, eps) == true ||
+            MEM.Equals(prod1.Z, 0, eps) == true)
                 return false;
 
             prod1 = Vector3.Cross(cut2, new Vector3(v11 - v21));
@@ -315,12 +318,14 @@ namespace GeometryLib.Locators
 
             // Отсекаем пограничные случаи
             if (Math.Sign(prod1.Z) == Math.Sign(prod2.Z) ||
-            MEM.Equals(prod1.Z, 0) == true ||
-            MEM.Equals(prod1.Z, 0) == true)
+            MEM.Equals(prod1.Z, 0, eps) == true ||
+            MEM.Equals(prod1.Z, 0, eps) == true)
                 return false;
 
             // точка пересечения
-            p.X = v11.X + cut1.X * Math.Abs(prod1.Z) / Math.Abs(prod2.Z - prod1.Z);
+            if (p is null)
+                p = new HPoint(0, 0);
+            p.X = v11.X + cut1.X * Math.Abs(prod1.Z) / Math.Abs(prod2.Z - prod1.Z);
             p.Y = v11.Y + cut1.Y * Math.Abs(prod1.Z) / Math.Abs(prod2.Z - prod1.Z);
 
             return true;
