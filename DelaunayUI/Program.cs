@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using TestDelaunayGenerator;
+using TestDelaunayGenerator.Boundary;
 
 namespace DelaunayUI
 {
@@ -72,8 +74,25 @@ namespace DelaunayUI
                             test.Run(path);
                             break;
                         case ConsoleKey.F:
-                            test.CreateBenchmarkTestArea(100000, 0);
-                            test.Run();
+                            int pointCnt = 100_000;
+                            int boundVertexCnt = 70;
+                            int pbyedge = (int)(0.1 * pointCnt / boundVertexCnt);
+                            //int pbyedge = 0;
+                            var config = new DelaunatorConfig()
+                            {
+                                IncludeExtTriangles = false,
+                                RestoreBorder = true,
+                                UseClippingPoints = false,
+                                ParallelClippingPoints = true,
+                                IgnoreRestoreBorderException = true
+                            };
+                            test.CreateBenchmarkTestArea(
+                                pointCnt,
+                                boundVertexCnt,
+                                new GeneratorFixed(pbyedge));
+                            test.Run(
+                                showForm: false,
+                                config: config);
                             break;
                     }
                     Console.Clear();

@@ -499,10 +499,10 @@ namespace TestDelaunayGenerator
             {
                 Triangles[0].flag = TriangleState.Internal;
             }
-                #endregion
+            #endregion
 
-                //выделение памяти для массива стека перестроения
-                MEM.Alloc((int)Math.Sqrt(points.Length), ref EdgeStack);
+            //выделение памяти для массива стека перестроения
+            MEM.Alloc((int)Math.Sqrt(points.Length), ref EdgeStack);
             #region Поиск выпуклой оболочки и триангуляции
 
             //проход по всем узлам оболочки, за исключением тех, что уже в ней,
@@ -1545,6 +1545,7 @@ namespace TestDelaunayGenerator
                 boundaryEdgesLst
                 );
 
+            bool stopFlag = false;
             bool missAdj1, missAdj2;
             //проход по всем полуребрам в поисках тех, что указывают на граничную точку
             for (int he = 0; he < HalfEdges.Length; he++)
@@ -1584,6 +1585,11 @@ namespace TestDelaunayGenerator
                 //определение верное
                 if (missAdj2)
                     RestoreEdge(he, boundaryEdges[vid].adjacent2);
+                
+                if (stopFlag)
+                {
+                    break;
+                }
             }
 
             points = pointsLst.ToArray();
@@ -1629,8 +1635,17 @@ namespace TestDelaunayGenerator
 
                 //исключение для выявления аномалий
                 if (splitHe == STOP)
-                    throw new ArgumentException($"{nameof(splitHe)} не определен, " +
-                        $"хотя граничного ребра {(vid, missedVid)} фактически нет!");
+                {
+                    string log = $"{nameof(splitHe)} не определен, " +
+                        $"хотя граничного ребра {(vid, missedVid)} фактически нет!";
+                    if (Config.IgnoreRestoreBorderException)
+                    {
+                        stopFlag = true;
+                        Log.Error(log);
+                        return;
+                    }
+                    throw new ArgumentException(log);
+                }
 
                 //поиск пересечения граничного ребра с ребром he
                 //null - нет пересечения, иначе - точка пересечения

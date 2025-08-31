@@ -245,11 +245,15 @@ namespace DelaunayUI
         /// <param name="pointCnt">количество точек</param>
         /// <param name="boundVertexCnt">количество опорных точек граничного контура</param>
         /// <param name="generator">генератор промежуточных граничных вершин</param>
-        public void CreateBenchmarkTestArea(int pointCnt, int boundVertexCnt = 0, IGeneratorBase generator = null)
+        /// <param name="percentPointsPerEdge">
+        /// относительное количество (процент) промежуточных граничных точек от исходного количества точек
+        /// </param>
+        public void CreateBenchmarkTestArea(
+            int pointCnt,
+            int boundVertexCnt = 0,
+            IGeneratorBase generator = null,
+            double percentPointsPerEdge = 0.00)
         {
-            int N = (int)Math.Sqrt(pointCnt);
-            double edgeLen = 1.0; //длина ребра квадрата
-            double pointIncrement = edgeLen / N; //расстояние между точками по одной координате
             // массивы для псевдослучайного микро смещения координат узлов
             double[] dxx = {0.0000001, 0.0000005, 0.0000002, 0.0000006, 0.0000002,
                             0.0000007, 0.0000003, 0.0000001, 0.0000004, 0.0000009,
@@ -257,8 +261,13 @@ namespace DelaunayUI
             double[] dyy = { 0.0000005, 0.0000002, 0.0000006, 0.0000002, 0.0000004,
                              0.0000007, 0.0000003, 0.0000001, 0.0000001, 0.0000004,
                              0.0000009, 0.0000000, 0.0000003, 0.0000006,  0.0000008 };
-            int idd = 0;
+            
+            int N = (int)Math.Sqrt(pointCnt);
+            double edgeLen = 1.0; //длина ребра квадрата
+            double pointIncrement = edgeLen / N; //расстояние между точками по одной координате
             points = new IHPoint[N * N];
+            
+            int idd = 0;
             for (int i = 0; i < N; i++)
                 for (int j = 0; j < N; j++)
                 {
@@ -268,10 +277,14 @@ namespace DelaunayUI
                     idd = idd % dxx.Length;
                 }
 
+            IHPoint center = new HPoint(0.5, 0.5);
             //граница
             if (boundVertexCnt < 2)
                 return;
-            outerBoundary = TruePolygonVertices(edgeLen / 4, boundVertexCnt, new HPoint(edgeLen/2, edgeLen/2));
+
+            //outerBoundary = TruePolygonVertices(edgeLen / 2, 4, center);
+            outerBoundary = Star(boundVertexCnt / 2, edgeLen / 5, edgeLen / 4, 45, center);
+            //outerBoundary = TruePolygonVertices(edgeLen / 4, boundVertexCnt, new HPoint(edgeLen/2, edgeLen/2));
             container = new BoundaryContainer();
             if (generator is null)
                 generator = new GeneratorFixed(0);
@@ -299,8 +312,32 @@ namespace DelaunayUI
             return vertexes;
         }
 
+        public IHPoint[] Star(int vertexCnt, double innerR, double externalR, double alpha, IHPoint center)
+        {
+            IHPoint[] vertexes = new IHPoint[2 * vertexCnt];
+            double a = alpha;
+            double da = Math.PI / vertexCnt;
+            double l;
+            for (int k = 0; k < 2 * vertexCnt ; k++)
+            {
+                l = k % 2 == 0 ? externalR : innerR;
+                vertexes[k] = new HPoint(center.X + l * Math.Cos(a), center.Y + l * Math.Sin(a));
+                a += da;
+            }
+            return vertexes;
+        }
+
         public Delaunator Run(bool showForm = true, bool serialize = false, DelaunatorConfig config = null)
         {
+            if (config is null)
+                config = new DelaunatorConfig()
+                {
+                    IncludeExtTriangles = false,
+                    RestoreBorder = false,
+                    UseClippingPoints = false,
+                    ParallelClippingPoints = false
+                };
+
             Console.Title = Name;
             if (useLogger)
             {
@@ -320,16 +357,9 @@ namespace DelaunayUI
                         $"Количество точек:{string.Join(",", container.InnerBoundaries.Select(b => b.Points.Length))}");
 
                 }
+                Log.Information($"Конфигурация: {config}");
             }
 
-            if (config is null)
-                config = new DelaunatorConfig()
-                {
-                    IncludeExtTriangles = false,
-                    RestoreBorder = false,
-                    UseClippingPoints = true,
-                    ParallelClippingPoints = false
-                };
             Delaunator delaunator = new Delaunator(points, container, config);
             Stopwatch sw = Stopwatch.StartNew();
             delaunator.Generate();
