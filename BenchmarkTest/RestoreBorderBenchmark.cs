@@ -80,11 +80,11 @@ namespace BenchmarkTest
         //для отсечения треугольников требуется больше точек на ребре
         [IterationSetup(Targets = new string[] {
             nameof(OnlyClippingTriangles),
-            //nameof(UseAllFeatures),
-            //nameof(NonParallelClipping),
-            //nameof(OnlyRestoreBorder),
+            nameof(UseAllFeatures),
+            nameof(NonParallelClipping),
+            nameof(OnlyRestoreBorder),
         })]
-        public void InitBoundaryWithGeneratorMore()
+        public void InitBoundaryWithGenerator()
         {
             int pointsPerEdge = (int)(0.025 * PointCount / BoundaryVertexCount);
             test = new Test(false);
@@ -102,7 +102,7 @@ namespace BenchmarkTest
                 UseClippingPoints = false,
                 ParallelClippingPoints = false
             };
-            ParamArray.delaunator = test.Run(showForm: false);
+            ParamArray.delaunator = test.Run(showForm: false, config: delaunatorConfig);
         }
         #endregion
 
@@ -110,9 +110,9 @@ namespace BenchmarkTest
 
         [IterationSetup(Targets = new string[]
         {
-            nameof(UseAllFeatures),
-            nameof(NonParallelClipping),
-            nameof(OnlyRestoreBorder),
+            //nameof(UseAllFeatures),
+            //nameof(NonParallelClipping),
+            //nameof(OnlyRestoreBorder),
         }
         )]
         public void SetupTest()
@@ -151,7 +151,7 @@ namespace BenchmarkTest
         }
 
         //неэффективен, поэтому вообще не учитываем метод
-        //[Benchmark(Description = "только восстановление границы")]
+        [Benchmark(Description = "только восстановление границы")]
         public void OnlyRestoreBorder()
         {
             delaunatorConfig = new DelaunatorConfig()

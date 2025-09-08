@@ -14,7 +14,9 @@ namespace BenchmarkTest
         static void Main(string[] args)
         {
             //BenchmarkRunner.Run<BenchmarkTestClass>();
-            BenchmarkRunner.Run<RestoreBorderBenchmark>();
+            BenchmarkRunner.Run<AllMethodsBenchmark>();
+            //BenchmarkRunner.Run<RestoreBorderBenchmark>();
+            //BenchmarkRunner.Run<RestoreBorderBetween>();
         }
     }
 }
