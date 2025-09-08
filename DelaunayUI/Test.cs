@@ -64,12 +64,19 @@ namespace DelaunayUI
                 case 0:
                     Name = "simple_square";
                     useBoundary = true;
+                    //outerBoundary = new IHPoint[]
+                    //{
+                    //    new HPoint(0.1, 0.1),
+                    //    new HPoint(0.1, 0.91),
+                    //    new HPoint(0.9, 0.91),
+                    //    new HPoint(0.9, 0.1),
+                    //};
                     outerBoundary = new IHPoint[]
                     {
-                        new HPoint(0.1, 0.1),
+                        new HPoint(0.1, 0.5),
                         new HPoint(0.1, 0.91),
                         new HPoint(0.9, 0.91),
-                        new HPoint(0.9, 0.1),
+                        new HPoint(0.9, 0.5),
                     };
                     innerBoundaries.Add(
                         new IHPoint[]
@@ -77,18 +84,16 @@ namespace DelaunayUI
                             new HPoint(0.3, 0.6),
                             new HPoint(0.31, 0.8),
 
-                            //
-                            //new HPoint(0.42, 0.8),
-                            new HPoint(0.63, 0.8),
-
                             new HPoint(0.7, 0.8),
                             new HPoint(0.7, 0.6),
                             new HPoint(0.54, 0.6),
                         }
                     );
-                    generator = new GeneratorFixed(1);
+                    generator = new GeneratorFixed(0);
                     points = new IHPoint[]
                     {
+                        new HPoint(0.45, 0.85),
+                        new HPoint(0.63, 0.83),
                         new HPoint(0, 0),
                         new HPoint(1, 0),
                         new HPoint(1, 1),
@@ -333,9 +338,9 @@ namespace DelaunayUI
                 config = new DelaunatorConfig()
                 {
                     IncludeExtTriangles = false,
-                    RestoreBorder = false,
+                    RestoreBorder = true,
                     UseClippingPoints = false,
-                    ParallelClippingPoints = false
+                    ParallelClippingPoints = false,
                 };
 
             Console.Title = Name;
@@ -440,8 +445,5 @@ namespace DelaunayUI
                 )
                 .CreateLogger();
         }
-
-
-        public void Foo() { }
     }
 }

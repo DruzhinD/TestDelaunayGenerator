@@ -128,7 +128,8 @@ namespace RenderLib
                     RenderTargetLine(g);
                 // Отрисовка координатных осей
                 if (renderOptions.coordReper == true)
-                    RenderCoordReper(g, colorScheme);
+                    ;
+                    //RenderCoordReper(g, colorScheme);
             }
             catch (Exception exc)
             {
@@ -349,6 +350,7 @@ namespace RenderLib
                     pc = new PointF(0.5f * (p0.X + p1.X), 0.5f * (p0.Y + p1.Y));
                     zoom.WorldToScreen(ref p0);
                     zoom.WorldToScreen(ref p1);
+                    colorScheme.PenBoundaryLine.Color = Color.FromArgb(70, 70, 70);
                     g.DrawLine(colorScheme.PenBoundaryLine, p0, p1);
 
                     if (renderOptions.showKnotNamber == true)
@@ -377,10 +379,12 @@ namespace RenderLib
                 {
                     p0 = new PointF((float)X[bk[i]], (float)Y[bk[i]]);
                     zoom.WorldToScreen(ref p0);
-                    g.FillEllipse(colorScheme.BrushPoint, p0.X - 1.5f, p0.Y - 1.5f, 3, 3);
+                    //TODO изменен размер индекса граничного узла
+                    g.FillEllipse(colorScheme.BrushPoint, p0.X - 1.5f, p0.Y - 1.5f, 6, 6);
                     //if (renderOptions.showKnotNamber == true)
                     {
-                        PointF pp = new PointF(p0.X - 20f, p0.Y);
+                        colorScheme.FontKnot = new Font(colorScheme.FontKnot.FontFamily, 16, FontStyle.Bold);
+                        PointF pp = new PointF(p0.X - 0f, p0.Y);
                         g.DrawString(fbk[i].ToString(), colorScheme.FontKnot, colorScheme.BrushTextKnot, pp);
                         //pp = new PointF(p0.X + 10f, p0.Y);
                         //g.DrawString(bk[i].ToString(), colorScheme.FontKnot, colorScheme.BrushTextKnot, pp);
