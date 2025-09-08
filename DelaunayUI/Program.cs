@@ -77,13 +77,13 @@ namespace DelaunayUI
                         case ConsoleKey.F:
                             int pointCnt = 100_000;
                             int boundVertexCnt = 70;
-                            int pbyedge = (int)(0.1 * pointCnt / boundVertexCnt);
+                            int pbyedge = (int)(0 / 100 * pointCnt / boundVertexCnt);
                             //int pbyedge = 0;
                             var config = new DelaunatorConfig()
                             {
                                 IncludeExtTriangles = false,
                                 RestoreBorder = true,
-                                UseClippingPoints = true,
+                                UseClippingPoints = false,
                                 ParallelClippingPoints = true,
                                 IgnoreRestoreBorderException = true
                             };
@@ -92,7 +92,7 @@ namespace DelaunayUI
                                 boundVertexCnt,
                                 new GeneratorFixed(pbyedge));
                             test.Run(
-                                showForm: true,
+                                showForm: false,
                                 config: config);
                             break;
                     }

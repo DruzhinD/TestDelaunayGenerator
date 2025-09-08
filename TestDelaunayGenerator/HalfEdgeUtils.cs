@@ -173,30 +173,17 @@ namespace TestDelaunayGenerator
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int[] AdjacentEdgesVertex(IList<int> halfEdges, IList<Troika> triangles, int he, bool include = false)
         {
-            int vid = triangles[he / 3][he % 3];
+            int vid = Origin(triangles, he);
             int twinHe = Twin(halfEdges, he);
-            //если нет смежного полуребра, то ищем другое полуребро, которое связано с такой же вершиной
-            if (halfEdges[he] == -1)
-            {
-                //id треугольника и вершины в нем, переданные в качестве аргумента из edgeId
-                int currentTrid = he / 3;
-                int currentVertexId = he % 3;
-                for (int i = 0; i < triangles.Count; i++)
-                {
-                    for (int j = 0; j < 3; j++)
-                    {
-                        //если глобальный id вершины совпал и есть смежное полуребро
-                        if (triangles[i][j] == Origin(triangles, he) &&
-                            halfEdges[i * 3 + j] != -1)
-                            //то используем его как исходное полуребро
-                            he = i * 3 + j;
-                    }
-                }
-            }
-            List<int> segmentHalfEdges = new List<int>();
 
-            //повторное читаем смежное ребро, т.к. исходное могло измениться
-            twinHe = Twin(halfEdges, he);
+            //если нет смежного полуребра, то просто берем предыдущее,
+            //которое находится в том же треугольнике и исходит из вершины vid
+            if (twinHe == -1)
+            {
+                twinHe = Prev(he);
+            }
+
+            List<int> segmentHalfEdges = new List<int>();
 
             // если все также нет смежного полуребра, то вершина является граничной
             // и находится в углу, т.е. входит всего в 1 треугольник =>

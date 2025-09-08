@@ -481,7 +481,6 @@ namespace TestDelaunayGenerator
             // Добавление 1 треугольника в список треугольников
             int trid = AddTriangle(i0, i1, i2, -1, -1, -1) / 3;
             //определение принадлежности первого треугольника
-            //TODO разобраться с этой хуйней
             if (boundaryContainer != null)
             {
 
@@ -494,6 +493,9 @@ namespace TestDelaunayGenerator
                         status = TriangleState.External;
                     Triangles[0].flag = status;
                 }
+
+                if (Config.IncludeExtTriangles)
+                    Triangles[0].flag = TriangleState.Internal;
             }
             else
             {
@@ -1555,6 +1557,8 @@ namespace TestDelaunayGenerator
                 //точка неграничная - пропуск
                 if (pointStatusesLst[vid] != PointStatus.Boundary)
                     continue;
+                if (facesLst[he / 3].flag == TriangleState.Deleted)
+                    continue;
 
                 //смежные полуребра для he
                 //(кроме последнего - последнее не смежное, но содержит смежную вершину!)
@@ -1581,10 +1585,16 @@ namespace TestDelaunayGenerator
                 }
 
                 if (missAdj1)
+                {
                     RestoreEdge(he, boundaryEdges[vid].adjacent1);
+                    //break;
+                }
                 //определение верное
                 if (missAdj2)
+                {
                     RestoreEdge(he, boundaryEdges[vid].adjacent2);
+                    //break;
+                }
                 
                 if (stopFlag)
                 {
@@ -1703,7 +1713,7 @@ namespace TestDelaunayGenerator
                     pointStatusesLst[newVidx] = PointStatus.Boundary;
                     HalfEdgeUtils.LinkBoundaryEdge(boundaryEdgesLst, newVidx, missedVid, exAddedVid);
                     exAddedVid = newVidx;
-
+                    //break;
                     //следующий треугольник содержит missedVid
                     if (nextSplitHe == STOP)
                         break;

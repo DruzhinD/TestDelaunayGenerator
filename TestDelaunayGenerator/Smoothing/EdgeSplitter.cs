@@ -108,8 +108,18 @@ namespace TestDelaunayGenerator.Smoothing
                 boundaryEdges[adj2] = edgeAdj2;
             }
             HalfEdgeUtils.UnLinkTriangle(halfEdges, H0 / 3);
+
+            var tr = faces[H0 / 3];
+            tr.flag = TriangleState.Deleted;
+            faces[H0 / 3] = tr;
+
             if (twinH0 != -1)
+            {
                 HalfEdgeUtils.UnLinkTriangle(halfEdges, twinH0 / 3);
+                tr = faces[twinH0 / 3];
+                tr.flag = TriangleState.Deleted;
+                faces[twinH0 / 3] = tr;
+            }
             return newTrHe;
         }
 
@@ -141,7 +151,7 @@ namespace TestDelaunayGenerator.Smoothing
             for (int i = 0; i < 3; i++)
                 halfEdges.Add(-1);
             Troika tr1 = new Troika();
-            tr1.flag = faces[H0/3].flag;
+            tr1.flag = faces[H0 / 3].flag;
             tr1[0] = vidNew;
             tr1[1] = HalfEdgeUtils.Origin(this.faces, HalfEdgeUtils.Next(H0));
             tr1[2] = HalfEdgeUtils.Origin(this.faces, HalfEdgeUtils.Prev(H0));
