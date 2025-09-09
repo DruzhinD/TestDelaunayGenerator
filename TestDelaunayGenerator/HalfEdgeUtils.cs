@@ -176,12 +176,21 @@ namespace TestDelaunayGenerator
             int vid = Origin(triangles, he);
             int twinHe = Twin(halfEdges, he);
 
-            //если нет смежного полуребра, то просто берем предыдущее,
-            //которое находится в том же треугольнике и исходит из вершины vid
             if (twinHe == -1)
             {
+                Log.Warning($"нет исходящего полуребра для vid:{vid}");
+                //в качестве twinHe устанавливаем предыдущее ребро,
+                //которое исходит из vid
                 twinHe = Prev(he);
+                //если для текущего twinHe нет полуребра,
+                //которое будет смежно с twinHe и указывать на vid,
+                //возвращаем в исходную
+                if (Twin(halfEdges, twinHe) == -1)
+                    twinHe = -1;
+                else
+                    he = Twin(halfEdges, twinHe);
             }
+
 
             List<int> segmentHalfEdges = new List<int>();
 

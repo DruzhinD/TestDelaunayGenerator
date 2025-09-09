@@ -45,8 +45,8 @@ namespace BenchmarkTest
             {
                 List<int> values = new List<int>();
 
-                int startCnt = 200_000;
-                int limit = 200_000;
+                int startCnt = 100_000;
+                int limit = 100_000;
                 int increment = limit / 2;
 
                 for (int p = startCnt; p < limit + 1; p += increment)
