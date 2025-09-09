@@ -1584,16 +1584,15 @@ namespace TestDelaunayGenerator
                         break;
                 }
 
+                //т.к. ребро he принадлежит треугольнику, который будет помечен удаленным, =>
+                //можно восстановить только одно ребро, ибо для второго требуется найти другое ребро
                 if (missAdj1)
                 {
                     RestoreEdge(he, boundaryEdges[vid].adjacent1);
-                    //break;
                 }
-                //определение верное
-                if (missAdj2)
+                else if (missAdj2)
                 {
                     RestoreEdge(he, boundaryEdges[vid].adjacent2);
-                    //break;
                 }
                 
                 if (stopFlag)

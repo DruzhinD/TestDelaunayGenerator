@@ -380,10 +380,10 @@ namespace RenderLib
                     p0 = new PointF((float)X[bk[i]], (float)Y[bk[i]]);
                     zoom.WorldToScreen(ref p0);
                     //TODO изменен размер индекса граничного узла
-                    g.FillEllipse(colorScheme.BrushPoint, p0.X - 1.5f, p0.Y - 1.5f, 6, 6);
+                    g.FillEllipse(colorScheme.BrushPoint, p0.X - 1.5f, p0.Y - 1.5f, 3, 3);
                     //if (renderOptions.showKnotNamber == true)
                     {
-                        colorScheme.FontKnot = new Font(colorScheme.FontKnot.FontFamily, 16, FontStyle.Bold);
+                        //colorScheme.FontKnot = new Font(colorScheme.FontKnot.FontFamily, 16, FontStyle.Bold);
                         PointF pp = new PointF(p0.X - 0f, p0.Y);
                         g.DrawString(fbk[i].ToString(), colorScheme.FontKnot, colorScheme.BrushTextKnot, pp);
                         //pp = new PointF(p0.X + 10f, p0.Y);

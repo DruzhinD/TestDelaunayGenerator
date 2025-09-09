@@ -290,10 +290,14 @@ namespace DelaunayUI
             //outerBoundary = TruePolygonVertices(edgeLen / 2, 4, center);
             outerBoundary = Star(boundVertexCnt / 2, edgeLen / 5, edgeLen / 4, 45, center);
             //outerBoundary = TruePolygonVertices(edgeLen / 4, boundVertexCnt, new HPoint(edgeLen/2, edgeLen/2));
+            //innerBoundaries.Add(Star(boundVertexCnt / 2, edgeLen / 5 / 3, edgeLen / 4 / 3, 45, center));
             container = new BoundaryContainer();
             if (generator is null)
                 generator = new GeneratorFixed(0);
             container.ReplaceOuterBoundary(outerBoundary, generator);
+            if (innerBoundaries.Count > 0)
+                foreach (var inBound in innerBoundaries)
+                    container.AddInnerBoundary(inBound, generator);
         }
 
         /// <summary>
@@ -337,9 +341,9 @@ namespace DelaunayUI
             if (config is null)
                 config = new DelaunatorConfig()
                 {
-                    IncludeExtTriangles = false,
+                    IncludeExtTriangles = true,
                     RestoreBorder = true,
-                    UseClippingPoints = false,
+                    UseClippingPoints = true,
                     ParallelClippingPoints = false,
                 };
 
