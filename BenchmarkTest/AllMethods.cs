@@ -47,8 +47,8 @@ namespace BenchmarkTest
             {
                 List<int> values = new List<int>();
 
-                int startCnt = 200_000;
-                int limit = 200_000;
+                int startCnt = 100_000;
+                int limit = 100_000;
                 int increment = limit / 2;
 
                 for (int p = startCnt; p < limit + 1; p += increment)
@@ -79,6 +79,7 @@ namespace BenchmarkTest
         [IterationSetup(Targets = new string[] {
             nameof(NonRbClipPointSingleThread),
             nameof(NonRbClipPointMultiThread),
+            nameof(NonRbNonCp),
         })]
         public void InitDataWithBetween()
         {
@@ -114,6 +115,22 @@ namespace BenchmarkTest
             };
             test.Run(showForm: false, config: delaunatorConfig);
         }
+
+
+        [Benchmark(Description = "без восстановление границы, отсечение треугольников, без отсечения точек")]
+
+        public void NonRbNonCp()
+        {
+            delaunatorConfig = new DelaunatorConfig()
+            {
+                IncludeExtTriangles = false,
+                RestoreBorder = false,
+                UseClippingPoints = false,
+                ParallelClippingPoints = false
+            };
+            test.Run(showForm: false, config: delaunatorConfig);
+        }
+
 
         [Benchmark(Description = "восстановление границы, отсечение треугольников, отсечение точек (однопоточное)")]
         public void RbClipPointSingleThread()
