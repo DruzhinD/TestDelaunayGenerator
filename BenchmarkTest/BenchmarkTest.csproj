@@ -173,14 +173,10 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AllMethodsBenchmark.cs" />
-    <Compile Include="BenchmarkTestClass.cs" />
-    <Compile Include="CustomColumn.cs" />
+    <Compile Include="MethodIndependence.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="ResPointCntColumn.cs" />
-    <Compile Include="RestoreBorderBetween.cs" />
-    <Compile Include="RestoreBorderBenchmark.cs" />
+    <Compile Include="AllMethods.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

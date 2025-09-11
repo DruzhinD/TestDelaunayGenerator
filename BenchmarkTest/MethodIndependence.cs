@@ -13,12 +13,16 @@ using TestDelaunayGenerator.Boundary;
 
 namespace BenchmarkTest
 {
+    /// <summary>
+    /// В этом бенче представлены методы, которые не зависят от Nb,
+    /// создан для демонстрации этого факта.
+    /// BaseLine - стандартная триангуляция
+    /// </summary>
     [SimpleJob(runStrategy: RunStrategy.Throughput, launchCount: 1, invocationCount: 1, iterationCount: 10, warmupCount: 0)]
     [MedianColumn]
     [Config(typeof(CustomConfig))]
     [JsonExporterAttribute.Full]
-
-    public class AllMethodsBenchmark
+    public class MethodIndependence
     {
         protected class CustomConfig : ManualConfig
         {
@@ -27,14 +31,14 @@ namespace BenchmarkTest
             {
                 // Добавляем метку времени к пути с артефактами
                 //изменяем путь к каталогу
-                ArtifactsPath = $"{nameof(AllMethodsBenchmark)}_{DateTime.Now:yyyyMMdd_HHmmss}";
+                ArtifactsPath = $"независимость от Nb {DateTime.Now:yyyyMMdd_HHmmss}";
             }
         }
+
 
         public Test test;
         public Delaunator delaunator;
         public DelaunatorConfig delaunatorConfig;
-
         #region Параметры
         [ParamsSource(nameof(PointCntValues))]
         public int PointCount { get; set; }
@@ -73,6 +77,13 @@ namespace BenchmarkTest
         }
         #endregion
 
+
+        /// <summary>
+        /// Генерация тестовой оболочки.
+        /// Внутри - генерация точек триангуляции, граничного контура
+        /// </summary>
+        /// <param name="pointsPerEdge"></param>
+        /// <returns></returns>
         Test CreateTest(int pointsPerEdge)
         {
             var test = new Test(false);
@@ -81,10 +92,10 @@ namespace BenchmarkTest
         }
 
         #region подготовка к итерации
+
         //для отсечения треугольников требуется больше точек на ребре
         [IterationSetup(Targets = new string[] {
-            nameof(OnlyClippingTriangles),
-            nameof(ClippingPointsWithoutRestoreBorder)
+            nameof(OnlyClippingTrianglesTriangulation),
         })]
         public void InitBoundaryWithGenerator()
         {
@@ -92,22 +103,47 @@ namespace BenchmarkTest
             test = CreateTest(pointsPerEdge);
         }
 
-
         //без промежуточных вершин на ребрах
         [IterationSetup(Targets = new string[] {
-            nameof(RestoreBorderWithoutClippingPoints),
-            nameof(AllMethods)
+            //nameof(DefaultTriangulation),
+            //nameof(OnlyClippingTrianglesTriangulation),
+            nameof(ClipTrWithRbTriangulation)
         })]
         public void InitWithoutBetweenPoints()
         {
             test = CreateTest(0);
         }
 
+        //для стандартной триангуляции без ограничений
+        [IterationSetup(Targets = new string[] {
+            nameof(DefaultTriangulation),
+        })]
+        public void InitDefaultTriangulation()
+        {
+            test = new Test(false);
+            test.CreateBenchmarkTestArea(PointCount, 0);
+        }
+
         #endregion
 
-        //только отсечение треугольников, без восстановления границы и без отсечения точек
-        [Benchmark(Baseline = true, Description = "Только отсечение треугольников")]
-        public void OnlyClippingTriangles()
+        #region Методы триангуляции
+
+        [Benchmark(Description = "Стандартная триангуляция, без отсечений (точек/треугольников) и без восстановления границы", Baseline = true)]
+        public void DefaultTriangulation()
+        {
+            delaunatorConfig = new DelaunatorConfig()
+            {
+                IncludeExtTriangles = true,
+                RestoreBorder = false,
+                UseClippingPoints = false,
+                ParallelClippingPoints = false
+            };
+            test.Run(showForm: false, config: delaunatorConfig);
+        }
+
+
+        [Benchmark(Description = "триангуляция с отсечением треугольников, без отсечения точек и без восстановления границы")]
+        public void OnlyClippingTrianglesTriangulation()
         {
             delaunatorConfig = new DelaunatorConfig()
             {
@@ -119,8 +155,8 @@ namespace BenchmarkTest
             test.Run(showForm: false, config: delaunatorConfig);
         }
 
-        [Benchmark(Description = "восстановление границы, без отсечения точек")]
-        public void RestoreBorderWithoutClippingPoints()
+        [Benchmark(Description = "триангуляция с отсечением треугольников и с восстановлением границы")]
+        public void ClipTrWithRbTriangulation()
         {
             delaunatorConfig = new DelaunatorConfig()
             {
@@ -132,30 +168,6 @@ namespace BenchmarkTest
             test.Run(showForm: false, config: delaunatorConfig);
         }
 
-        [Benchmark(Description = "отсечение точек (однопоточное), восстановление границы")]
-        public void AllMethods()
-        {
-            delaunatorConfig = new DelaunatorConfig()
-            {
-                IncludeExtTriangles = false,
-                RestoreBorder = true,
-                UseClippingPoints = true,
-                ParallelClippingPoints = false
-            };
-            test.Run(showForm: false, config: delaunatorConfig);
-        }
-
-        [Benchmark(Description = "отсечение точек (однопоточное), без восстановления границы")]
-        public void ClippingPointsWithoutRestoreBorder()
-        {
-            delaunatorConfig = new DelaunatorConfig()
-            {
-                IncludeExtTriangles = false,
-                RestoreBorder = false,
-                UseClippingPoints = true,
-                ParallelClippingPoints = false
-            };
-            test.Run(showForm: false, config: delaunatorConfig);
-        }
+        #endregion
     }
 }

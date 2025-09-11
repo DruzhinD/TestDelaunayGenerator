@@ -13,10 +13,8 @@ namespace BenchmarkTest
     {
         static void Main(string[] args)
         {
-            //BenchmarkRunner.Run<BenchmarkTestClass>();
-            BenchmarkRunner.Run<AllMethodsBenchmark>();
-            //BenchmarkRunner.Run<RestoreBorderBenchmark>();
-            //BenchmarkRunner.Run<RestoreBorderBetween>();
+            //BenchmarkRunner.Run<MethodIndependence>();
+            BenchmarkRunner.Run<AllMethods>();
         }
     }
 }
