@@ -95,7 +95,7 @@ namespace BenchmarkTest
 
         //для отсечения треугольников требуется больше точек на ребре
         [IterationSetup(Targets = new string[] {
-            nameof(OnlyClippingTrianglesTriangulation),
+            nameof(NonRbNonCp),
         })]
         public void InitBoundaryWithGenerator()
         {
@@ -107,7 +107,7 @@ namespace BenchmarkTest
         [IterationSetup(Targets = new string[] {
             //nameof(DefaultTriangulation),
             //nameof(OnlyClippingTrianglesTriangulation),
-            nameof(ClipTrWithRbTriangulation)
+            nameof(RbBase)
         })]
         public void InitWithoutBetweenPoints()
         {
@@ -142,26 +142,26 @@ namespace BenchmarkTest
         }
 
 
-        [Benchmark(Description = "триангуляция с отсечением треугольников, без отсечения точек и без восстановления границы")]
-        public void OnlyClippingTrianglesTriangulation()
+        [Benchmark(Description = "триангуляция с отсечением треугольников и с восстановлением границы")]
+        public void RbBase()
         {
             delaunatorConfig = new DelaunatorConfig()
             {
                 IncludeExtTriangles = false,
-                RestoreBorder = false,
+                RestoreBorder = true,
                 UseClippingPoints = false,
                 ParallelClippingPoints = false
             };
             test.Run(showForm: false, config: delaunatorConfig);
         }
 
-        [Benchmark(Description = "триангуляция с отсечением треугольников и с восстановлением границы")]
-        public void ClipTrWithRbTriangulation()
+        [Benchmark(Description = "триангуляция с отсечением треугольников, без отсечения точек и без восстановления границы")]
+        public void NonRbNonCp()
         {
             delaunatorConfig = new DelaunatorConfig()
             {
                 IncludeExtTriangles = false,
-                RestoreBorder = true,
+                RestoreBorder = false,
                 UseClippingPoints = false,
                 ParallelClippingPoints = false
             };

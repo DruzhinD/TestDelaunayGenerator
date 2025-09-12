@@ -13,8 +13,8 @@ namespace BenchmarkTest
     {
         static void Main(string[] args)
         {
-            //BenchmarkRunner.Run<MethodIndependence>();
-            BenchmarkRunner.Run<AllMethods>();
+            BenchmarkRunner.Run<MethodIndependence>();
+            //BenchmarkRunner.Run<AllMethods>();
         }
     }
 }
