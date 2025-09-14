@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using TestDelaunayGenerator;
 using TestDelaunayGenerator.Boundary;
@@ -75,25 +76,30 @@ namespace DelaunayUI
                             test.Run(path);
                             break;
                         case ConsoleKey.F:
-                            int pointCnt = 100_000;
-                            int boundVertexCnt = 200;
-                            int pbyedge = (int)(0 / 100 * pointCnt / boundVertexCnt);
-                            //int pbyedge = 0;
-                            var config = new DelaunatorConfig()
+                            for (int i = 1; i <= 20; i++)
                             {
-                                IncludeExtTriangles = false,
-                                RestoreBorder = true,
-                                UseClippingPoints = true,
-                                ParallelClippingPoints = true,
-                                IgnoreRestoreBorderException = true
-                            };
-                            test.CreateBenchmarkTestArea(
-                                pointCnt,
-                                boundVertexCnt,
-                                new GeneratorFixed(pbyedge));
-                            test.Run(
-                                showForm: true,
-                                config: config);
+                                test = new Test(true);
+                                int pointCnt = 100_000;
+                                int boundVertexCnt = 10 * i;
+                                int pbyedge = (int)(0 / 100 * pointCnt / boundVertexCnt);
+                                //int pbyedge = 0;
+                                var config = new DelaunatorConfig()
+                                {
+                                    IncludeExtTriangles = false,
+                                    RestoreBorder = true,
+                                    UseClippingPoints = true,
+                                    ParallelClippingPoints = false,
+                                    IgnoreRestoreBorderException = true
+                                };
+                                test.CreateBenchmarkTestArea(
+                                    pointCnt,
+                                    boundVertexCnt,
+                                    new GeneratorFixed(pbyedge));
+                                test.Run(
+                                    showForm: true,
+                                    config: config);
+                                Thread.Sleep(100);
+                            }
                             break;
                     }
                     Console.Clear();
