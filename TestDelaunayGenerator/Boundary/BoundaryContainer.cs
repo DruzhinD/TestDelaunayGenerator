@@ -53,24 +53,28 @@ namespace TestDelaunayGenerator.Boundary
                     return this.allBoundaryPoints;
 
                 //если внешней оболочки не задано, то поднимаем исключение
-                if (this.OuterBoundary is null)
-                    throw new ArgumentNullException($"Внешняя оболочка не задана");
+                if (this.OuterBoundary is null && this.innerBoundaries.Count == 0)
+                    throw new ArgumentException($"Передан пустой контейнер с граничными контурами");
 
                 //количество всех точек
-                int pointsCnt = this.OuterBoundary.Points.Length +
-                    innerBoundaries
-                    .Sum(x => x.Points.Length);
+                int pointsCnt = 0;
+                if (this.OuterBoundary != null)
+                    pointsCnt += this.OuterBoundary.Points.Length;
+                pointsCnt += innerBoundaries.Sum(x => x.Points.Length);
 
                 //заполняем массив точек
                 allBoundaryPoints = new IHPoint[pointsCnt];
                 //точки внешней оболочки
-                outerBoundary.Points.CopyTo(allBoundaryPoints, 0);
+                if (this.OuterBoundary != null)
+                    OuterBoundary.Points.CopyTo(allBoundaryPoints, 0);
                 //точки внутренних оболочек
                 if (this.innerBoundaries.Count > 0)
                 {
                     //текущее смещение по точкам
                     //учитываем уже размещенные количество точек внешней оболочки
-                    int pointsOffset = this.OuterBoundary.Points.Length;
+                    int pointsOffset = 0;
+                    if (this.OuterBoundary != null)
+                        pointsOffset += this.OuterBoundary.Points.Length;
                     foreach (var innerBound in innerBoundaries)
                     {
                         innerBound.Points.CopyTo(allBoundaryPoints, pointsOffset);
@@ -86,20 +90,39 @@ namespace TestDelaunayGenerator.Boundary
         /// <summary>
         /// Индексатор по граничным оболочкам
         /// </summary>
-        /// <param name="boundId">index=0 - внешняя оболочка, остальные - внутренние (при наличии)</param>
+        /// <param name="boundId">index=0 - внешняя оболочка (при наличии), остальные - внутренние (при наличии)</param>
         /// <returns></returns>
         /// <exception cref="ArgumentException">неверный index оболочки</exception>
         public BoundaryHull this[int boundId]
         {
             get
             {
+                bool existOuter = this.OuterBoundary != null;
+
+                //валидация
+                if (existOuter)
+                {
+                    if (boundId - 1 > this.innerBoundaries.Count - 1)
+                        throw new ArgumentException($"{nameof(boundId)} вышел за пределены");
+                }
+                else
+                {
+                    if (boundId > this.innerBoundaries.Count - 1)
+                        throw new ArgumentException($"{nameof(boundId)} вышел за пределены");
+                }
+
                 if (boundId == 0)
-                    return this.OuterBoundary;
+                {
+                    if (existOuter)
+                        return this.OuterBoundary;
+                    else
+                        return this.InnerBoundaries[0];
+                }
 
-                if (boundId - 1 > this.innerBoundaries.Count - 1)
-                    throw new ArgumentException($"{nameof(boundId)} вышел за пределены");
-
-                return this.innerBoundaries[boundId - 1];
+                if (existOuter)
+                    return this.innerBoundaries[boundId - 1];
+                else
+                    return this.InnerBoundaries[boundId];
             }
         }
 
@@ -173,7 +196,8 @@ namespace TestDelaunayGenerator.Boundary
         //генератор
         public IEnumerator<BoundaryHull> GetEnumerator()
         {
-            yield return this.outerBoundary;
+            if (this.OuterBoundary != null)
+                yield return this.OuterBoundary;
             for (int i = 0; i < this.innerBoundaries.Count; i++)
             {
                 yield return innerBoundaries[i];
@@ -183,6 +207,17 @@ namespace TestDelaunayGenerator.Boundary
         /// <summary>
         /// Количество граничных оболочек, включая внешнюю и внутренние
         /// </summary>
-        public int Count => 1 + this.innerBoundaries.Count;
+        public int Count
+        {
+            get
+            {
+                if (this.OuterBoundary == null)
+                {
+                    return this.InnerBoundaries.Count;
+                }
+                return 1 + this.innerBoundaries.Count;
+            }
+
+        }
     }
 }

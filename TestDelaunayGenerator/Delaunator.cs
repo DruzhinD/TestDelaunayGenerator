@@ -61,9 +61,9 @@ namespace TestDelaunayGenerator
             this.points = points;
 
             //валидация контейнера границ
-            if (boundaryContainer != null && boundaryContainer.OuterBoundary is null)
+            if (boundaryContainer != null && (boundaryContainer.OuterBoundary is null && boundaryContainer.InnerBoundaries.Count == 0))
                 throw new ArgumentException(
-                    "При инициализированном контейнере оболочек должна быть задана как минимум внешняя оболочка!");
+                    "При инициализированном контейнере оболочек должна быть задана как минимум 1 внешняя/внутренняя оболочка!");
             this.boundaryContainer = boundaryContainer;
 
             Config = config;
@@ -331,9 +331,18 @@ namespace TestDelaunayGenerator
                 int pointCnt = Points.Length;
                 //отсечение точек
                 if (Config.UseClippingPoints)
+                {
                     pointCnt = this.ClippingPoints();
+#if DEBUG
+                    Log.Information($"Количество точек после отсечения:{pointCnt}. " +
+                        $"Осталось {Math.Round((double)pointCnt / Points.Length, 3) * 100}%");
+#endif
+                }
                 //объединение с множеством граничных точек
                 CombinePointSets(pointCnt);
+#if DEBUG
+                Log.Information($"Колво точек в выпуклой триангуляции:{Points.Length}");
+#endif
 
                 //если не совпадает с размером массива точек, то обрезаем массив до нужного размера
                 if (this.points.Length != pointStatuses.Length)
@@ -652,11 +661,25 @@ namespace TestDelaunayGenerator
             HalfEdges = HalfEdges.Take(triangleVertexCounter).ToArray();
             Triangles = Triangles.Take(triangleVertexCounter / 3).ToArray();
 
+            if (this.boundaryContainer != null && Config.RestoreBorder)
+            {
+                RestoreBorder();
+                ClippingTriangles();
+            }
+            //удаление связей с внешними треугольниками в полуребрах
+            if (!Config.IncludeExtTriangles)
+                ErraseExternalTriangles();
+
+
             //граничная оболочка не задана
             if (this.boundaryContainer is null)
             {
                 this.boundaryEdges = new EdgePair[points.Length];
-
+            }
+            //если внешний граничный контур, не задан,
+            //то выпуклая оболочка является внешним контуром
+            if (this.boundaryContainer is null || this.boundaryContainer.OuterBoundary is null)
+            { 
                 //отмечаем граничные ребра
                 //отмечаем точки, формирующие оболочку граничными
                 for (int i = 0; i < Hull.Length; i++)
@@ -671,16 +694,6 @@ namespace TestDelaunayGenerator
                     this.boundaryEdges[vid] = new EdgePair(vid, prevVid, nextVid, 0);
                 }
             }
-
-            if (Config.RestoreBorder)
-            {
-                RestoreBorder();
-                ClippingTriangles();
-
-            }
-            //удаление связей с внешними треугольниками в полуребрах
-            if (!Config.IncludeExtTriangles)
-                ErraseExternalTriangles();
         }
 
         /// <summary>
@@ -1319,19 +1332,24 @@ namespace TestDelaunayGenerator
 
             //проверка вхождения в прямоугольник, описанный около
             //внешней оболочки
-            if (this.boundaryContainer.OuterBoundary.BaseVertexes.Length > 4)
+            if (this.BoundaryContainer.OuterBoundary != null)
             {
-                crossCount = CountIntersections(point, this.boundaryContainer.OuterBoundary.OutRect);
-                //четное - не принадлежит, нечетное - находится в области
+
+                if (this.boundaryContainer.OuterBoundary.BaseVertexes.Length > 4)
+                {
+                    crossCount = CountIntersections(point, this.boundaryContainer.OuterBoundary.OutRect);
+                    //четное - не принадлежит, нечетное - находится в области
+                    if (crossCount % 2 == 0)
+                        return false;
+                }
+
+                //TODO проверить количество пересечений для Internal и External. Мб значение не больше двух
+                //проверка вхождения во внешнюю оболочку
+                crossCount = CountIntersections(point, this.boundaryContainer.OuterBoundary.BaseVertexes);
+                //требуется принадлежность области
                 if (crossCount % 2 == 0)
                     return false;
             }
-
-            //проверка вхождения во внешнюю оболочку
-            crossCount = CountIntersections(point, this.boundaryContainer.OuterBoundary.BaseVertexes);
-            //требуется принадлежность области
-            if (crossCount % 2 == 0)
-                return false;
 
             //проверка нахождения ЗА пределами прямоугольников, описанных около
             // внутренних оболочек
@@ -1418,7 +1436,7 @@ namespace TestDelaunayGenerator
             if (this.boundaryContainer is null)
                 return;
             //задана ли внешняя оболочка
-            if (this.boundaryContainer.OuterBoundary is null)
+            if (this.boundaryContainer.OuterBoundary is null && this.boundaryContainer.Count == 0)
                 throw new ArgumentNullException($"контейнер границ передан, но не задана внешняя оболочка!");
 
             InitializeExternalPoint();
@@ -1526,6 +1544,9 @@ namespace TestDelaunayGenerator
         /// </summary>
         protected void RestoreBorder()
         {
+#if DEBUG
+            Log.Information($"Восстановление граничного контура");
+#endif
             if (boundaryContainer is null)
                 return;
 
@@ -1594,12 +1615,21 @@ namespace TestDelaunayGenerator
                 {
                     RestoreEdge(he, boundaryEdges[vid].adjacent2);
                 }
-                
+
                 if (stopFlag)
                 {
                     break;
                 }
             }
+
+#if DEBUG
+            int newPointsCnt = pointsLst.Count - points.Length;
+            Log.Information($"новых точек:{newPointsCnt} " +
+                $"+{Math.Round((double)newPointsCnt / points.Length, 3) * 100}%");
+            int newTrCnt = facesLst.Count - Triangles.Length;
+            Log.Information($"новых треугольников:{newTrCnt} " +
+                $"+{Math.Round((double)newTrCnt / Triangles.Length, 3) * 100}%");
+#endif
 
             points = pointsLst.ToArray();
             HalfEdges = halfEdgesLst.ToArray();

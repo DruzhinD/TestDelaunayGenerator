@@ -2,6 +2,7 @@
 using CommonLib.Geometry;
 using GeometryLib.Vector;
 using MeshLib;
+using PseudoRegularGrid;
 using RenderLib;
 using Serilog;
 using System;
@@ -251,7 +252,8 @@ namespace DelaunayUI
         /// <param name="boundVertexCnt">количество опорных точек граничного контура</param>
         /// <param name="generator">генератор промежуточных граничных вершин</param>
         /// <param name="percentPointsPerEdge">
-        /// относительное количество (процент) промежуточных граничных точек от исходного количества точек
+        /// относительное количество (процент) промежуточных граничных точек от исходного количества точек.
+        /// Значение в пределах от 0 до 1
         /// </param>
         public void CreateBenchmarkTestArea(
             int pointCnt,
@@ -259,81 +261,30 @@ namespace DelaunayUI
             IGeneratorBase generator = null,
             double percentPointsPerEdge = 0.00)
         {
-            // массивы для псевдослучайного микро смещения координат узлов
-            double[] dxx = {0.0000001, 0.0000005, 0.0000002, 0.0000006, 0.0000002,
-                            0.0000007, 0.0000003, 0.0000001, 0.0000004, 0.0000009,
-                            0.0000000, 0.0000003, 0.0000006, 0.0000004, 0.0000008 };
-            double[] dyy = { 0.0000005, 0.0000002, 0.0000006, 0.0000002, 0.0000004,
-                             0.0000007, 0.0000003, 0.0000001, 0.0000001, 0.0000004,
-                             0.0000009, 0.0000000, 0.0000003, 0.0000006,  0.0000008 };
-            
+
             int N = (int)Math.Sqrt(pointCnt);
             double edgeLen = 1.0; //длина ребра квадрата
             double pointIncrement = edgeLen / N; //расстояние между точками по одной координате
-            points = new IHPoint[N * N];
-            
-            int idd = 0;
-            for (int i = 0; i < N; i++)
-                for (int j = 0; j < N; j++)
-                {
-                    // тряска координат
-                    points[i * N + j] = new HPoint(pointIncrement * i + dxx[idd], pointIncrement * j + dyy[idd]);
-                    idd++;
-                    idd = idd % dxx.Length;
-                }
 
-            IHPoint center = new HPoint(0.5, 0.5);
+            points = new PseudoRegularGridGenerator().GenerateGrid(N, N, cellSize: edgeLen / N).ToArray();
+
+            IHPoint center = new HPoint(edgeLen / 2, edgeLen / 2);
             //граница
             if (boundVertexCnt < 2)
                 return;
 
-            //outerBoundary = TruePolygonVertices(edgeLen / 2, 4, center);
-            outerBoundary = Star(boundVertexCnt / 2, edgeLen / 5, edgeLen / 4, 45, center);
-            //outerBoundary = TruePolygonVertices(edgeLen / 4, boundVertexCnt, new HPoint(edgeLen/2, edgeLen/2));
-            //innerBoundaries.Add(Star(boundVertexCnt / 2, edgeLen / 5 / 3, edgeLen / 4 / 3, 45, center));
+            //внутренний контур
+            var innerBound = GeneratorUtils.TruePolygonVertices(edgeLen / 4, boundVertexCnt, center);
+            innerBoundaries.Add(innerBound);
+
             container = new BoundaryContainer();
             if (generator is null)
-                generator = new GeneratorFixed(0);
-            container.ReplaceOuterBoundary(outerBoundary, generator);
+                generator = new GeneratorFixed((int)(percentPointsPerEdge * points.Length));
+            if (outerBoundary != null)
+                container.ReplaceOuterBoundary(outerBoundary, generator);
             if (innerBoundaries.Count > 0)
                 foreach (var inBound in innerBoundaries)
                     container.AddInnerBoundary(inBound, generator);
-        }
-
-        /// <summary>
-        /// Генератор правильного многоугольника
-        /// </summary>
-        /// <param name="radius"></param>
-        /// <param name="vertexesCnt"></param>
-        /// <param name="center"></param>
-        /// <returns></returns>
-        static IHPoint[] TruePolygonVertices(double radius, int vertexesCnt, IHPoint center)
-        {
-            var vertexes = new IHPoint[vertexesCnt];
-
-            for (int i = 0; i < vertexesCnt; i++)
-            {
-                double theta = 2 * Math.PI * i / vertexesCnt;
-                double x = center.X + radius * Math.Cos(theta);
-                double y = center.Y + radius * Math.Sin(theta);
-                vertexes[i] = new HPoint(x, y);
-            }
-            return vertexes;
-        }
-
-        public IHPoint[] Star(int vertexCnt, double innerR, double externalR, double alpha, IHPoint center)
-        {
-            IHPoint[] vertexes = new IHPoint[2 * vertexCnt];
-            double a = alpha;
-            double da = Math.PI / vertexCnt;
-            double l;
-            for (int k = 0; k < 2 * vertexCnt ; k++)
-            {
-                l = k % 2 == 0 ? externalR : innerR;
-                vertexes[k] = new HPoint(center.X + l * Math.Cos(a), center.Y + l * Math.Sin(a));
-                a += da;
-            }
-            return vertexes;
         }
 
         public Delaunator Run(bool showForm = true, bool serialize = false, DelaunatorConfig config = null)
@@ -341,7 +292,7 @@ namespace DelaunayUI
             if (config is null)
                 config = new DelaunatorConfig()
                 {
-                    IncludeExtTriangles = true,
+                    IncludeExtTriangles = false,
                     RestoreBorder = true,
                     UseClippingPoints = true,
                     ParallelClippingPoints = false,
@@ -359,8 +310,15 @@ namespace DelaunayUI
 
                 if (container != null)
                 {
-                    Log.Information($"Внешняя граница. " +
-                        $"Количество точек:{container.OuterBoundary.Points.Length}");
+                    if (this.container.OuterBoundary == null)
+                    {
+                        Log.Information($"Внешняя оболочка не задана");
+                    }
+                    else
+                    {
+                        Log.Information($"Внешняя граница. " +
+                            $"Количество точек:{container.OuterBoundary.Points.Length}");
+                    }
                     Log.Information($"Внутренняя граница. " +
                         $"Количество контуров:{container.InnerBoundaries.Count}; " +
                         $"Количество точек:{string.Join(",", container.InnerBoundaries.Select(b => b.Points.Length))}");
@@ -376,7 +334,12 @@ namespace DelaunayUI
             var mesh = delaunator.ToMesh();
 
             if (useLogger)
-                Log.Information($"Общее количество точек:{delaunator.Points.Length}. Время выполнения:{sw.Elapsed.TotalSeconds}(c)");
+            {
+                Log.Information($"Итоговая сводка:");
+                Log.Information($"Общее количество точек:{delaunator.Points.Length}.");
+                Log.Information($"Общее количество треугольников:{delaunator.Triangles.Length}.");
+                Log.Information($"Время выполнения:{sw.Elapsed.TotalSeconds}(c)");
+            }
 
             IRestrictedDCEL dcel = delaunator.ToRestrictedDCEL();
             if (serialize)
@@ -431,7 +394,7 @@ namespace DelaunayUI
             string logTemplate = "[{Timestamp:dd.MM.yy HH:mm:ss} {Level:u4}] {Message:lj}{NewLine}{Exception}";
             Log.Logger = new LoggerConfiguration()
                 //уровень
-                .MinimumLevel.Debug()
+                .MinimumLevel.Information()
                 //запись в консоль
                 .WriteTo.Console(
                     restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Debug,
