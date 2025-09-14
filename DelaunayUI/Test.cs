@@ -266,7 +266,7 @@ namespace DelaunayUI
             double edgeLen = 1.0; //длина ребра квадрата
             double pointIncrement = edgeLen / N; //расстояние между точками по одной координате
 
-            points = new PseudoRegularGridGenerator().GenerateGrid(N, N, cellSize: edgeLen / N).ToArray();
+            points = new PseudoRegularGridGenerator().GenerateGrid(N, N, cellSize: edgeLen / N, 0.05).ToArray();
 
             IHPoint center = new HPoint(edgeLen / 2, edgeLen / 2);
             //граница
@@ -287,7 +287,7 @@ namespace DelaunayUI
                     container.AddInnerBoundary(inBound, generator);
         }
 
-        public Delaunator Run(bool showForm = true, bool serialize = false, DelaunatorConfig config = null)
+        public Delaunator Run(bool showForm = true, bool serialize = false, DelaunatorConfig config = null, bool stopOnTwo = true)
         {
             if (config is null)
                 config = new DelaunatorConfig()
@@ -328,6 +328,7 @@ namespace DelaunayUI
             }
 
             Delaunator delaunator = new Delaunator(points, container, config);
+            delaunator.StopOnTwo = stopOnTwo;
             Stopwatch sw = Stopwatch.StartNew();
             delaunator.Generate();
             sw.Stop();
