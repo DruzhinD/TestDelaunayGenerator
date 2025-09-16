@@ -38,19 +38,20 @@ namespace DelaunayUI
         /// <summary>
         /// Звездообразный контур
         /// </summary>
-        /// <param name="vertexCnt"></param>
+        /// <param name="vertexCnt">округляется до ближайшего меньшего четного числа</param>
         /// <param name="innerR"></param>
         /// <param name="externalR"></param>
-        /// <param name="alpha"></param>
+        /// <param name="alpha">в радианах. Не влияет на форму контура, влияет на угол поворота</param>
         /// <param name="center"></param>
         /// <returns></returns>
-        public IHPoint[] Star(int vertexCnt, double innerR, double externalR, double alpha, IHPoint center)
+        public static IHPoint[] Star(int vertexCnt, double innerR, double externalR, double alpha, IHPoint center)
         {
-            IHPoint[] vertexes = new IHPoint[2 * vertexCnt];
+            int startVertexCnt = (vertexCnt / 2);
+            IHPoint[] vertexes = new IHPoint[2 * startVertexCnt];
             double a = alpha;
-            double da = Math.PI / vertexCnt;
+            double da = Math.PI / startVertexCnt;
             double l;
-            for (int k = 0; k < 2 * vertexCnt; k++)
+            for (int k = 0; k < 2 * startVertexCnt; k++)
             {
                 l = k % 2 == 0 ? externalR : innerR;
                 vertexes[k] = new HPoint(center.X + l * Math.Cos(a), center.Y + l * Math.Sin(a));
@@ -58,5 +59,20 @@ namespace DelaunayUI
             }
             return vertexes;
         }
+    }
+
+    /// <summary>
+    /// Выбор формы контура для генерации
+    /// </summary>
+    public enum Figure
+    {
+        /// <summary>
+        /// Правильный многоугольник
+        /// </summary>
+        RegularPolygon,
+        /// <summary>
+        /// звезда
+        /// </summary>
+        RegularStar
     }
 }

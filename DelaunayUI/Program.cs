@@ -76,11 +76,10 @@ namespace DelaunayUI
                             test.Run(path);
                             break;
                         case ConsoleKey.F:
-                            for (int i = 1; i <= 20; i++)
+                            for (int boundVertexCnt = 10; boundVertexCnt <= 200; boundVertexCnt+=20)
                             {
                                 test = new Test(true);
                                 int pointCnt = 100_000;
-                                int boundVertexCnt = 10 * i;
                                 int pbyedge = (int)(0 / 100 * pointCnt / boundVertexCnt);
                                 //int pbyedge = 0;
                                 var config = new DelaunatorConfig()
@@ -95,7 +94,8 @@ namespace DelaunayUI
                                     pointCnt,
                                     boundVertexCnt,
                                     new GeneratorFixed(pbyedge),
-                                    partAfterClippingPoints: 0.25);
+                                    partAfterClippingPoints: 0.25,
+                                    Figure.RegularStar);
                                 test.Run(
                                     showForm: true,
                                     config: config);

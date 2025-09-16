@@ -1550,15 +1550,15 @@ namespace TestDelaunayGenerator
             if (boundaryContainer is null)
                 return;
 
-            List<IHPoint> pointsLst = new List<IHPoint>((int)(Points.Length * 1.25));
+            List<IHPoint> pointsLst = new List<IHPoint>((int)(Points.Length * 2));
             pointsLst.AddRange(Points);
-            List<int> halfEdgesLst = new List<int>((int)(HalfEdges.Length * 1.25));
+            List<int> halfEdgesLst = new List<int>((int)(HalfEdges.Length * 2));
             halfEdgesLst.AddRange(HalfEdges);
-            List<PointStatus> pointStatusesLst = new List<PointStatus>((int)(pointStatuses.Length * 1.25));
+            List<PointStatus> pointStatusesLst = new List<PointStatus>((int)(pointStatuses.Length * 2));
             pointStatusesLst.AddRange(pointStatuses);
-            List<Troika> facesLst = new List<Troika>((int)(Triangles.Length * 1.25));
+            List<Troika> facesLst = new List<Troika>((int)(Triangles.Length * 2));
             facesLst.AddRange(Triangles);
-            List<EdgePair> boundaryEdgesLst = new List<EdgePair>((int)(boundaryEdges.Length * 1.25));
+            List<EdgePair> boundaryEdgesLst = new List<EdgePair>((int)(boundaryEdges.Length * 2));
             boundaryEdgesLst.AddRange(boundaryEdges);
             EdgeSplitter edgeSplitter = new EdgeSplitter(
                 pointsLst,

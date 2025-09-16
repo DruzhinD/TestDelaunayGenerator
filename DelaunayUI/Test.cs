@@ -259,7 +259,9 @@ namespace DelaunayUI
             int pointCnt,
             int boundVertexCnt = 0,
             IGeneratorBase generator = null,
-            double partAfterClippingPoints = 0.5)
+            double partAfterClippingPoints = 0.5,
+            Figure figureType = Figure.RegularPolygon
+            )
         {
 
             int N = (int)Math.Sqrt(pointCnt);
@@ -273,17 +275,36 @@ namespace DelaunayUI
             if (boundVertexCnt < 2)
                 return;
 
-            double outerRadius = edgeLen * Math.Sqrt(
-                2 * (1 - partAfterClippingPoints) / 
+            //внутренний контур
+            IHPoint[] innerBoundary = null;
+            if (figureType == Figure.RegularPolygon)
+            {
+                double outerRadius = edgeLen * Math.Sqrt(
+                2 * (1 - partAfterClippingPoints) /
                 (boundVertexCnt * Math.Sin(2 * Math.PI / boundVertexCnt))
                 );
 
-            outerRadius -= outerRadius * 0.005;
+                //радиус описанной окружности внешнего N-угольника
+                outerRadius -= outerRadius * 0.005;
+                innerBoundary = GeneratorUtils.TruePolygonVertices(outerRadius, boundVertexCnt, center);
+                //innerBoundary = GeneratorUtils.Star(boundVertexCnt, outerRadius / 2, edgeLen * 0.45, Math.PI / 2, center);
 
-            //внутренний контур
-            //остается +- 50% точек edgeLen / 2.5
-            var innerBound = GeneratorUtils.TruePolygonVertices(outerRadius, boundVertexCnt, center);
-            innerBoundaries.Add(innerBound);
+            }
+            else if (figureType == Figure.RegularStar)
+            {
+                //при таких значениях после отсечения точек остается +-50%
+                double outerRadius = (edgeLen / 2) * 0.99;
+                double innerRadius = outerRadius * 0.65;
+                //double innerRadius = outerRadius * Math.Cos(Math.PI/boundVertexCnt);
+                
+
+                innerBoundary = GeneratorUtils.Star(boundVertexCnt, outerRadius, innerRadius, Math.PI / 2, center);
+
+            }
+
+
+
+            innerBoundaries.Add(innerBoundary);
 
             container = new BoundaryContainer();
             if (generator is null)
