@@ -178,7 +178,9 @@ namespace TestDelaunayGenerator
 
             if (twinHe == -1)
             {
+#if DEBUG
                 Log.Warning($"нет исходящего полуребра для vid:{vid}");
+#endif
                 //в качестве twinHe устанавливаем предыдущее ребро,
                 //которое исходит из vid
                 twinHe = Prev(he);

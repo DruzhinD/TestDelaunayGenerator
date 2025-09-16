@@ -16,7 +16,7 @@ namespace DelaunayUI
         /// <summary>
         /// Генератор правильного многоугольника
         /// </summary>
-        /// <param name="radius"></param>
+        /// <param name="radius">радиус описанной окружности</param>
         /// <param name="vertexesCnt"></param>
         /// <param name="center"></param>
         /// <returns></returns>
@@ -26,7 +26,7 @@ namespace DelaunayUI
 
             for (int i = 0; i < vertexesCnt; i++)
             {
-                double theta = 2 * Math.PI * i / vertexesCnt;
+                double theta = (2 * Math.PI * i - Math.PI) / vertexesCnt;
                 double x = center.X + radius * Math.Cos(theta);
                 double y = center.Y + radius * Math.Sin(theta);
                 vertexes[i] = new HPoint(x, y);

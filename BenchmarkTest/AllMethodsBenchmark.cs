@@ -2,7 +2,9 @@
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Engines;
 using BenchmarkDotNet.Toolchains;
+using CommonLib.Geometry;
 using DelaunayUI;
+using PseudoRegularGrid;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -35,6 +37,9 @@ namespace BenchmarkTest
         public Delaunator delaunator;
         public DelaunatorConfig delaunatorConfig;
 
+        IHPoint[] points;
+        BoundaryContainer container;
+        double edgeLen = 1.0;
         #region Параметры
         [ParamsSource(nameof(PointCntValues))]
         public int PointCount { get; set; }
@@ -49,7 +54,7 @@ namespace BenchmarkTest
                 int limit = 100_000;
                 int increment = limit / 2;
 
-                for (int p = startCnt; p < limit + 1; p += increment)
+                for (int p = startCnt; p <= limit; p += increment)
                     values.Add(p);
                 return values;
             }
@@ -71,6 +76,26 @@ namespace BenchmarkTest
                 return values;
             }
         }
+
+        /// <summary>
+        /// Часть от исходного количества точек, которая останется после отсечения точек
+        /// </summary>
+        [ParamsSource(nameof(PartAfterClipPointsValues))]
+        public double PartAfterClipPoints { get; set; }
+        public IEnumerable<double> PartAfterClipPointsValues
+        {
+            get
+            {
+                List<double> values = new List<double>();
+                double startCnt = 0.5;
+                double limit = 0.5;
+                double increment = 0.1;
+
+                for (double p = startCnt; p <= limit; p += increment)
+                    values.Add(p);
+                return values;
+            }
+        }
         #endregion
 
         Test CreateTest(int pointsPerEdge)
@@ -81,7 +106,16 @@ namespace BenchmarkTest
         }
 
         #region подготовка к итерации
-        //для отсечения треугольников требуется больше точек на ребре
+        [GlobalSetup()]
+        public void PointsSetup()
+        {
+            test = new Test();
+            int n = (int)Math.Sqrt(PointCount);
+            points = new PseudoRegularGridGenerator()
+                .GenerateGrid(n, n, (double)edgeLen / Math.Sqrt(PointCount), 0.05)
+                .ToArray();
+        }
+
         [IterationSetup(Targets = new string[] {
             nameof(OnlyClippingTriangles),
             nameof(ClippingPointsWithoutRestoreBorder)
@@ -89,7 +123,9 @@ namespace BenchmarkTest
         public void InitBoundaryWithGenerator()
         {
             int pointsPerEdge = (int)(0.025 * PointCount / BoundaryVertexCount);
-            test = CreateTest(pointsPerEdge);
+            test = new Test(false);
+            test.CreateBenchmarkTestArea(PointCount, BoundaryVertexCount, new GeneratorFixed(pointsPerEdge), PartAfterClipPoints);
+            //points.CopyTo(test.points, 0);
         }
 
 
@@ -100,14 +136,34 @@ namespace BenchmarkTest
         })]
         public void InitWithoutBetweenPoints()
         {
-            test = CreateTest(0);
+            test = new Test(false);
+            test.CreateBenchmarkTestArea(PointCount, BoundaryVertexCount, new GeneratorFixed(0), PartAfterClipPoints);
+            //points.CopyTo(test.points, 0);
         }
 
         #endregion
 
-        //только отсечение треугольников, без восстановления границы и без отсечения точек
-        [Benchmark(Baseline = true, Description = "Только отсечение треугольников")]
-        public void OnlyClippingTriangles()
+        #region Методы
+
+        [Benchmark(Description = "восстановление границы, отсечение треугольников, без отсечения точек", Baseline = true)]
+        public void RbBase()
+        {
+            delaunatorConfig = new DelaunatorConfig()
+            {
+                IncludeExtTriangles = false,
+                RestoreBorder = true,
+                UseClippingPoints = false,
+                ParallelClippingPoints = false
+            };
+            test.Run(showForm: false, config: delaunatorConfig);
+            //delaunator = new Delaunator(points, container, delaunatorConfig);
+            //delaunator.Generate();
+        }
+
+
+        [Benchmark(Description = "без восстановление границы, отсечение треугольников, без отсечения точек")]
+
+        public void NonRbNonCp()
         {
             delaunatorConfig = new DelaunatorConfig()
             {
@@ -117,6 +173,8 @@ namespace BenchmarkTest
                 ParallelClippingPoints = false
             };
             test.Run(showForm: false, config: delaunatorConfig);
+            //delaunator = new Delaunator(points, container, delaunatorConfig);
+            //delaunator.Generate();
         }
 
         [Benchmark(Description = "восстановление границы, без отсечения точек")]
@@ -130,6 +188,8 @@ namespace BenchmarkTest
                 ParallelClippingPoints = false
             };
             test.Run(showForm: false, config: delaunatorConfig);
+            //delaunator = new Delaunator(points, container, delaunatorConfig);
+            //delaunator.Generate();
         }
 
         [Benchmark(Description = "отсечение точек (однопоточное), восстановление границы")]
@@ -140,9 +200,26 @@ namespace BenchmarkTest
                 IncludeExtTriangles = false,
                 RestoreBorder = true,
                 UseClippingPoints = true,
+                ParallelClippingPoints = true
+            };
+            test.Run(showForm: false, config: delaunatorConfig);
+            //delaunator = new Delaunator(points, container, delaunatorConfig);
+            //delaunator.Generate();
+        }
+
+        [Benchmark(Description = "без восстановление границы, отсечение треугольников, отсечение точек (однопоточное)")]
+        public void NonRbClipPointSingleThread()
+        {
+            delaunatorConfig = new DelaunatorConfig()
+            {
+                IncludeExtTriangles = false,
+                RestoreBorder = false,
+                UseClippingPoints = true,
                 ParallelClippingPoints = false
             };
             test.Run(showForm: false, config: delaunatorConfig);
+            //delaunator = new Delaunator(points, container, delaunatorConfig);
+            //delaunator.Generate();
         }
 
         [Benchmark(Description = "отсечение точек (однопоточное), без восстановления границы")]
@@ -156,6 +233,8 @@ namespace BenchmarkTest
                 ParallelClippingPoints = false
             };
             test.Run(showForm: false, config: delaunatorConfig);
+            //delaunator = new Delaunator(points, container, delaunatorConfig);
+            //delaunator.Generate();
         }
     }
 }

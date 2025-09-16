@@ -1361,13 +1361,6 @@ namespace TestDelaunayGenerator
                     continue;
 
                 crossCount = CountIntersections(point, innerBoundary.OutRect, StopOnTwo);
-#if DEBUG
-                string msg = $"вершина {(point.X, point.Y)} пересекает оболочку {crossCount} раз";
-                if (crossCount <= 2)
-                    Log.Debug(msg);
-                else
-                    Log.Warning(msg);
-#endif
                 //нужно, чтобы точка не входила в оболочку, т.к. innerBoundary является дыркой
                 if (crossCount % 2 == 1)
                     return false;
@@ -1377,13 +1370,6 @@ namespace TestDelaunayGenerator
             foreach (BoundaryHull innerBoundary in boundaryContainer.InnerBoundaries)
             {
                 crossCount = CountIntersections(point, innerBoundary.BaseVertexes, StopOnTwo);
-#if DEBUG
-                string msg = $"вершина {(point.X, point.Y)} пересекает оболочку {crossCount} раз";
-                if (crossCount <= 2)
-                    Log.Debug(msg);
-                else
-                    Log.Warning(msg);
-#endif
                 //нужно, чтобы точка не входила в оболочку, т.к. innerBoundary является дыркой
                 if (crossCount % 2 == 1)
                     return false;
