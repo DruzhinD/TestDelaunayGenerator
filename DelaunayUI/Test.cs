@@ -48,6 +48,8 @@ namespace DelaunayUI
         public Test(bool useLogger = true)
         {
             this.useLogger = useLogger;
+            if (useLogger)
+                LoggerConfig();
         }
 
 
@@ -251,15 +253,13 @@ namespace DelaunayUI
         /// <param name="pointCnt">количество точек</param>
         /// <param name="boundVertexCnt">количество опорных точек граничного контура</param>
         /// <param name="generator">генератор промежуточных граничных вершин</param>
-        /// <param name="percentPointsPerEdge">
-        /// относительное количество (процент) промежуточных граничных точек от исходного количества точек.
-        /// Значение в пределах от 0 до 1
-        /// </param>
+        /// <param name="partAfterClippingPoints">Значение в пределах от 0 до 1 - 
+        /// часть точек от исходного количества, которое останется после отсечения точек</param>
         public void CreateBenchmarkTestArea(
             int pointCnt,
             int boundVertexCnt = 0,
             IGeneratorBase generator = null,
-            double percentPointsPerEdge = 0.00)
+            double partAfterClippingPoints = 0.5)
         {
 
             int N = (int)Math.Sqrt(pointCnt);
@@ -273,13 +273,21 @@ namespace DelaunayUI
             if (boundVertexCnt < 2)
                 return;
 
+            double outerRadius = edgeLen * Math.Sqrt(
+                2 * (1 - partAfterClippingPoints) / 
+                (boundVertexCnt * Math.Sin(2 * Math.PI / boundVertexCnt))
+                );
+
+            outerRadius -= outerRadius * 0.005;
+
             //внутренний контур
-            var innerBound = GeneratorUtils.TruePolygonVertices(edgeLen / 4, boundVertexCnt, center);
+            //остается +- 50% точек edgeLen / 2.5
+            var innerBound = GeneratorUtils.TruePolygonVertices(outerRadius, boundVertexCnt, center);
             innerBoundaries.Add(innerBound);
 
             container = new BoundaryContainer();
             if (generator is null)
-                generator = new GeneratorFixed((int)(percentPointsPerEdge * points.Length));
+                generator = new GeneratorFixed(0);
             if (outerBoundary != null)
                 container.ReplaceOuterBoundary(outerBoundary, generator);
             if (innerBoundaries.Count > 0)
@@ -287,14 +295,14 @@ namespace DelaunayUI
                     container.AddInnerBoundary(inBound, generator);
         }
 
-        public Delaunator Run(bool showForm = true, bool serialize = false, DelaunatorConfig config = null, bool stopOnTwo = true)
+        public Delaunator Run(bool showForm = true, bool serialize = false, DelaunatorConfig config = null)
         {
             if (config is null)
                 config = new DelaunatorConfig()
                 {
-                    IncludeExtTriangles = false,
-                    RestoreBorder = true,
-                    UseClippingPoints = true,
+                    IncludeExtTriangles = true,
+                    RestoreBorder = false,
+                    UseClippingPoints = false,
                     ParallelClippingPoints = false,
                 };
 
@@ -302,7 +310,7 @@ namespace DelaunayUI
             if (useLogger)
             {
 
-                LoggerConfig();
+                //LoggerConfig();
                 Log.Information($"Запуск {DateTime.Now}");
                 Log.Information($"Количество точек:{points.Length}");
                 Log.Information($"Внешняя граница:{outerBoundary != null}");
@@ -328,7 +336,6 @@ namespace DelaunayUI
             }
 
             Delaunator delaunator = new Delaunator(points, container, config);
-            delaunator.StopOnTwo = stopOnTwo;
             Stopwatch sw = Stopwatch.StartNew();
             delaunator.Generate();
             sw.Stop();

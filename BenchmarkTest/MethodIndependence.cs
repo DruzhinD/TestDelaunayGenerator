@@ -2,7 +2,9 @@
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Engines;
 using BenchmarkDotNet.Toolchains;
+using CommonLib.Geometry;
 using DelaunayUI;
+using PseudoRegularGrid;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -53,7 +55,7 @@ namespace BenchmarkTest
                 int limit = 100_000;
                 int increment = limit / 2;
 
-                for (int p = startCnt; p < limit + 1; p += increment)
+                for (int p = startCnt; p <= limit; p += increment)
                     values.Add(p);
                 return values;
             }
@@ -71,6 +73,26 @@ namespace BenchmarkTest
                 int increment = 10;
 
                 for (int p = startCnt; p < limit + 1; p += increment)
+                    values.Add(p);
+                return values;
+            }
+        }
+
+        /// <summary>
+        /// Часть от исходного количества точек, которая останется после отсечения точек
+        /// </summary>
+        [ParamsSource(nameof(PartAfterClipPointsValues))]
+        public double PartAfterClipPoints { get; set; }
+        public IEnumerable<double> PartAfterClipPointsValues
+        {
+            get
+            {
+                List<double> values = new List<double>();
+                double startCnt = 0.5;
+                double limit = 0.5;
+                double increment = 0.1;
+
+                for (double p = startCnt; p <= limit; p += increment)
                     values.Add(p);
                 return values;
             }
@@ -100,7 +122,9 @@ namespace BenchmarkTest
         public void InitBoundaryWithGenerator()
         {
             int pointsPerEdge = (int)(0.025 * PointCount / BoundaryVertexCount);
-            test = CreateTest(pointsPerEdge);
+            test = new Test(false);
+            test.CreateBenchmarkTestArea(PointCount, BoundaryVertexCount, new GeneratorFixed(pointsPerEdge), PartAfterClipPoints);
+            //points.CopyTo(test.points, 0);
         }
 
         //без промежуточных вершин на ребрах
@@ -111,7 +135,9 @@ namespace BenchmarkTest
         })]
         public void InitWithoutBetweenPoints()
         {
-            test = CreateTest(0);
+            test = new Test(false);
+            test.CreateBenchmarkTestArea(PointCount, BoundaryVertexCount, new GeneratorFixed(0), PartAfterClipPoints);
+            //points.CopyTo(test.points, 0);
         }
 
         //для стандартной триангуляции без ограничений
@@ -139,6 +165,8 @@ namespace BenchmarkTest
                 ParallelClippingPoints = false
             };
             test.Run(showForm: false, config: delaunatorConfig);
+            //delaunator = new Delaunator(points, container, delaunatorConfig);
+            //delaunator.Generate();
         }
 
 
@@ -153,6 +181,8 @@ namespace BenchmarkTest
                 ParallelClippingPoints = false
             };
             test.Run(showForm: false, config: delaunatorConfig);
+            //delaunator = new Delaunator(points, container, delaunatorConfig);
+            //delaunator.Generate();
         }
 
         [Benchmark(Description = "триангуляция с отсечением треугольников, без отсечения точек и без восстановления границы")]
@@ -166,6 +196,8 @@ namespace BenchmarkTest
                 ParallelClippingPoints = false
             };
             test.Run(showForm: false, config: delaunatorConfig);
+            //delaunator = new Delaunator(points, container, delaunatorConfig);
+            //delaunator.Generate();
         }
 
         #endregion

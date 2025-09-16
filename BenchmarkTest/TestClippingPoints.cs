@@ -96,7 +96,7 @@ namespace BenchmarkTest
                 UseClippingPoints = true,
                 ParallelClippingPoints = false,
             };
-            test.Run(false, false, delaunatorConfig, false);
+            test.Run(false, false, delaunatorConfig);
         }
 
         [Benchmark(Description = "Оптимизированное отсечение точек (однопоток)")]
@@ -109,7 +109,7 @@ namespace BenchmarkTest
                 UseClippingPoints = true,
                 ParallelClippingPoints = false,
             };
-            test.Run(false, false, delaunatorConfig, true);
+            test.Run(false, false, delaunatorConfig);
         }
     }
 }

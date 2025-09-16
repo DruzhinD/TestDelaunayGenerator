@@ -94,7 +94,8 @@ namespace DelaunayUI
                                 test.CreateBenchmarkTestArea(
                                     pointCnt,
                                     boundVertexCnt,
-                                    new GeneratorFixed(pbyedge));
+                                    new GeneratorFixed(pbyedge),
+                                    partAfterClippingPoints: 0.25);
                                 test.Run(
                                     showForm: true,
                                     config: config);
