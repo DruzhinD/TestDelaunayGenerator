@@ -14,8 +14,8 @@ namespace BenchmarkTest
         static void Main(string[] args)
         {
             //BenchmarkRunner.Run<MethodIndependence>();
-            //BenchmarkRunner.Run<AllMethods>();
-            BenchmarkRunner.Run<TestClippingPoints>();
+            var summary = BenchmarkRunner.Run<AllMethods>();
+            //var summary = BenchmarkRunner.Run<RbMethods>();
         }
     }
 }
