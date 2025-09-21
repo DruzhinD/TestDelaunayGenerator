@@ -1128,7 +1128,6 @@ namespace RenderLib
 
         }
 
-        SmootherBase smoother = null;
         private void btSmooth_Click(object sender, EventArgs e)
         {
             DcelTriMesh mesh;
@@ -1138,12 +1137,6 @@ namespace RenderLib
                 mesh = spData.mesh as DcelTriMesh;
                 if (mesh is null)
                     throw new Exception();
-
-                //если объект сглаживания не инициализирован => инициализация
-                if (smoother is null)
-                {
-                    smoother = new LaplacianSmoother(new SmootherConfig(iterationsCount: 10), mesh);
-                }
             }
             catch (Exception ex)
             {
@@ -1159,20 +1152,13 @@ namespace RenderLib
                 MessageBox.Show($"Неверное значение коэффициента! Установлено значение по умолчанию: {smoothRatio}");
                 tbSmoothRatio.Text = smoothRatio.ToString();
             }
+            var smoother = new Smoother();
             smoother.Config.SmoothRatio = smoothRatio;
             
             Stopwatch sw = Stopwatch.StartNew();
-            smoother.Smooth();
+            mesh = smoother.Smooth(mesh);
             sw.Stop();
-            mesh = smoother.DcelMesh as DcelTriMesh;
 
-            //т.к. IHPoint[] не связано с double[] координатами
-            //заменяем значения вручную
-            for (int i = 0; i < mesh.Points.Length; i++)
-            {
-                mesh.CoordsX[i] = mesh.Points[i].X;
-                mesh.CoordsY[i] = mesh.Points[i].Y;
-            }
             var spd = new SavePoint();
             spd.SetSavePoint(0, mesh);
             SendSavePoint(spd);

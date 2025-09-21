@@ -300,9 +300,9 @@ namespace DelaunayUI
             if (config is null)
                 config = new DelaunatorConfig()
                 {
-                    IncludeExtTriangles = true,
-                    RestoreBorder = false,
-                    UseClippingPoints = false,
+                    IncludeExtTriangles = false,
+                    RestoreBorder = true,
+                    UseClippingPoints = true,
                     ParallelClippingPoints = false,
                 };
 

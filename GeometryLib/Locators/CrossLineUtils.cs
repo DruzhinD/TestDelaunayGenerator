@@ -365,5 +365,15 @@ namespace GeometryLib.Locators
 
             return true;
         }
+
+        /// <summary>
+        /// Рассчитать удвоенную ориентированную площадь треугольника
+        /// </summary>
+        public static double DoubledOrientArea(IHPoint p1, IHPoint p2, IHPoint p3)
+        {
+            double area = (p2.X - p1.X) * (p3.Y - p1.Y) -
+                (p2.Y - p1.Y) * (p3.X - p1.X);
+            return area;
+        }
     }
 }

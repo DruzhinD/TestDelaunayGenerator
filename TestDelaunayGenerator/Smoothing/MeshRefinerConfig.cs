@@ -9,12 +9,12 @@ namespace TestDelaunayGenerator.Smoothing
     /// <summary>
     /// Параметры улучшения сетки
     /// </summary>
-    public class QualityMesherConfig
+    public class MeshRefinerConfig
     {
         public double MinAngle { get; set; } = Math.PI / 6;
 
         /// <summary>
-        /// Максимально допустимый угол треугольника
+        /// Максимально допустимый угол треугольника (в радианах)
         /// </summary>
         public double MaxAngle { get; set; } = Math.PI * 5 / 6;
 
