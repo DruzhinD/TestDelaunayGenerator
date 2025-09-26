@@ -73,6 +73,7 @@
     <Compile Include="DebugDelaunayRecord.cs" />
     <Compile Include="DelaunatorConfig.cs" />
     <Compile Include="HalfEdgeUtils.cs" />
+    <Compile Include="Interpolation.cs" />
     <Compile Include="SimpleStructures\EdgePair.cs" />
     <Compile Include="Delaunator.cs" />
     <Compile Include="Boundary\IGeneratorBase.cs" />
