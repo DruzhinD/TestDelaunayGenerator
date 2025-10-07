@@ -4,24 +4,25 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace TestDelaunayGenerator.SimpleStructures
+namespace TestDelaunayGenerator.DelaunatorModels
 {
     /// <summary>
-    /// Пара ребер, соединенных общей вершиной
+    /// Хранит информацию о принадлежности точки <see cref="vid"/> контуру
     /// </summary>
-    public struct EdgePair
+    public struct ContourPoint
     {
+        //TODO проверить корректность обхода
         /// <summary>
-        /// Создание ребра на основе индексов вершин
+        /// Определение точки <paramref name="vid"/> как, входящей в контур
         /// </summary>
-        /// <param name="adjacent1">1-ая соседняя вершина</param>
-        /// <param name="adjacent2">2-ая соседняя вершина</param>
+        /// <param name="prevVid">предыдущая вершина при обходе по ч.с.</param>
+        /// <param name="nextVid">следующая вершина при обходе по ч.с.</param>
         /// <param name="boundaryId">Индекс граничного контура (оболочки), которой принадлежит точка</param>
-        public EdgePair(int vid, int adjacent1, int adjacent2, int boundaryId)
+        public ContourPoint(int vid, int prevVid, int nextVid, int boundaryId)
         {
             this.vid = vid;
-            this.adjacent1 = adjacent1;
-            this.adjacent2 = adjacent2;
+            this.PrevVid = prevVid;
+            this.NextVid = nextVid;
             this.BoundaryID = boundaryId;
         }
 
@@ -33,20 +34,23 @@ namespace TestDelaunayGenerator.SimpleStructures
         /// <summary>
         /// Индекс 1-ой соседней вершины с <see cref="vid"/>
         /// </summary>
-        public int adjacent1;
+        public int PrevVid;
         /// <summary>
         /// Индекс 2-ой соседней вершины с <see cref="vid"/>
         /// </summary>
-        public int adjacent2;
+        public int NextVid;
 
         /// <summary>
         /// Индексы соседних вершин с <see cref="vid"/>
         /// </summary>
-        public int[] Adjacents => new int[] { adjacent1, adjacent2 };
+        public int[] Adjacents => new int[] { PrevVid, NextVid };
 
         /// <summary>
         /// Индекс граничного контура (оболочки), которой принадлежит <see cref="vid"/>
         /// </summary>
         public int BoundaryID;
+
+        //если значения равны, то точка неграничная, т.е. не было изменено значений по умолчанию
+        public bool IsBoundary => !(vid == PrevVid && vid == NextVid);
     }
 }

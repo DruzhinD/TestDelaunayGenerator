@@ -8,10 +8,10 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
-using TestDelaunayGenerator.SimpleStructures;
+using TestDelaunayGenerator.DelaunatorModels;
 using TestDelaunayGenerator.Smoothing;
 
-namespace TestDelaunayGenerator.DCELMesh
+namespace TestDelaunayGenerator.DelaunatorMesh
 {
 
     /// <summary>
@@ -20,7 +20,7 @@ namespace TestDelaunayGenerator.DCELMesh
     /// </summary>
     public class DcelTriMesh : TriMesh, IRestrictedDCEL
     {
-        public DcelTriMesh(int[] halfEdges, PointStatus[] pointStatuses, Troika[] triangles, EdgePair[] boundaryEdges, IHPoint[] points)
+        public DcelTriMesh(int[] halfEdges, PointStatus[] pointStatuses, Triangle[] triangles, ContourPoint[] boundaryEdges, IHPoint[] points)
         {
             this.HalfEdges = halfEdges;
             this.PointStatuses = pointStatuses;
@@ -41,11 +41,11 @@ namespace TestDelaunayGenerator.DCELMesh
             MEM.MemCopy(ref pointStatuses, mesh.PointStatuses);
             this.PointStatuses = pointStatuses;
 
-            Troika[] triangles = null;
+            Triangle[] triangles = null;
             MEM.MemCopy(ref triangles, mesh.Faces);
             this.Faces = triangles;
 
-            EdgePair[] boundaryEdges = null;
+            ContourPoint[] boundaryEdges = null;
             MEM.MemCopy(ref boundaryEdges, mesh.BoundaryEdges);
             this.BoundaryEdges = boundaryEdges;
 
@@ -59,9 +59,9 @@ namespace TestDelaunayGenerator.DCELMesh
 
         public PointStatus[] PointStatuses { get; set; }
 
-        public Troika[] Faces { get; set; }
+        public Triangle[] Faces { get; set; }
 
-        public EdgePair[] BoundaryEdges { get; set; }
+        public ContourPoint[] BoundaryEdges { get; set; }
         public IHPoint[] Points { get; set; }
 
         public override IMesh Clone()

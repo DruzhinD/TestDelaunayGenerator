@@ -9,9 +9,9 @@ using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
-using TestDelaunayGenerator.SimpleStructures;
+using TestDelaunayGenerator.DelaunatorModels;
 
-namespace TestDelaunayGenerator.DCELMesh
+namespace TestDelaunayGenerator.DelaunatorMesh
 {
     /// <summary>
     /// <inheritdoc cref="IRestrictedDCEL"/>
@@ -21,7 +21,7 @@ namespace TestDelaunayGenerator.DCELMesh
     public class RestrictedDCEL : IRestrictedDCEL
     {
         public RestrictedDCEL() { }
-        public RestrictedDCEL(IHPoint[] points, int[] halfEdges, PointStatus[] pointStatuses, Troika[] faces, EdgePair[] boundaryEdges)
+        public RestrictedDCEL(IHPoint[] points, int[] halfEdges, PointStatus[] pointStatuses, Triangle[] faces, ContourPoint[] boundaryEdges)
         {
             Points = points;
             HalfEdges = halfEdges;
@@ -37,8 +37,8 @@ namespace TestDelaunayGenerator.DCELMesh
         [DataMember]
         public PointStatus[] PointStatuses { get; set; }
         [DataMember]
-        public Troika[] Faces { get; set; }
+        public Triangle[] Faces { get; set; }
         [DataMember]
-        public EdgePair[] BoundaryEdges { get; set; }
+        public ContourPoint[] BoundaryEdges { get; set; }
     }
 }

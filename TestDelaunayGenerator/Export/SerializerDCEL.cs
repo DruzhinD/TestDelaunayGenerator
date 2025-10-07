@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Serialization;
 
-namespace TestDelaunayGenerator.DCELMesh
+namespace TestDelaunayGenerator.DelaunatorMesh
 {
     public class SerializerDCEL
     {

@@ -5,8 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
-using TestDelaunayGenerator.DCELMesh;
-using TestDelaunayGenerator.SimpleStructures;
+using TestDelaunayGenerator.DelaunatorMesh;
+using TestDelaunayGenerator.DelaunatorModels;
 
 namespace TestDelaunayGenerator.SimpleStructures
 {

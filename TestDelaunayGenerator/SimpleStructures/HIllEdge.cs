@@ -7,16 +7,15 @@ using System.Threading.Tasks;
 
 namespace TestDelaunayGenerator.SimpleStructures
 {
-    //TODO перенести в либу GeometryLib
     /// <summary>
     /// Ребро границы. Может содержать целое множество точек, а не только свои вершины.
     /// По сути является ребром, построенном на паре опорных вершин оболочки
     /// Реализовано в рамках делонатора
     /// </summary>
-    public struct HillEdgeDel : IHillEdge
+    public struct HIllEdge : IHillEdge
     {
 
-        public HillEdgeDel(int id, IHPoint iHPoint1, IHPoint iHPoint2, int mark = 0, int count = 0)
+        public HIllEdge(int id, IHPoint iHPoint1, IHPoint iHPoint2, int mark = 0, int count = 0)
             : this()
         {
             ID = id;

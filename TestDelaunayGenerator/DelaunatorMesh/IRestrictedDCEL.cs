@@ -4,9 +4,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using TestDelaunayGenerator.SimpleStructures;
+using TestDelaunayGenerator.DelaunatorModels;
 
-namespace TestDelaunayGenerator.DCELMesh
+namespace TestDelaunayGenerator.DelaunatorMesh
 {
     /// <summary>
     /// Формат хранения сетки DCEL (Doubly Connected Edge List)
@@ -34,7 +34,7 @@ namespace TestDelaunayGenerator.DCELMesh
         /// Примечание: если развернуть в массив длиной 3*<see cref="Triangles.Length"/>
         /// то индексация будет совпадать с <see cref="HalfEdges"/>
         /// </summary>
-        Troika[] Faces { get; set; }
+        Triangle[] Faces { get; set; }
 
 
         /// <summary>
@@ -44,6 +44,6 @@ namespace TestDelaunayGenerator.DCELMesh
         /// Примечание: часть вершин содержит значения по умолчанию (0),
         /// т.к. не являются граничными, но для индексации под них выделяется память
         /// </summary>
-        EdgePair[] BoundaryEdges { get; set; }
+        ContourPoint[] BoundaryEdges { get; set; }
     }
 }

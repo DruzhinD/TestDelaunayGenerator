@@ -7,11 +7,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using TestDelaunayGenerator.DCELMesh;
+using TestDelaunayGenerator.DelaunatorMesh;
 using TestDelaunayGenerator.SimpleStructures;
 using GeometryLib.Locators;
 using System.Diagnostics;
 using Serilog;
+using TestDelaunayGenerator.DelaunatorModels;
 
 namespace TestDelaunayGenerator.Smoothing
 {

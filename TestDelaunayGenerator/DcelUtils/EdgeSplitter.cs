@@ -5,7 +5,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using TestDelaunayGenerator.SimpleStructures;
+using TestDelaunayGenerator.DcelUtils;
+using TestDelaunayGenerator.DelaunatorModels;
 
 namespace TestDelaunayGenerator.Smoothing
 {
@@ -17,10 +18,10 @@ namespace TestDelaunayGenerator.Smoothing
         IList<IHPoint> points;
         IList<int> halfEdges;
         IList<PointStatus> pointStatuses;
-        IList<Troika> faces;
-        IList<EdgePair> boundaryEdges;
+        IList<Triangle> faces;
+        IList<ContourPoint> boundaryEdges;
 
-        public EdgeSplitter(IList<IHPoint> points, IList<int> halfEdges, IList<PointStatus> pointStatuses, IList<Troika> faces, IList<EdgePair> boundaryEdges)
+        public EdgeSplitter(IList<IHPoint> points, IList<int> halfEdges, IList<PointStatus> pointStatuses, IList<Triangle> faces, IList<ContourPoint> boundaryEdges)
         {
             this.points = points;
             this.halfEdges = halfEdges;
@@ -47,7 +48,7 @@ namespace TestDelaunayGenerator.Smoothing
             //вставляем новую вершину
             points.Add(vertex);
             pointStatuses.Add(PointStatus.Internal);
-            boundaryEdges.Add(new EdgePair());
+            boundaryEdges.Add(new ContourPoint());
 
             //id новой вершины
             int vn = points.Count - 1;
@@ -59,8 +60,8 @@ namespace TestDelaunayGenerator.Smoothing
             (int startTr0, int startTr1) = AddTrianglePair(H0, vn);
             newTrHe = startTr1;
 #if DEBUG
-            Log.Debug($"Новый треугольник: {HalfEdgeUtils.TriangleInfo(faces, startTr0 / 3)}");
-            Log.Debug($"Новый треугольник: {HalfEdgeUtils.TriangleInfo(faces, startTr1 / 3)}");
+            Log.Debug($"Новый треугольник: {DcelInfo.TriangleInfo(faces, startTr0 / 3)}");
+            Log.Debug($"Новый треугольник: {DcelInfo.TriangleInfo(faces, startTr1 / 3)}");
 #endif
             int twinH0 = HalfEdgeUtils.Twin(halfEdges, H0);
             //если есть парное ребро у H0
@@ -69,8 +70,8 @@ namespace TestDelaunayGenerator.Smoothing
                 //добавляем пару новых треугольников (внутри смежного исходному)
                 (int startTr2, int startTr3) = AddTrianglePair(twinH0, vn);
 #if DEBUG
-                Log.Debug($"Новый треугольник: {HalfEdgeUtils.TriangleInfo(faces, startTr2 / 3)}");
-                Log.Debug($"Новый треугольник: {HalfEdgeUtils.TriangleInfo(faces, startTr3 / 3)}");
+                Log.Debug($"Новый треугольник: {DcelInfo.TriangleInfo(faces, startTr2 / 3)}");
+                Log.Debug($"Новый треугольник: {DcelInfo.TriangleInfo(faces, startTr3 / 3)}");
 #endif
                 //связываем t1 и t2
                 HalfEdgeUtils.Link(this.halfEdges, startTr1, startTr2);
@@ -85,26 +86,26 @@ namespace TestDelaunayGenerator.Smoothing
                 int adj2 = HalfEdgeUtils.Origin(faces, HalfEdgeUtils.Prev(H0));
                 //обновление массивов границ
                 pointStatuses[vn] = PointStatus.Boundary;
-                boundaryEdges[vn] = new EdgePair()
+                boundaryEdges[vn] = new ContourPoint()
                 {
                     vid = vn,
-                    adjacent1 = adj1, //v0
-                    adjacent2 = adj2 //v1
+                    PrevVid = adj1, //v0
+                    NextVid = adj2 //v1
                 };
 
                 //изменяем соседей у исходных граничных вершин
                 var edgeAdj1 = boundaryEdges[adj1];
-                if (edgeAdj1.adjacent1 == adj2)
-                    edgeAdj1.adjacent1 = vn;
+                if (edgeAdj1.PrevVid == adj2)
+                    edgeAdj1.PrevVid = vn;
                 else
-                    edgeAdj1.adjacent2 = vn;
+                    edgeAdj1.NextVid = vn;
                 boundaryEdges[adj1] = edgeAdj1;
 
                 var edgeAdj2 = boundaryEdges[adj2];
-                if (edgeAdj2.adjacent1 == adj1)
-                    edgeAdj2.adjacent1 = vn;
+                if (edgeAdj2.PrevVid == adj1)
+                    edgeAdj2.PrevVid = vn;
                 else
-                    edgeAdj2.adjacent2 = vn;
+                    edgeAdj2.NextVid = vn;
                 boundaryEdges[adj2] = edgeAdj2;
             }
             HalfEdgeUtils.UnLinkTriangle(halfEdges, H0 / 3);
@@ -140,7 +141,7 @@ namespace TestDelaunayGenerator.Smoothing
             for (int i = 0; i < 3; i++)
                 halfEdges.Add(-1);
             //инициализация треугольников на вершинах
-            Troika tr0 = new Troika();
+            Triangle tr0 = new Triangle();
             tr0.flag = faces[H0 / 3].flag;
             tr0[0] = HalfEdgeUtils.Origin(this.faces, H0);
             tr0[1] = vidNew;
@@ -150,7 +151,7 @@ namespace TestDelaunayGenerator.Smoothing
             int startTr1 = halfEdges.Count;
             for (int i = 0; i < 3; i++)
                 halfEdges.Add(-1);
-            Troika tr1 = new Troika();
+            Triangle tr1 = new Triangle();
             tr1.flag = faces[H0 / 3].flag;
             tr1[0] = vidNew;
             tr1[1] = HalfEdgeUtils.Origin(this.faces, HalfEdgeUtils.Next(H0));

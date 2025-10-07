@@ -7,8 +7,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using TestDelaunayGenerator.DCELMesh;
-using TestDelaunayGenerator.SimpleStructures;
+using TestDelaunayGenerator.DelaunatorMesh;
+using TestDelaunayGenerator.DelaunatorModels;
 
 namespace TestDelaunayGenerator
 {
@@ -23,7 +23,7 @@ namespace TestDelaunayGenerator
         /// <param name="trid">id треугольника, внутри которого находится интерполируемый узел</param>
         public static void InterpolateAttributes(CloudKnot knot, IRestrictedDCEL mesh, int trid)
         {
-            Troika triangle = mesh.Faces[trid];
+            Triangle triangle = mesh.Faces[trid];
             //TODO вершины заданы по ч.с. - допустимо ли?
             var orgId = triangle[0];
             var destId = triangle[1];

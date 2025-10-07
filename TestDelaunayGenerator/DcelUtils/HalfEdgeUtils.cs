@@ -8,7 +8,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
-using TestDelaunayGenerator.SimpleStructures;
+using TestDelaunayGenerator.DelaunatorModels;
 
 namespace TestDelaunayGenerator
 {
@@ -64,7 +64,7 @@ namespace TestDelaunayGenerator
         /// <param name="he"></param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int Origin(IList<Troika> faces, int he)
+        public static int Origin(IList<Triangle> faces, int he)
         {
             return faces[he / 3][he % 3];
         }
@@ -171,16 +171,13 @@ namespace TestDelaunayGenerator
         /// Тогда последнее полуребро не будет смежным с полуребром, указывающим на общую вершину.
         /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int[] AdjacentEdgesVertex(IList<int> halfEdges, IList<Troika> triangles, int he, bool include = false)
+        public static int[] AdjacentEdgesVertex(IList<int> halfEdges, IList<Triangle> triangles, int he, bool include = false)
         {
             int vid = Origin(triangles, he);
             int twinHe = Twin(halfEdges, he);
 
             if (twinHe == -1)
             {
-#if DEBUG
-                Log.Warning($"нет исходящего полуребра для vid:{vid}");
-#endif
                 //в качестве twinHe устанавливаем предыдущее ребро,
                 //которое исходит из vid
                 twinHe = Prev(he);
@@ -201,6 +198,9 @@ namespace TestDelaunayGenerator
             // смежные с ней вершины содержатся в одном треугольнике
             if (twinHe == -1)
             {
+#if DEBUG
+                Log.Warning($"точка {vid} - угловая");
+#endif
                 int nextHe = Next(he);
                 segmentHalfEdges.Add(nextHe);
                 nextHe = Next(nextHe);
@@ -308,7 +308,7 @@ namespace TestDelaunayGenerator
         /// <param name="halfEdges"></param>
         /// <param name="edgeId"></param>
         /// <returns></returns>
-        public static int[] AdjacentTrianglesWithEdge(int[] halfEdges, Troika[] triangles, int edgeId)
+        public static int[] AdjacentTrianglesWithEdge(int[] halfEdges, Triangle[] triangles, int edgeId)
         {
             int[] edgesAroundVertex = AdjacentEdgesVertex(halfEdges, triangles, edgeId, false);
             return edgesAroundVertex.Select(x => x / 3).ToArray();
@@ -322,7 +322,7 @@ namespace TestDelaunayGenerator
         /// <param name="vid"></param>
         /// <returns></returns>
         [Obsolete("Медленный, не рекомендуется к использованию, лучше использовать EdgesAroundVertex")]
-        public static int[] AdjacentVertexesWithVid(int[] halfEdges, Troika[] triangles, int vid)
+        public static int[] AdjacentVertexesWithVid(int[] halfEdges, Triangle[] triangles, int vid)
         {
             //id треугольников, в которые входит вершина vid
             var trIds = new HashSet<int>();
@@ -359,40 +359,40 @@ namespace TestDelaunayGenerator
         /// <param name="left"></param>
         /// <param name="right"></param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void LinkBoundaryEdge(IList<EdgePair> boundaryEdges, int vid, int left, int right)
+        public static void LinkBoundaryEdge(IList<ContourPoint> boundaryEdges, int vid, int left, int right)
         {
-            var newBound = new EdgePair()
+            var newBound = new ContourPoint()
             {
                 vid = vid,
                 //нет гарантии корректности
-                adjacent1 = left, //v0
-                adjacent2 = right, //v1
+                PrevVid = left, //v0
+                NextVid = right, //v1
                 BoundaryID = boundaryEdges[left].BoundaryID
             };
             //изменяем соседей у исходных граничных вершин
             var edgeAdj1 = boundaryEdges[left];
-            if (edgeAdj1.adjacent1 == right)
+            if (edgeAdj1.PrevVid == right)
             {
-                edgeAdj1.adjacent1 = vid;
-                newBound.adjacent2 = edgeAdj1.vid;
+                edgeAdj1.PrevVid = vid;
+                newBound.NextVid = edgeAdj1.vid;
             }
             else
             {
-                edgeAdj1.adjacent2 = vid;
-                newBound.adjacent1 = edgeAdj1.vid;
+                edgeAdj1.NextVid = vid;
+                newBound.PrevVid = edgeAdj1.vid;
             }
             boundaryEdges[left] = edgeAdj1;
 
             var edgeAdj2 = boundaryEdges[right];
-            if (edgeAdj2.adjacent1 == left)
+            if (edgeAdj2.PrevVid == left)
             {
-                edgeAdj2.adjacent1 = vid;
-                newBound.adjacent2 = edgeAdj2.vid;
+                edgeAdj2.PrevVid = vid;
+                newBound.NextVid = edgeAdj2.vid;
             }
             else
             {
-                edgeAdj2.adjacent2 = vid;
-                newBound.adjacent1 = edgeAdj2.vid;
+                edgeAdj2.NextVid = vid;
+                newBound.PrevVid = edgeAdj2.vid;
             }
             boundaryEdges[right] = edgeAdj2;
             boundaryEdges[vid] = newBound;
@@ -408,56 +408,6 @@ namespace TestDelaunayGenerator
         {
             if (param < 0)
                 throw new ArgumentException($"Аргумент не может быть меньше нуля! {param})", paramName);
-        }
-
-        /// <summary>
-        /// Сведения о треугольнике: id, вершины, полуребра
-        /// </summary>
-        /// <param name="faces"></param>
-        /// <param name="trid"></param>
-        /// <returns></returns>
-        public static string TriangleInfo(IList<Troika> faces, int trid)
-        {
-            string log = $"trid:{trid};vid:{faces[trid].Get()};he:({trid * 3},{trid * 3 + 1},{trid * 3 + 2})";
-            return log;
-        }
-
-
-        /// <summary>
-        /// Сведения о полуребре: id, twin, треугольник, вершины, другие полуребра
-        /// </summary>
-        /// <param name="faces"></param>
-        /// <param name="he"></param>
-        /// <returns></returns>
-        public static string HeInfo(IList<Troika> faces, IList<int> halfEdges, int he, bool extended = false)
-        {
-            int trid = he / 3;
-            string log = $"he:{he};twin:{Twin(halfEdges, he)};";
-            //origin
-            if (extended)
-                log += $"origin:{Origin(faces, he)};";
-            //trid
-            log += $"trid:{trid}{faces[trid].Get()};";
-            int he1 = trid * 3;
-            int he2 = trid * 3 + 1;
-            int he3 = trid * 3 + 2;
-            //he
-            if (extended)
-                log += $"he:({he1}|{Twin(halfEdges, he1)}, {he2}|{Twin(halfEdges, he2)}, {he3}|{Twin(halfEdges, he3)});";
-            else
-                log += $"he:{(he1, he2, he3)};";
-
-            return log;
-        }
-
-        public static string TwinHEdges(int[] halfEdges, int trid)
-        {
-            string log = "";
-            for (int he = trid * 3; he < trid * 3 + 3; he++)
-            {
-                log += $"{he}->{Twin(halfEdges, he)};";
-            }
-            return log;
         }
         #endregion
     }

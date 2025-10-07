@@ -4,9 +4,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using TestDelaunayGenerator.SimpleStructures;
+using TestDelaunayGenerator.DelaunatorModels;
 
-namespace TestDelaunayGenerator.DCELMesh
+namespace TestDelaunayGenerator.DelaunatorMesh
 {
     /// <summary>
     /// Класс, содержащий методы расширения для <see cref="DcelTriMesh"/> и
@@ -48,7 +48,7 @@ namespace TestDelaunayGenerator.DCELMesh
                     continue;
                 //ребра
                 mesh.BoundElems[meshPointId].Vertex1 = (uint)i;
-                mesh.BoundElems[meshPointId].Vertex2 = (uint)dcelMesh.BoundaryEdges[i].adjacent1;
+                mesh.BoundElems[meshPointId].Vertex2 = (uint)dcelMesh.BoundaryEdges[i].PrevVid;
                 mesh.BoundElementsMark[meshPointId] = dcelMesh.BoundaryEdges[i].BoundaryID;
 
                 //узлы

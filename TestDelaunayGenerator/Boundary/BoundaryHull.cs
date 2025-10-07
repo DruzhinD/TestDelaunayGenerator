@@ -10,6 +10,7 @@ using TestDelaunayGenerator.SimpleStructures;
 
 namespace TestDelaunayGenerator.Boundary
 {
+    //TODO Заменить на CounturHill
     public class BoundaryHull
     {
         /// <summary>
@@ -130,7 +131,7 @@ namespace TestDelaunayGenerator.Boundary
                 {
                     baseEdgeId += 1;
                     _baseBoundaryEdges[baseEdgeId] =
-                        new HillEdgeDel(
+                        new HIllEdge(
                             baseEdgeId,
                             BaseVertexes[baseEdgeId % BaseVertexes.Length],
                             BaseVertexes[(baseEdgeId + 1) % BaseVertexes.Length]

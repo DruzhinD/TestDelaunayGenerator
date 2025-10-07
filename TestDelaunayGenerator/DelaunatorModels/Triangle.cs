@@ -8,7 +8,7 @@
 //                  + 
 //                 кодировка : 29.03.2025 Потапов И.И.
 //---------------------------------------------------------------------------
-namespace TestDelaunayGenerator.SimpleStructures
+namespace TestDelaunayGenerator.DelaunatorModels
 {
     using CommonLib;
     using System.Runtime.CompilerServices;
@@ -18,10 +18,10 @@ namespace TestDelaunayGenerator.SimpleStructures
     /// структура треугольника, содержащая 3 его вершины
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    public struct Troika
+    public struct Triangle
     {
         /// <summary>
-        /// Флаг, обозначающий атрибуты тройки вершин (вхождение в область и т.п.)
+        /// Принадлежность области
         /// </summary>
         public TriangleState flag;
         public int i;

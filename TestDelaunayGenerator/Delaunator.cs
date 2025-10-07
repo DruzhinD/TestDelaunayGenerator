@@ -13,8 +13,9 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using TestDelaunayGenerator.Boundary;
-using TestDelaunayGenerator.DCELMesh;
+using TestDelaunayGenerator.DelaunatorMesh;
 using TestDelaunayGenerator.SimpleStructures;
+using TestDelaunayGenerator.DelaunatorModels;
 using TestDelaunayGenerator.Smoothing;
 
 namespace TestDelaunayGenerator
@@ -23,24 +24,24 @@ namespace TestDelaunayGenerator
     {
         #region Базовые поля, свойства
         /// <summary>
-        /// Узлы триангуляции <br/>
+        /// Узлы триангуляции
         /// </summary>
         IHPoint[] points;
 
         /// <summary>
-        /// Узлы триангуляции <br/>
+        /// Узлы триангуляции
         /// </summary>
         public IHPoint[] Points => points;
 
         /// <summary>
         /// контейнер граничных оболочек
         /// </summary>
-        BoundaryContainer boundaryContainer;
+        public BoundaryContainer BoundaryContainer { get; private set; }
 
         /// <summary>
-        /// контейнер граничных оболочек
+        /// true - задан граничный контур
         /// </summary>
-        public BoundaryContainer BoundaryContainer => boundaryContainer;
+        public bool HasCountour => BoundaryContainer != null;
 
         public DelaunatorConfig Config { get; set; }
         #endregion
@@ -48,23 +49,23 @@ namespace TestDelaunayGenerator
         /// <summary>
         /// Построитель триангуляции Делоне.
         /// </summary>
-        /// <param name="points">Множество точек триангуляции</param>
+        /// <param name="inputPoints">Множество точек триангуляции</param>
         /// <param name="boundaryContainer">контейнер границ.
-        /// Не требуется объединять с <paramref name="points"/></param>
+        /// Не требуется объединять с <paramref name="inputPoints"/></param>
         /// <exception cref="ArgumentException"></exception>
-        public Delaunator(IHPoint[] points, BoundaryContainer boundaryContainer = null, DelaunatorConfig config = null)
+        public Delaunator(IHPoint[] inputPoints, BoundaryContainer boundaryContainer = null, DelaunatorConfig config = null)
         {
             //валидация множества точек
-            if (points is null || points.Length < 3)
-                throw new ArgumentException($"{nameof(points)} должен содержать минимум 3 точки!");
+            if (inputPoints is null || inputPoints.Length < 3)
+                throw new ArgumentException($"{nameof(inputPoints)} должен содержать минимум 3 точки!");
 
-            this.points = points;
+            this.points = inputPoints;
 
             //валидация контейнера границ
             if (boundaryContainer != null && (boundaryContainer.OuterBoundary is null && boundaryContainer.InnerBoundaries.Count == 0))
                 throw new ArgumentException(
                     "При инициализированном контейнере оболочек должна быть задана как минимум 1 внешняя/внутренняя оболочка!");
-            this.boundaryContainer = boundaryContainer;
+            this.BoundaryContainer = boundaryContainer;
 
             Config = config;
             if (Config is null)
@@ -179,7 +180,7 @@ namespace TestDelaunayGenerator
         /// Обход вершин всех треугольников направлен против ч.с. <br/>
         /// flag = 20 - принадлежит области, 10 - не принадлежит области
         /// </summary>
-        public Troika[] Triangles;
+        public Triangle[] Triangles;
 
         /// <summary>
         /// Принадлежность точки области.
@@ -189,9 +190,9 @@ namespace TestDelaunayGenerator
 
         /// <summary>
         /// Граничные ребра.
-        /// Индексация внутри <see cref="EdgePair"/> используется из <see cref="points"/>
+        /// Индексация внутри <see cref="ContourPoint"/> используется из <see cref="points"/>
         /// </summary>
-        EdgePair[] boundaryEdges;
+        ContourPoint[] CountourPoints;
         #endregion
 
 
@@ -214,7 +215,7 @@ namespace TestDelaunayGenerator
                     this.HalfEdges,
                     this.pointStatuses,
                     this.Triangles,
-                    this.boundaryEdges
+                    this.CountourPoints
                     );
             //используется в процессе дебага,
             //сохраняет существующие треугольники
@@ -252,7 +253,7 @@ namespace TestDelaunayGenerator
                 hes,
                 this.pointStatuses,
                 faces,
-                this.boundaryEdges
+                this.CountourPoints
                 );
             return dcel;
         }
@@ -319,12 +320,12 @@ namespace TestDelaunayGenerator
                 points.Sum(p => p.Y) / points.Length
                 );
 
-            if (this.boundaryContainer != null)
+            if (HasCountour)
             {
                 //выделение памяти принадлежностей точек
                 //по умолчанию точки входят в область
                 MEM.Alloc(
-                    points.Length + this.boundaryContainer.AllBoundaryPoints.Length,
+                    points.Length + this.BoundaryContainer.AllBoundaryPoints.Length,
                     ref pointStatuses,
                     PointStatus.Internal);
 
@@ -344,14 +345,12 @@ namespace TestDelaunayGenerator
                 Log.Information($"Колво точек в выпуклой триангуляции:{Points.Length}");
 #endif
 
-                //если не совпадает с размером массива точек, то обрезаем массив до нужного размера
-                if (this.points.Length != pointStatuses.Length)
-                    Array.Resize(ref pointStatuses, points.Length);
             }
-            else
-            {
-                MEM.Alloc(points.Length, ref pointStatuses, PointStatus.Internal);
-            }
+            //если не совпадает с размером массива точек, то обрезаем массив до нужного размера
+            if (this.pointStatuses is null || this.points.Length != pointStatuses.Length)
+                Array.Resize(ref pointStatuses, points.Length);
+            if (this.CountourPoints is null || this.points.Length != this.CountourPoints.Length)
+                Array.Resize(ref CountourPoints, points.Length);
 
 
             //выделение памяти для массива точек и его заполнение
@@ -490,7 +489,7 @@ namespace TestDelaunayGenerator
             // Добавление 1 треугольника в список треугольников
             int trid = AddTriangle(i0, i1, i2, -1, -1, -1) / 3;
             //определение принадлежности первого треугольника
-            if (boundaryContainer != null)
+            if (HasCountour)
             {
 
                 if (!Config.RestoreBorder)
@@ -661,7 +660,7 @@ namespace TestDelaunayGenerator
             HalfEdges = HalfEdges.Take(triangleVertexCounter).ToArray();
             Triangles = Triangles.Take(triangleVertexCounter / 3).ToArray();
 
-            if (this.boundaryContainer != null && Config.RestoreBorder)
+            if (HasCountour && Config.RestoreBorder)
             {
                 RestoreBorder();
                 ClippingTriangles();
@@ -672,13 +671,13 @@ namespace TestDelaunayGenerator
 
 
             //граничная оболочка не задана
-            if (this.boundaryContainer is null)
+            if (!HasCountour)
             {
-                this.boundaryEdges = new EdgePair[points.Length];
+                this.CountourPoints = new ContourPoint[points.Length];
             }
             //если внешний граничный контур, не задан,
             //то выпуклая оболочка является внешним контуром
-            if (this.boundaryContainer is null || this.boundaryContainer.OuterBoundary is null)
+            if (!HasCountour || this.BoundaryContainer.OuterBoundary is null)
             {
                 //отмечаем граничные ребра
                 //отмечаем точки, формирующие оболочку граничными
@@ -691,7 +690,7 @@ namespace TestDelaunayGenerator
                     //id соседних вершин
                     int prevVid = Hull[(Hull.Length - 1 + i) % Hull.Length];
                     int nextVid = Hull[(i + 1) % Hull.Length];
-                    this.boundaryEdges[vid] = new EdgePair(vid, prevVid, nextVid, 0);
+                    this.CountourPoints[vid] = new ContourPoint(vid, prevVid, nextVid, 0);
                 }
             }
         }
@@ -758,7 +757,7 @@ namespace TestDelaunayGenerator
                 }
 
                 //если задан граничный контур, то избегаем легализации для ребер, входящих в него
-                if (boundaryContainer != null)
+                if (HasCountour)
                 {
                     //ребро, которое будет развернуто
                     int edgeStart = HalfEdgeUtils.Origin(Triangles, a);
@@ -767,7 +766,7 @@ namespace TestDelaunayGenerator
                     //смежное ребро между треугольниками является граничным
                     if (pointStatuses[edgeStart] == PointStatus.Boundary &&
                          pointStatuses[edgeEnd] == PointStatus.Boundary &&
-                         boundaryEdges[edgeStart].Adjacents.Contains(edgeEnd))
+                         CountourPoints[edgeStart].Adjacents.Contains(edgeEnd))
                     {
 #if DEBUG
                         Log.Debug($"Легализация пропущена {nameof(tridA)}:{tridA} {nameof(tridB)}:{tridB}; " +
@@ -1191,27 +1190,24 @@ namespace TestDelaunayGenerator
 
         /// <summary>
         /// Отсечение точек <see cref="points"/>.
-        /// Массив <see cref="points"/> расширяется засчет <see cref="boundaryContainer"/>,
+        /// Массив <see cref="points"/> расширяется засчет <see cref="BoundaryContainer"/>,
         /// если такой определен
         /// </summary>
-        /// <exception cref="ArgumentNullException">не задана внешняя оболочка</exception>
         /// <returns>Фактический размер <see cref="points"/></returns>
         int ClippingPoints()
         {
-            if (this.boundaryContainer is null)
-                throw new ArgumentNullException($"{nameof(boundaryContainer)} не должен быть null!");
-
             InitializeExternalPoint();
 
             //количество точек, входящих в область
             int inAreaPointCnt = 0;
             //определение принадлежности точек области
 
+            int limit = points.Length;
 
             //отсечение точек в параллель
             if (Config.ParallelClippingPoints)
                 Parallel.For(
-                    0, points.Length, (i, loopState) =>
+                    0, limit, (i, loopState) =>
                     {
                         bool isInArea = IsInArea(points[i]);
                         //устанавливаем текущую точку, как входящую в область marker == 1
@@ -1230,7 +1226,7 @@ namespace TestDelaunayGenerator
                 );
             else
                 #region Однопоточное отсечение точек. Удобно для дебага
-                for (int i = 0; i < points.Length; i++)
+                for (int i = 0; i < limit; i++)
                 {
                     bool isInArea = IsInArea(points[i]);
                     //устанавливаем текущую точку, как входящую в область marker == 1
@@ -1265,37 +1261,34 @@ namespace TestDelaunayGenerator
         }
 
         /// <summary>
-        /// Объединить точки из <see cref="points"/> с точками из <see cref="boundaryContainer"/>.
+        /// Объединить точки из <see cref="points"/> с точками из <see cref="BoundaryContainer"/>.
         /// Усекает массив до размера суммы точек из этих множеств.
         /// </summary>
         /// <param name="notBorderPointCnt">
         /// количество точек, которое необходимо взять из <see cref="points"/> от начала массива
         /// </param>
-        /// <exception cref="ArgumentNullException"></exception>
         void CombinePointSets(int notBorderPointCnt)
         {
-            if (this.boundaryContainer is null)
-                throw new ArgumentNullException($"{nameof(boundaryContainer)} не должен быть null!");
 
             //Изменяем размер массива до количества точек, входящих в область + граничных точек
-            Array.Resize(ref points, notBorderPointCnt + boundaryContainer.AllBoundaryPoints.Length);
+            Array.Resize(ref points, notBorderPointCnt + BoundaryContainer.AllBoundaryPoints.Length);
             //количество ребер совпадает с количеством точек
-            MEM.Alloc(this.points.Length, ref boundaryEdges);
+            MEM.Alloc(this.points.Length, ref CountourPoints);
 
             //текущий свободный индекс для записи
             int curVid = notBorderPointCnt;
             //смещение по количеству точек до граничных точек
             int offset = curVid;
             //проход по каждой оболочке
-            for (int boundId = 0; boundId < boundaryContainer.Count; boundId++)
+            for (int boundId = 0; boundId < BoundaryContainer.Count; boundId++)
             {
                 //количество точек на текущем контуре
-                int bndPointCnt = boundaryContainer[boundId].Points.Length;
+                int bndPointCnt = BoundaryContainer[boundId].Points.Length;
                 //проход по точкам внутри оболочки
                 for (int i = 0; i < bndPointCnt; i++)
                 {
                     //копируем граничную точку в общий массив точек
-                    points[curVid] = boundaryContainer[boundId].Points[i];
+                    points[curVid] = BoundaryContainer[boundId].Points[i];
                     pointStatuses[curVid] = PointStatus.Boundary;
 
                     //сосед 1
@@ -1303,18 +1296,18 @@ namespace TestDelaunayGenerator
                     //сосед 2
                     int rightNeighId = offset + ((curVid - offset) + 1) % bndPointCnt;
                     //соседние точки для текущей точки
-                    boundaryEdges[curVid] = new EdgePair(
+                    CountourPoints[curVid] = new ContourPoint(
                         curVid, //ID текущей точки
                         leftNeighId,
                         rightNeighId,
-                        boundaryContainer[boundId].ID
+                        BoundaryContainer[boundId].ID
                         );
 
                     curVid++;
                 }
                 //при переходе к следующему контуру
                 //учитываем смещение по количеству точек в текущем контуре
-                offset += boundaryContainer[boundId].Points.Length;
+                offset += BoundaryContainer[boundId].Points.Length;
             }
         }
 
@@ -1334,17 +1327,16 @@ namespace TestDelaunayGenerator
             if (this.BoundaryContainer.OuterBoundary != null)
             {
 
-                if (this.boundaryContainer.OuterBoundary.BaseVertexes.Length > 4)
+                if (this.BoundaryContainer.OuterBoundary.BaseVertexes.Length > 4)
                 {
-                    crossCount = CountIntersections(point, this.boundaryContainer.OuterBoundary.OutRect);
+                    crossCount = CountIntersections(point, this.BoundaryContainer.OuterBoundary.OutRect);
                     //четное - не принадлежит, нечетное - находится в области
                     if (crossCount % 2 == 0)
                         return false;
                 }
 
-                //TODO проверить количество пересечений для Internal и External. Мб значение не больше двух
                 //проверка вхождения во внешнюю оболочку
-                crossCount = CountIntersections(point, this.boundaryContainer.OuterBoundary.BaseVertexes);
+                crossCount = CountIntersections(point, this.BoundaryContainer.OuterBoundary.BaseVertexes);
                 //требуется принадлежность области
                 if (crossCount % 2 == 0)
                     return false;
@@ -1352,7 +1344,7 @@ namespace TestDelaunayGenerator
 
             //проверка нахождения ЗА пределами прямоугольников, описанных около
             // внутренних оболочек
-            foreach (BoundaryHull innerBoundary in boundaryContainer.InnerBoundaries)
+            foreach (BoundaryHull innerBoundary in BoundaryContainer.InnerBoundaries)
             {
                 //пропускаем, если количество опорных вершин оболочки
                 //не больше, чем у прямоугольника (т.е. 4)
@@ -1366,7 +1358,7 @@ namespace TestDelaunayGenerator
             }
 
             //проверка нахождения ЗА пределами внутренних оболочек
-            foreach (BoundaryHull innerBoundary in boundaryContainer.InnerBoundaries)
+            foreach (BoundaryHull innerBoundary in BoundaryContainer.InnerBoundaries)
             {
                 crossCount = CountIntersections(point, innerBoundary.BaseVertexes);
                 //нужно, чтобы точка не входила в оболочку, т.к. innerBoundary является дыркой
@@ -1433,11 +1425,8 @@ namespace TestDelaunayGenerator
         protected void ClippingTriangles()
         {
             //выход, если граница не задана
-            if (this.boundaryContainer is null)
+            if (!HasCountour)
                 return;
-            //задана ли внешняя оболочка
-            if (this.boundaryContainer.OuterBoundary is null && this.boundaryContainer.Count == 0)
-                throw new ArgumentNullException($"контейнер границ передан, но не задана внешняя оболочка!");
 
             InitializeExternalPoint();
 
@@ -1514,7 +1503,7 @@ namespace TestDelaunayGenerator
                         (pointStatuses[vid] == PointStatus.Boundary ||
                         pointStatuses[vid2] == PointStatus.Boundary) &&
                         //первая точка имеет соседа - вторую точку
-                        boundaryEdges[vid].Adjacents.Contains(vid2)
+                        CountourPoints[vid].Adjacents.Contains(vid2)
                     )
                     {
                         if (clipValue == TriangleState.External)
@@ -1547,7 +1536,7 @@ namespace TestDelaunayGenerator
 #if DEBUG
             Log.Information($"Восстановление граничного контура");
 #endif
-            if (boundaryContainer is null)
+            if (!HasCountour)
                 return;
 
             List<IHPoint> pointsLst = new List<IHPoint>((int)(Points.Length * 1.25));
@@ -1556,10 +1545,10 @@ namespace TestDelaunayGenerator
             halfEdgesLst.AddRange(HalfEdges);
             List<PointStatus> pointStatusesLst = new List<PointStatus>((int)(pointStatuses.Length * 1.25));
             pointStatusesLst.AddRange(pointStatuses);
-            List<Troika> facesLst = new List<Troika>((int)(Triangles.Length * 1.25));
+            List<Triangle> facesLst = new List<Triangle>((int)(Triangles.Length * 1.25));
             facesLst.AddRange(Triangles);
-            List<EdgePair> boundaryEdgesLst = new List<EdgePair>((int)(boundaryEdges.Length * 1.25));
-            boundaryEdgesLst.AddRange(boundaryEdges);
+            List<ContourPoint> boundaryEdgesLst = new List<ContourPoint>((int)(CountourPoints.Length * 1.25));
+            boundaryEdgesLst.AddRange(CountourPoints);
             EdgeSplitter edgeSplitter = new EdgeSplitter(
                 pointsLst,
                 halfEdgesLst,
@@ -1595,9 +1584,9 @@ namespace TestDelaunayGenerator
                     int twinHe = adjHes[i];
                     int twinVid = HalfEdgeUtils.Origin(facesLst, twinHe);
 
-                    if (boundaryEdgesLst[vid].adjacent1 == twinVid)
+                    if (boundaryEdgesLst[vid].PrevVid == twinVid)
                         missAdj1 = false;
-                    if (boundaryEdgesLst[vid].adjacent2 == twinVid)
+                    if (boundaryEdgesLst[vid].NextVid == twinVid)
                         missAdj2 = false;
 
                     //связи существуют, поэтому заканчиваем цикл
@@ -1609,11 +1598,11 @@ namespace TestDelaunayGenerator
                 //можно восстановить только одно ребро, ибо для второго требуется найти другое ребро
                 if (missAdj1)
                 {
-                    RestoreEdge(he, boundaryEdges[vid].adjacent1);
+                    RestoreEdge(he, CountourPoints[vid].PrevVid);
                 }
                 else if (missAdj2)
                 {
-                    RestoreEdge(he, boundaryEdges[vid].adjacent2);
+                    RestoreEdge(he, CountourPoints[vid].NextVid);
                 }
 
                 if (stopFlag)
@@ -1635,7 +1624,7 @@ namespace TestDelaunayGenerator
             HalfEdges = halfEdgesLst.ToArray();
             pointStatuses = pointStatusesLst.ToArray();
             Triangles = facesLst.ToArray();
-            boundaryEdges = boundaryEdgesLst.ToArray();
+            CountourPoints = boundaryEdgesLst.ToArray();
 
             void RestoreEdge(int H0, int missedVid)
             {

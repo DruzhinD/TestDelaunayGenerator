@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace TestDelaunayGenerator.SimpleStructures
+namespace TestDelaunayGenerator.DelaunatorModels
 {
     /// <summary>
     /// Отношение принадлежности точки области

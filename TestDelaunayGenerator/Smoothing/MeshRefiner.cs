@@ -6,8 +6,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using TestDelaunayGenerator.DCELMesh;
-using TestDelaunayGenerator.SimpleStructures;
+using TestDelaunayGenerator.DelaunatorMesh;
+using TestDelaunayGenerator.DelaunatorModels;
 
 namespace TestDelaunayGenerator.Smoothing
 {
@@ -152,9 +152,9 @@ namespace TestDelaunayGenerator.Smoothing
             halfEdgesNew.AddRange(mesh.HalfEdges);
             var pointStatusesNew = new List<PointStatus>(mesh.PointStatuses.Length + newPointCnt);
             pointStatusesNew.AddRange(mesh.PointStatuses);
-            var facesNew = new List<Troika>(mesh.Faces.Length + newPointCnt * 4);
+            var facesNew = new List<Triangle>(mesh.Faces.Length + newPointCnt * 4);
             facesNew.AddRange(mesh.Faces);
-            var boundaryEdgesNew = new List<EdgePair>(mesh.BoundaryEdges.Length + newPointCnt);
+            var boundaryEdgesNew = new List<ContourPoint>(mesh.BoundaryEdges.Length + newPointCnt);
             boundaryEdgesNew.AddRange(mesh.BoundaryEdges);
 
             var edgeSplitter = new EdgeSplitter(
